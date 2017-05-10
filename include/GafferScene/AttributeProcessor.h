@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 #define GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer

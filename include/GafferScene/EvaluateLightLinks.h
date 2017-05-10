@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_EVALUATELIGHTLINKS_H
 #define GAFFERSCENE_EVALUATELIGHTLINKS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace GafferScene

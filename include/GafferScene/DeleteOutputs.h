@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETEOUTPUTS_H
 #define GAFFERSCENE_DELETEOUTPUTS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/DeleteGlobals.h"
 
 namespace GafferScene

@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETEATTRIBUTES_H
 #define GAFFERSCENE_DELETEATTRIBUTES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/AttributeProcessor.h"
 
 namespace GafferScene

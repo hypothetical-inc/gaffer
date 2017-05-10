@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_STANDARDOPTIONS_H
 #define GAFFERSCENE_STANDARDOPTIONS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Options.h"
 
 namespace GafferScene

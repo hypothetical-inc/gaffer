@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_PARENT_H
 #define GAFFERSCENE_PARENT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/BranchCreator.h"
 
 namespace GafferScene
