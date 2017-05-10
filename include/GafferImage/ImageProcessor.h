@@ -38,6 +38,7 @@
 #ifndef GAFFERIMAGE_IMAGEPROCESSOR_H
 #define GAFFERIMAGE_IMAGEPROCESSOR_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/ImageNode.h"
 
 namespace Gaffer
