@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_BUTTONEVENT_H
 #define GAFFERUI_BUTTONEVENT_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/ModifiableEvent.h"
 
 #include "IECore/LineSegment.h"
