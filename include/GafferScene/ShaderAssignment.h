@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_SHADERASSIGNMENT_H
 #define GAFFERSCENE_SHADERASSIGNMENT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/AttributeProcessor.h"
 #include "GafferScene/ShaderPlug.h"
 
