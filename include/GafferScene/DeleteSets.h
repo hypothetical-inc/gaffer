@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETESETS_H
 #define GAFFERSCENE_DELETESETS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer
