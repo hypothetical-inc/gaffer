@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_UNIONFILTER_H
 #define GAFFERSCENE_UNIONFILTER_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/FilterProcessor.h"
 
 namespace GafferScene
