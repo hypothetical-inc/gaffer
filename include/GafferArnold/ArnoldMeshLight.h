@@ -42,6 +42,8 @@
 
 #include "GafferScene/FilteredSceneProcessor.h"
 
+#include "GafferArnold/Export.h"
+
 namespace GafferArnold
 {
 
