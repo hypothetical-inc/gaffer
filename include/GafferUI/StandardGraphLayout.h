@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_STANDARDGRAPHLAYOUT_H
 #define GAFFERUI_STANDARDGRAPHLAYOUT_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/GraphLayout.h"
 
 namespace Gaffer
