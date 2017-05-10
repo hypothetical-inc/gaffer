@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_IMAGETRANSFORM_H
 #define GAFFERSCENE_IMAGETRANSFORM_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/ImageProcessor.h"
 
 namespace Gaffer
