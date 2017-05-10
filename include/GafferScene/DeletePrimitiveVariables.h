@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETEPRIMITIVEVARIABLE_H
 #define GAFFERSCENE_DELETEPRIMITIVEVARIABLE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/PrimitiveVariableProcessor.h"
 
 namespace GafferScene

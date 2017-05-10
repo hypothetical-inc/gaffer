@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_MESHTYPE_H
 #define GAFFERSCENE_MESHTYPE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
