@@ -38,6 +38,8 @@
 #ifndef GAFFERSCENE_CAMERA_H
 #define GAFFERSCENE_CAMERA_H
 
+#include "GafferScene/Export.h"
+
 #include "Gaffer/CompoundDataPlug.h"
 #include "GafferScene/ObjectSource.h"
 
