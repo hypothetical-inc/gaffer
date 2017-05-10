@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_PLUGGADGET_H
 #define GAFFERUI_PLUGGADGET_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/ContainerGadget.h"
 
 namespace Gaffer

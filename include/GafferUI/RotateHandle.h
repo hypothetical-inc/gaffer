@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_ROTATEHANDLE_H
 #define GAFFERUI_ROTATEHANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 IECORE_PUSH_DEFAULT_VISIBILITY
