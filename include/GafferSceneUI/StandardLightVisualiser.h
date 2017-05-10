@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENEUI_STANDARDLIGHTVISUALISER_H
 #define GAFFERSCENEUI_STANDARDLIGHTVISUALISER_H
 
+#include "GafferSceneUI/Export.h"
 #include "GafferSceneUI/LightVisualiser.h"
 
 #include "IECoreGL/Group.h"
