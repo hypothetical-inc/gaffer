@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_RESAMPLEPRIMITIVEVARIABLES_H
 #define GAFFERSCENE_RESAMPLEPRIMITIVEVARIABLES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/PrimitiveVariableProcessor.h"
 
 namespace GafferScene
