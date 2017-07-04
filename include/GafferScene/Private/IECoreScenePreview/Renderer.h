@@ -37,6 +37,8 @@
 #ifndef IECORESCENEPREVIEW_RENDERER_H
 #define IECORESCENEPREVIEW_RENDERER_H
 
+#include "GafferScene/Export.h"
+
 #include "IECoreScene/Camera.h"
 #include "IECoreScene/Output.h"
 
@@ -67,7 +69,7 @@ namespace IECoreScenePreview
 /// - Change the python bindings so that the lifetime of the object
 ///   handles and the renderer are tied together, or have the object
 ///   handles keep the renderer alive on the C++ side anyway.
-class IECORESCENE_API Renderer : public IECore::RefCounted
+class GAFFERSCENE_API Renderer : public IECore::RefCounted
 {
 
 	public :

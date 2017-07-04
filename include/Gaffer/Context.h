@@ -232,7 +232,7 @@ class GAFFER_API Context : public IECore::RefCounted
 
 		/// The Scope class is used to push and pop the current context on
 		/// the calling thread.
-		class Scope : boost::noncopyable
+		class GAFFER_API Scope : boost::noncopyable
 		{
 
 			public :
@@ -256,7 +256,7 @@ class GAFFER_API Context : public IECore::RefCounted
 		/// because it is harder to provide the necessary lifetime
 		/// guarantees there, and performance critical code should
 		/// not be implemented in Python in any case.
-		class EditableScope : boost::noncopyable
+		class GAFFER_API EditableScope : boost::noncopyable
 		{
 
 			public :

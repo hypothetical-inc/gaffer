@@ -69,7 +69,7 @@ class GAFFER_API ContextMonitor : public Monitor
 		ContextMonitor( const GraphComponent *root = nullptr );
 		~ContextMonitor() override;
 
-		struct Statistics
+		struct GAFFER_API Statistics
 		{
 
 			size_t numUniqueContexts() const;

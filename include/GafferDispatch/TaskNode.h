@@ -86,7 +86,7 @@ class GAFFERDISPATCH_API TaskNode : public Gaffer::DependencyNode
 		/// primarily for the use of Dispatcher classes. See TaskPlug
 		/// for the main public interface for the execution of
 		/// individual tasks.
-		class Task
+		class GAFFERDISPATCH_API Task
 		{
 			public :
 
@@ -132,7 +132,7 @@ class GAFFERDISPATCH_API TaskNode : public Gaffer::DependencyNode
 		/// Plug type used to represent tasks within the
 		/// node graph. This provides the primary public
 		/// interface for querying and executing tasks.
-		class TaskPlug : public Gaffer::Plug
+		class GAFFERDISPATCH_API TaskPlug : public Gaffer::Plug
 		{
 
 			public :

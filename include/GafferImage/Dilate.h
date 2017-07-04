@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_DILATE_H
 #define GAFFERIMAGE_DILATE_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/RankFilter.h"
 
 namespace GafferImage

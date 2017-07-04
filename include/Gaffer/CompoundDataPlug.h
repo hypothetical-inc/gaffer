@@ -70,7 +70,7 @@ class GAFFER_API CompoundDataPlug : public Gaffer::ValuePlug
 		PlugPtr createCounterpart( const std::string &name, Direction direction ) const override;
 
 		/// The plug type used to represent the data members.
-		class MemberPlug : public ValuePlug
+		class GAFFER_API MemberPlug : public ValuePlug
 		{
 
 			public :

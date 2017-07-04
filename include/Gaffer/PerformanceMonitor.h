@@ -63,7 +63,7 @@ class GAFFER_API PerformanceMonitor : public Monitor
 		PerformanceMonitor();
 		~PerformanceMonitor() override;
 
-		struct Statistics
+		struct GAFFER_API Statistics
 		{
 
 			Statistics(
