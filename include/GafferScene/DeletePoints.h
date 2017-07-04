@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_DELETEPOINTS_H
 #define GAFFERSCENE_DELETEPOINTS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
