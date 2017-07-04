@@ -37,7 +37,7 @@
 #ifndef GAFFERIMAGE_BUFFERALGO_H
 #define GAFFERIMAGE_BUFFERALGO_H
 
-#include "IECore/Export.h"
+#include "GafferImage/Export.h"
 
 IECORE_PUSH_DEFAULT_VISIBILITY
 #include "OpenEXR/ImathBox.h"
