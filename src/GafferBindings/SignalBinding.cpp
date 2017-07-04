@@ -41,6 +41,8 @@
 
 #include "boost/signals.hpp"
 
+#include "GafferBindings/Export.h"
+
 using namespace boost::python;
 
 namespace GafferBindings
@@ -49,7 +51,7 @@ namespace GafferBindings
 namespace Detail
 {
 
-boost::python::object pythonConnection( const boost::signals::connection &connection, bool scoped )
+GAFFERBINDINGS_API boost::python::object pythonConnection( const boost::signals::connection &connection, bool scoped )
 {
 	if( scoped )
 	{
