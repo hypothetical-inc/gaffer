@@ -52,6 +52,8 @@ IECORE_POP_DEFAULT_VISIBILITY
 
 #include "GafferImage/Export.h"
 
+#include "GafferImage/Export.h"
+
 namespace GafferImage
 {
 
