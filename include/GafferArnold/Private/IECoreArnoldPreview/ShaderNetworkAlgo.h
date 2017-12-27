@@ -43,13 +43,15 @@
 
 #include <vector>
 
+#include "GafferArnold/Export.h"
+
 namespace IECoreArnoldPreview
 {
 
 namespace ShaderNetworkAlgo
 {
 
-std::vector<AtNode *> convert( const IECoreScene::ShaderNetwork *shaderNetwork, const std::string &namePrefix = "", const AtNode *parentNode = nullptr );
+GAFFERARNOLD_API std::vector<AtNode *> convert( const IECoreScene::ShaderNetwork *shaderNetwork, const std::string &namePrefix = "", const AtNode *parentNode = nullptr );
 
 } // namespace ShaderNetworkAlgo
 
