@@ -45,6 +45,8 @@
 #include "boost/signals.hpp"
 #include "boost/version.hpp"
 
+#include "GafferBindings/Export.h"
+
 namespace GafferBindings
 {
 
