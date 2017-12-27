@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_MAPPROJECTION_H
 #define GAFFERSCENE_MAPPROJECTION_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
