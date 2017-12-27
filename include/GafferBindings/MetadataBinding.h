@@ -41,6 +41,8 @@
 #include "GafferBindings/Serialisation.h"
 
 
+#include "GafferBindings/Export.h"
+
 namespace GafferBindings
 {
 
