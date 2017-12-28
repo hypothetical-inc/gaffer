@@ -96,9 +96,9 @@ find_package( Cortex REQUIRED )
 find_package( OpenColorIO REQUIRED )
 find_package( OpenImageIO REQUIRED )
 find_package( OSL REQUIRED )
-find_package( Freetype REQUIRED )
+find_package( FreeType REQUIRED )
 find_package( PNG REQUIRED ) # For freetype linking
-find_package( Arnold REQUIRED )
+find_package( Arnold )
 find_package( OpenGL REQUIRED )
 find_package( GLEW REQUIRED )
 find_package( Qt5 5.6 REQUIRED Core Gui OpenGL )
@@ -113,7 +113,9 @@ include_directories( ${ILMBASE_INCLUDE_DIR} )
 include_directories( ${OPENEXR_INCLUDE_DIRS} )
 include_directories( ${Cortex_INCLUDE_DIRS} )
 include_directories( ${FREETYPE_INCLUDE_DIRS} )
-include_directories( ${CORTEX_ARNOLD_INCLUDE_PATH} )
+if (Arnold_FOUND)
+  include_directories( ${CORTEX_ARNOLD_INCLUDE_PATH} )
+endif()
 include_directories( ${APPLESEED_INCLUDE_DIRS} )
 
 link_directories( ${TBB_LIBRARY_DIRS} )
@@ -162,11 +164,9 @@ set( BASE_PYTHON_LIBS
 # Includes
 include_directories( ${CMAKE_SOURCE_DIR}/include )
 
-set( GAFFER_LIB_NAMES
+set( GAFFER_LIB_NAMES 
   Gaffer
   GafferAppleseed
-  GafferArnold
-  GafferArnoldUI
   GafferCortex
   GafferDispatch
   GafferImage
@@ -179,6 +179,9 @@ set( GAFFER_LIB_NAMES
   GafferVDB
   GafferVDBUI
   )
+if (Arnold_FOUND)
+  SET(GAFFER_LIB_NAMES ${GAFFER_LIB_NAMES} GafferArnold GafferArnoldUI)
+endif()
 
 set( GAFFERBINDINGS_LIB_NAMES
   Gaffer
@@ -192,7 +195,6 @@ set( GAFFERTEST_LIB_NAMES
 set( GAFFER_PYTHON_NAMES
   Gaffer
   GafferAppleseed
-  GafferArnold
   GafferCortex
   GafferDispatch
   GafferImage
@@ -202,6 +204,9 @@ set( GAFFER_PYTHON_NAMES
   GafferTractor
   GafferVDB
   )
+if (Arnold_FOUND)
+  SET(GAFFER_PYTHON_NAMES ${GAFFER_PYTHON_NAMES} GafferArnold)
+endif()
 
 # Get lists of files
 foreach( GAFFER_LIB ${GAFFER_LIB_NAMES} )
@@ -234,35 +239,59 @@ foreach( GAFFER_LIB ${GAFFER_PYTHON_NAMES} )
     python/${GAFFER_LIB}Test/*.py python/${GAFFER_LIB}UI/*.py python/${GAFFER_LIB}UITest/*.py )
 endforeach()
 
+# Substitute version info
+if ( NOT WINDOWS )
+  set(sedSubstitutions "s/!GAFFER_MILESTONE_VERSION!/${GAFFER_MILESTONE_VERSION}/g\;s/!GAFFER_MAJOR_VERSION!/${GAFFER_MAJOR_VERSION}/g\;s/!GAFFER_MINOR_VERSION!/${GAFFER_MINOR_VERSION}/g\;s/!GAFFER_PATCH_VERSION!/${GAFFER_PATCH_VERSION}/g")
 
-set(sedSubstitutions "s/!GAFFER_MILESTONE_VERSION!/${GAFFER_MILESTONE_VERSION}/g\;s/!GAFFER_MAJOR_VERSION!/${GAFFER_MAJOR_VERSION}/g\;s/!GAFFER_MINOR_VERSION!/${GAFFER_MINOR_VERSION}/g\;s/!GAFFER_PATCH_VERSION!/${GAFFER_PATCH_VERSION}/g")
 
+  add_custom_command(
+          OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/About.py
+          COMMAND sed "${sedSubstitutions}" ${GAFFER_SOURCE_DIR}/python/Gaffer/About.py > ${CMAKE_CURRENT_BINARY_DIR}/About.py
+          DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
+          WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
+  )
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/About.py
-        COMMAND sed "${sedSubstitutions}" ${GAFFER_SOURCE_DIR}/python/Gaffer/About.py > ${CMAKE_CURRENT_BINARY_DIR}/About.py
-        DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
-        WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
-)
-
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Version.h
-        COMMAND sed "${sedSubstitutions}" ${GAFFER_SOURCE_DIR}/include/Gaffer/Version.h > ${CMAKE_CURRENT_BINARY_DIR}/Version.h
-        DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
-        WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
-)
-
+  add_custom_command(
+          OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Version.h
+          COMMAND sed "${sedSubstitutions}" ${GAFFER_SOURCE_DIR}/include/Gaffer/Version.h > ${CMAKE_CURRENT_BINARY_DIR}/Version.h
+          DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
+          WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
+  )
+else()
+  add_custom_command(
+          OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/About.py
+          COMMAND powershell -Command "\
+          (Get-Content ${GAFFER_SOURCE_DIR}/python/Gaffer/About.py).replace('!GAFFER_MILESTONE_VERSION!', '${GAFFER_MILESTONE_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py).replace('!GAFFER_MAJOR_VERSION!', '${GAFFER_MAJOR_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py).replace('!GAFFER_MINOR_VERSION!', '${GAFFER_MINOR_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py).replace('!GAFFER_PATCH_VERSION!', '${GAFFER_PATCH_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/About.py"
+          DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
+          WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
+  )
+  add_custom_command(
+          OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Version.h
+          COMMAND powershell -Command "\
+          (Get-Content ${GAFFER_SOURCE_DIR}/include/Gaffer/Version.h).replace('!GAFFER_MILESTONE_VERSION!', '${GAFFER_MILESTONE_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h).replace('!GAFFER_MAJOR_VERSION!', '${GAFFER_MAJOR_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h).replace('!GAFFER_MINOR_VERSION!', '${GAFFER_MINOR_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h;\
+          (Get-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h).replace('!GAFFER_PATCH_VERSION!', '${GAFFER_PATCH_VERSION}') | Set-Content ${CMAKE_CURRENT_BINARY_DIR}/Version.h"
+          DEPENDS ${GAFFER_SOURCE_DIR}/resources/graphics.svg
+          WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
+  )
+endif()
 
 # Build Graphics
 # ==============
 
+set( INKSCAPE_COMMAND "C:/Program Files/Inkscape/inkscape")
 
-file( GLOB GAFFER_SVG_FILES ${GAFFER_SOURCE_DIR}/resources/*.svg)
-set(outputPNGs "")
-
-foreach(srcSvgFile ${GAFFER_SVG_FILES})
-  # generate an object list from the svg file
-  execute_process( COMMAND inkscape --query-all ${srcSvgFile} OUTPUT_VARIABLE svgContents)
+macro( build_svg_exports SVG_FILE)
+  # generate an object list from the svg
+  execute_process(
+          COMMAND ${INKSCAPE_COMMAND} --query-all ${SVG_FILE}
+          OUTPUT_VARIABLE svgContents
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
 
   STRING(REGEX REPLACE ";" "\\\\;" svgContents "${svgContents}")
   STRING(REGEX REPLACE "\n" ";" svgContents "${svgContents}")
@@ -272,7 +301,7 @@ foreach(srcSvgFile ${GAFFER_SVG_FILES})
   foreach(svg ${svgContents})
     string(FIND ${svg} "forExport:" a)
     if("${a}" STREQUAL "0")
-      list(APPEND svgExport ${svg})
+        list(APPEND svgExport ${svg})
     endif()
   endforeach()
 
@@ -284,16 +313,24 @@ foreach(srcSvgFile ${GAFFER_SVG_FILES})
     list(GET svg 4 height)
 
     list(APPEND outputPNGs ${CMAKE_CURRENT_BINARY_DIR}/graphics/${name}.png)
+
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/graphics/${name}.png
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/graphics/
-            COMMAND inkscape  --export-png=${CMAKE_CURRENT_BINARY_DIR}/graphics/${name}.png --export-id=forExport:${name} --export-width=${width} --export-height=${height} --export-background-opacity=0 ${srcSvgFile}
-            DEPENDS ${srcSvgFile}
+            COMMAND ${INKSCAPE_COMMAND}  --export-png=${CMAKE_CURRENT_BINARY_DIR}/graphics/${name}.png --export-id=forExport:${name} --export-width=${width} --export-height=${height} --export-background-opacity=0 ${SVG_FILE}
+            DEPENDS ${SVG_FILE}
             WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
     )
   endforeach()
-endforeach()
+endmacro()
 
+execute_process(
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/graphics/
+)
+
+set(outputPNGs "")
+build_svg_exports( ${CMAKE_CURRENT_BINARY_DIR}/resources/graphics.svg )
+build_svg_exports( ${CMAKE_CURRENT_BINARY_DIR}/resources/GafferLogo.svg )
+build_svg_exports( ${CMAKE_CURRENT_BINARY_DIR}/resources/GafferLogoMini.svg )
 
 add_custom_target(Graphics ALL DEPENDS ${outputPNGs})
 
@@ -327,13 +364,13 @@ add_library( _GafferUI MODULE ${GAFFERUI_CXX_MODULE_FILES} ${GAFFERUI_H_MODULE_F
 target_link_libraries( _GafferUI GafferUI GafferBindings ${BASE_LIBS} ${BASE_PYTHON_LIBS} Qt5::Core Qt5::Gui Qt5::OpenGL )
 target_compile_definitions( _GafferUI PRIVATE -DQT_NO_KEYWORDS -DQ_COMPILER_CONSTEXPR )
 
-# GafferDisptach
+# GafferDispatch
 add_library( GafferDispatch SHARED ${GAFFERDISPATCH_CXX_FILES} ${GAFFERDISPATCH_H_FILES} )
 target_link_libraries( GafferDispatch ${BASE_LIBS} Gaffer )
 
 # GafferDispatch Python Module
 add_library( _GafferDispatch MODULE ${GAFFERDISPATCH_CXX_MODULE_FILES} )
-target_link_libraries( _GafferDispatch ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferDispatch GafferBindings  )
+target_link_libraries( _GafferDispatch ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferDispatch GafferBindings )
 
 # GafferImage
 add_library( GafferImage SHARED ${GAFFERIMAGE_CXX_FILES} ${GAFFERIMAGE_H_FILES} )
@@ -360,7 +397,7 @@ target_link_libraries( GafferScene ${BASE_LIBS} Gaffer ${ILMBASE_IEX_LIBRARY} ${
 
 # GafferScene Python Module
 add_library( _GafferScene MODULE ${GAFFERSCENE_CXX_MODULE_FILES} ${GAFFERSCENE_H_MODULE_FILES} )
-target_link_libraries( _GafferScene GafferScene GafferBindings  ${BASE_LIBS} ${BASE_PYTHON_LIBS} )
+target_link_libraries( _GafferScene GafferScene GafferBindings GafferDispatch ${BASE_LIBS} ${BASE_PYTHON_LIBS} )
 
 # GafferScene Test
 add_library( GafferSceneTest SHARED ${GAFFERSCENETEST_CXX_FILES} ${GAFFERIMAGETEST_H_FILES} )
@@ -396,11 +433,12 @@ target_link_libraries( _GafferOSL ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferBinding
 
 # GafferVDB
 add_library( GafferVDB SHARED ${GAFFERVDB_CXX_FILES} ${GAFFERVDB_H_FILES} )
-target_link_libraries( GafferVDB ${BASE_LIBS} Gaffer GafferScene ${OpenVDB_LIBRARIES} ${Cortex_IECORESCENE_LIBRARY} )
+target_link_libraries( GafferVDB ${BASE_LIBS} Gaffer GafferScene ${OpenVDB_LIBRARIES} ${Cortex_IECORESCENE_LIBRARY} ${Cortex_IECOREVDB_LIBRARY} )
+target_compile_options( GafferVDB PRIVATE )
 
 # GafferVDB Python Module
 add_library( _GafferVDB MODULE ${GAFFERVDB_CXX_MODULE_FILES} )
-target_link_libraries( _GafferVDB GafferVDB ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferBindings GafferScene ${OpenVDB_LIBRARIES} ${Cortex_IECORESCENE_LIBRARY} )
+target_link_libraries( _GafferVDB GafferVDB ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferBindings GafferScene ${OpenVDB_LIBRARIES} ${Cortex_IECORESCENE_LIBRARY} ${Cortex_IECOREVDB_LIBRARY} )
 
 # GafferVDBUI
 add_library( GafferVDBUI SHARED ${GAFFERVDBUI_CXX_FILES} ${GAFFERVDBUI_H_FILES} )
@@ -422,22 +460,27 @@ add_library( _GafferAppleseed MODULE ${GAFFERAPPLESEED_CXX_MODULE_FILES} )
 target_link_libraries( _GafferAppleseed ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferDispatch GafferScene GafferBindings GafferAppleseed )
 target_compile_options( _GafferAppleseed PRIVATE -DAPPLESEED_ENABLE_IMATH_INTEROP -DAPPLESEED_USE_SSE )
 
-# GafferArnold
-file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
-add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
-target_link_libraries( GafferArnold ${BASE_LIBS} Gaffer GafferDispatch GafferScene GafferOSL GafferVDB ${OpenVDB_LIBRARIES} ${CORTEX_ARNOLD_LIBS} ${Cortex_IECOREARNOLD_LIBRARY} )
 
-# GafferArnold Python Module
-add_library( _GafferArnold MODULE ${GAFFERARNOLD_CXX_MODULE_FILES} )
-target_link_libraries( _GafferArnold ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferScene GafferBindings GafferDispatch GafferArnold GafferBindings )
+if (Arnold_FOUND)
+  # GafferArnold
+  file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES RELATIVE ${CMAKE_SOURCE_DIR} src/GafferArnold/IECoreArnoldPreview/*.cpp )
+  add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
+  target_link_libraries( GafferArnold ${BASE_LIBS} Gaffer GafferDispatch GafferScene GafferOSL GafferVDB ${OpenVDB_LIBRARIES} ${CORTEX_ARNOLD_LIBS} ${Cortex_IECOREARNOLD_LIBRARY} )
+  target_compile_options( GafferArnold PRIVATE )
 
-# GafferArnoldUI
-add_library( GafferArnoldUI SHARED ${GAFFERARNOLDUI_CXX_FILES} ${GAFFERARNOLDUI_H_FILES} )
-target_link_libraries( GafferArnoldUI ${BASE_LIBS} Gaffer GafferScene GafferSceneUI GafferOSL ${Cortex_IECOREGL_LIBRARY} )
 
-# GafferArnoldUI Python Module
-add_library( _GafferArnoldUI MODULE ${GAFFERARNOLDUI_CXX_MODULE_FILES} )
-target_link_libraries( _GafferArnoldUI GafferArnoldUI )
+  # GafferArnold Python Module
+  add_library( _GafferArnold MODULE ${GAFFERARNOLD_CXX_MODULE_FILES} )
+  target_link_libraries( _GafferArnold ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferScene GafferBindings GafferDispatch GafferArnold GafferBindings )
+
+  # GafferArnoldUI
+  add_library( GafferArnoldUI SHARED ${GAFFERARNOLDUI_CXX_FILES} ${GAFFERARNOLDUI_H_FILES} )
+  target_link_libraries( GafferArnoldUI ${BASE_LIBS} Gaffer GafferScene GafferSceneUI GafferOSL ${Cortex_IECOREGL_LIBRARY} )
+
+  # GafferArnoldUI Python Module
+  add_library( _GafferArnoldUI MODULE ${GAFFERARNOLDUI_CXX_MODULE_FILES} )
+  target_link_libraries( _GafferArnoldUI GafferArnoldUI )
+endif()
 
 # GafferDelight
 add_library( GafferDelight SHARED ${GAFFERDELIGHT_CXX_FILES} ${GAFFERDELIGHT_H_FILES} )
@@ -463,13 +506,13 @@ foreach( GAFFER_LIB ${GAFFERTEST_LIB_NAMES} )
   if( DARWIN )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".so" )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
-    elif( WINDOWS )
+  elif( WINDOWS )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".pyd" )
+    set_target_properties( _${GAFFER_LIB} PROPERTIES SUFFIX ".pyd" )
   else()
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
   endif()
 endforeach()
-
 
 # Gaffer OSL Shaders
 file( GLOB_RECURSE OSL_HEADER_FILES ${GAFFER_SOURCE_DIR}/shaders/*.h)
@@ -492,9 +535,16 @@ foreach(shaderFileName ${OSL_SOURCE_FILES})
     get_filename_component(SHADER_OUTPUT_DIR ${SHADER_OUTPUT} "DIRECTORY")
 
     list(APPEND COMPILED_OSL_SHADERS ${SHADER_OUTPUT} )
+    # Windows needs to have libraries in PATH, Linux in LD_LIBRARY_PATH
+    if( WINDOWS )
+      set( PATH_COMMAND "PATH=${OSL_LIBRARY_PATH};$ENV{PATH}" )
+    else()
+      set (PATH_COMMAND "LD_LIBRARY_PATH=${OSL_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}")
+    endif()
+
     add_custom_command(OUTPUT "${SHADER_OUTPUT}"
             COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADER_OUTPUT_DIR}
-            COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${OSL_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}" ${OSL_COMPILER} -I./shaders -o ${SHADER_OUTPUT} ${shaderFileName}
+            COMMAND ${CMAKE_COMMAND} -E env "${PATH_COMMAND}" ${OSL_COMPILER} -I./shaders -o ${SHADER_OUTPUT} ${shaderFileName}
             DEPENDS ${shaderFileName}
             WORKING_DIRECTORY ${GAFFER_SOURCE_DIR}
     )
@@ -502,33 +552,12 @@ endforeach()
 
 add_custom_target(Shaders ALL DEPENDS ${COMPILED_OSL_SHADERS})
 
-
-# Python modules need special naming
-if( WIN32 )
-  set_target_properties( _Gaffer PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferAppleseed PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferArnold PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferArnoldUI PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferCortex PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferDispatch PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferImage PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferImageUI PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferOSL PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferDelight PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferScene PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferSceneUI PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferUI PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferTest PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferSceneTest PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferImageTest PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferVDB PROPERTIES SUFFIX ".pyd" )
-  set_target_properties( _GafferVDBUI PROPERTIES SUFFIX ".pyd" )
-endif()
-
 # Dependencies
 add_dependencies( GafferAppleseed Gaffer GafferDispatch GafferScene )
-add_dependencies( GafferArnold Gaffer GafferDispatch GafferScene GafferOSL )
-add_dependencies( GafferArnoldUI Gaffer GafferScene GafferOSL GafferArnoldUI )
+if (Arnold_FOUND)
+  add_dependencies( GafferArnold Gaffer GafferDispatch GafferScene GafferOSL )
+  add_dependencies( GafferArnoldUI Gaffer GafferScene GafferOSL GafferArnoldUI )
+endif()
 add_dependencies( GafferCortex Gaffer GafferDispatch )
 add_dependencies( GafferDispatch Gaffer )
 add_dependencies( GafferImage Gaffer GafferDispatch )
@@ -540,7 +569,7 @@ add_dependencies( GafferSceneUI Gaffer GafferUI GafferImage GafferImageUI Gaffer
 add_dependencies( GafferUI Gaffer GafferScene )
 
 # Binding Dependencies
-add_dependencies( GafferBindings Gaffer Graphics)
+add_dependencies( GafferBindings Gaffer Graphics )
 
 # Test Dependencies
 add_dependencies( GafferTest Gaffer )
@@ -557,8 +586,10 @@ add_dependencies( _GafferSceneUI Gaffer GafferSceneUI GafferImageUI GafferBindin
 add_dependencies( _GafferUI Gaffer GafferUI GafferBindings )
 add_dependencies( _GafferOSL GafferBindings GafferScene GafferImage GafferOSL )
 add_dependencies( _GafferAppleseed GafferDispatch GafferScene GafferBindings GafferAppleseed )
-add_dependencies( _GafferArnold Gaffer GafferScene GafferBindings GafferDispatch GafferArnold )
-add_dependencies( _GafferArnoldUI Gaffer GafferArnoldUI )
+if (Arnold_FOUND)
+  add_dependencies( _GafferArnold Gaffer GafferScene GafferBindings GafferDispatch GafferArnold )
+  add_dependencies( _GafferArnoldUI Gaffer GafferArnoldUI )
+endif()
 add_dependencies( _GafferDelight Gaffer GafferScene GafferBindings GafferDispatch GafferDelight )
 
 add_dependencies( _GafferTest Gaffer GafferBindings GafferTest )
@@ -603,20 +634,24 @@ endforeach()
 # Install Gaffer Files
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/apps
          DESTINATION . )
-install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
+if (Arnold_FOUND)
+  install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
          DESTINATION . )
+endif()
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/bin
          DESTINATION . )
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/glsl
          DESTINATION . )
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/python
          DESTINATION . )
-install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
+if (Arnold_FOUND)
+  install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
          DESTINATION . )
-install( DIRECTORY ${GAFFER_SOURCE_DIR}/shaders
-         DESTINATION . )
+endif()
+
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/startup
          DESTINATION . )
+
 install( FILES ${GAFFER_SOURCE_DIR}/LICENSE
           DESTINATION .)
 
