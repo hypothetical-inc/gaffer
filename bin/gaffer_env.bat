@@ -1,6 +1,3 @@
-SETLOCAL
-rem @echo off
-
 set GAFFER_ROOT=%~dp0%..
 
 set HOME=%USERPROFILE%
@@ -27,8 +24,7 @@ set OSLHOME=%GAFFER_ROOT%
 
 set OSL_SHADER_PATHS=%USERPROFILE%\gaffer\shaders;%GAFFER_ROOT%\shaders;%OSL_SHADER_PATHS%
 
-set GAFFEROSL_CODE_DIRECTORY=%USERPROFILE%\gaffer\oslCode
-set PATH=%GAFFER_OSL_CODE_DIRECTORY%;%PATH%
+set GAFFEROSL_CODE_DIRECTORY=%OSL_SHADER_PATHS%;%USERPROFILE%\gaffer\oslCode
 
 set PYTHONHOME=%GAFFER_ROOT%
 
@@ -42,33 +38,19 @@ set QT_QPA_PLATFORM_PLUGIN_PATH=%GAFFER_ROOT%\qt\plugins
 set PATH=%GAFFER_ROOT%\bin;%PATH%
 
 rem Appleseed
-rem if not defined APPLESEED (
-rem 	if EXIST %GAFFER_ROOT%\appleseed (
-rem 		set APPLESEED=%GAFFER_ROOT%\appleseed
-rem 	)
-rem )
-
-rem if defined APPLESEED (
-rem 	set PATH=%APPLESEED%\bin;%APPLESEED%\lib;%PATH%
-rem 	set PYTHONPATH=%APPLESEED%\lib\python2.7;%PYTHONPATH%
-rem 	set OSL_SHADER_PATHS=%APPLESEED%\shaders\gaffer;%OSL_SHADER_PATHS%
-rem 	set APPLESEED_SEARCHPATH=%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplays;%APPLESEED_SEARCHPATH%
-rem )
+set APPLESEED=%GAFFER_ROOT%\appleseed
+set PATH=%APPLESEED%\lib;%PATH%
+set PYTHONPATH=%APPLESEED%\lib\python2.7;%PYTHONPATH%
+set OSL_SHADER_PATHS=%APPLESEED%\shaders\gaffer;%OSL_SHADER_PATHS%
+set APPLESEED_SEARCHPATH=%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplays;%APPLESEED_SEARCHPATH%
+set PATH=%APPLESEED%\bin;%PATH%
 
 
 rem Arnold
-rem if defined ARNOLD_ROOT (
-	rem set ARNOLD_PLUGIN_PATH=%GAFFER_ROOT%\arnold\plugins;%ARNOLD_PLUGIN_PATH%
-	rem set PATH=%PATH%;%ARNOLD_ROOT%\bin
-	rem set PYTHONPATH=%PYTHONPATH%;%ARNOLD_ROOT%\python
-rem )
+set ARNOLD_PLUGIN_PATH=%GAFFER_ROOT%\arnold\plugins;%ARNOLD_PLUGIN_PATH%
+set PATH=%PATH%;%ARNOLD_ROOT%\bin
+set PYTHONPATH=%PYTHONPATH%;%ARNOLD_ROOT%\python
 
-@echo on
-python %GAFFER_ROOT%/bin/gaffer.py %*
-if %ERRORLEVEL% NEQ 0 (
-	echo "Error(s) running Gaffer"
-	exit /b %ERRORLEVEL%
-	ENDLOCAL
-)
 
-ENDLOCAL
+rem Run Gaffer
+rem python %GAFFER_ROOT%/bin/gaffer.py %1 %2
