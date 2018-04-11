@@ -43,6 +43,12 @@
 namespace GafferScene
 {
 
+#ifdef _WIN32
+	#define ENVSEP ";"
+#else
+	#define ENVSEP ":"
+#endif
+
 class GAFFERSCENE_API Text : public ObjectSource
 {
 
