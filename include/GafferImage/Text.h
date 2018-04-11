@@ -52,6 +52,12 @@ IE_CORE_FORWARDDECLARE( Transform2DPlug )
 namespace GafferImage
 {
 
+#ifdef _WIN32
+	#define ENVSEP ";"
+#else
+	#define ENVSEP ":"
+#endif
+
 class GAFFERIMAGE_API Text : public Shape
 {
 
