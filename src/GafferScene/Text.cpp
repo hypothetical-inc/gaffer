@@ -63,7 +63,11 @@ namespace Detail
 FontPtr fontGetter( const std::string &fileName, size_t &cost )
 {
 	const char *e = getenv( "IECORE_FONT_PATHS" );
+<<<<<<< HEAD
 	IECore::SearchPath sp( e ? e : "" );
+=======
+	IECore::SearchPath sp( e ? e : "", ENVSEP );
+>>>>>>> make path separators cross platform
 
 	std::string resolvedFileName = sp.find( fileName ).string();
 	if( !resolvedFileName.size() )
