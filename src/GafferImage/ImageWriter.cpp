@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "boost/asio/ip/host_name.hpp"
+
 #include "GafferImage/ImageWriter.h"
 
 #include "GafferImage/BufferAlgo.h"
@@ -61,7 +63,6 @@
 
 #include <memory>
 
-#include <sys/utsname.h>
 #include <zlib.h>
 
 OIIO_NAMESPACE_USING
@@ -681,11 +682,9 @@ ImageSpec createImageSpec( const ImageWriter *node, const ImageOutput *out, cons
 	// Add common attribs to the spec
 	std::string software = ( boost::format( "Gaffer %d.%d.%d.%d" ) % GAFFER_MILESTONE_VERSION % GAFFER_MAJOR_VERSION % GAFFER_MINOR_VERSION % GAFFER_PATCH_VERSION ).str();
 	spec.attribute( "Software", software );
-	struct utsname info;
-	if ( !uname( &info ) )
-	{
-		spec.attribute( "HostComputer", info.nodename );
-	}
+
+	spec.attribute( "HostComputer", boost::asio::ip::host_name() );
+
 	if ( const char *artist = getenv( "USER" ) )
 	{
 		spec.attribute( "Artist", artist );
