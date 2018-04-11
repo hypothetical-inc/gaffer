@@ -114,7 +114,7 @@ class GAFFERSCENE_API Renderer : public IECore::RefCounted
 		/// A handle to a block of attributes. Currently all
 		/// AttributesInterfaces _must_ be destroyed prior
 		/// to destruction of the renderer itself.
-		class AttributesInterface : public IECore::RefCounted
+		class GAFFERSCENE_API AttributesInterface : public IECore::RefCounted
 		{
 
 			public :
@@ -159,7 +159,7 @@ class GAFFERSCENE_API Renderer : public IECore::RefCounted
 		///
 		/// Currently all ObjectInterfaces _must_ be destroyed prior to destruction
 		/// of the renderer itself.
-		class ObjectInterface : public IECore::RefCounted
+		class GAFFERSCENE_API ObjectInterface : public IECore::RefCounted
 		{
 
 			public :

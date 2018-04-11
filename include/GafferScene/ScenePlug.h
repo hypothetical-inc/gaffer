@@ -132,7 +132,7 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 
 		/// Utility class to scope a temporary copy of a context,
 		/// specifying the scene path.
-		struct PathScope : public Gaffer::Context::EditableScope
+		struct GAFFERSCENE_API PathScope : public Gaffer::Context::EditableScope
 		{
 			PathScope( const Gaffer::Context *context );
 			PathScope( const Gaffer::Context *context, const ScenePath &scenePath );
@@ -142,7 +142,7 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 
 		/// Utility class to scope a temporary copy of a context,
 		/// specifying the set name.
-		struct SetScope : public Gaffer::Context::EditableScope
+		struct GAFFERSCENE_API SetScope : public Gaffer::Context::EditableScope
 		{
 			SetScope( const Gaffer::Context *context );
 			SetScope( const Gaffer::Context *context, const IECore::InternedString &setName );
@@ -155,7 +155,7 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 		/// when evaluating plugs which must not be sensitive
 		/// to such variables, and can improve performance by
 		/// reducing pressure on the hash cache.
-		struct GlobalScope : public Gaffer::Context::EditableScope
+		struct GAFFERSCENE_API GlobalScope : public Gaffer::Context::EditableScope
 		{
 			GlobalScope( const Gaffer::Context *context );
 		};
@@ -227,6 +227,6 @@ typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plu
 
 } // namespace GafferScene
 
-GAFFERSCENE_API std::ostream &operator << ( std::ostream &o, const GafferScene::ScenePlug::ScenePath &path );
+std::ostream &operator << ( std::ostream &o, const GafferScene::ScenePlug::ScenePath &path );
 
 #endif // GAFFERSCENE_SCENEPLUG_H
