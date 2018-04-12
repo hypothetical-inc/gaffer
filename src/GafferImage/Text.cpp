@@ -92,11 +92,7 @@ typedef std::shared_ptr<FT_FaceRec_> FacePtr;
 FacePtr faceLoader( const std::string &font, size_t &cost )
 {
 	const char *e = getenv( "IECORE_FONT_PATHS" );
-<<<<<<< HEAD
-	IECore::SearchPath sp( e ? e : "" );
-=======
 	IECore::SearchPath sp( e ? e : "", ENVSEP );
->>>>>>> make path separators cross platform
 
 	std::string file = sp.find( font ).string();
 	if( !file.size() )
