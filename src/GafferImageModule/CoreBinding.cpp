@@ -231,13 +231,13 @@ void GafferImageModule::bindCore()
 			init< const std::string &, Gaffer::Plug::Direction, unsigned >
 			(
 				(
-					arg( "name" ) = Gaffer::GraphComponent::defaultName<ImagePlug>(),
-					arg( "direction" ) = Gaffer::Plug::In,
-					arg( "flags" ) = Gaffer::Plug::Default
+					boost::python::arg_( "name" ) = Gaffer::GraphComponent::defaultName<ImagePlug>(),
+					boost::python::arg_( "direction" ) = Gaffer::Plug::In,
+					boost::python::arg_( "flags" ) = Gaffer::Plug::Default
 				)
 			)
 		)
-		.def( "channelData", &channelData, ( arg( "_copy" ) = true ) )
+		.def( "channelData", &channelData, ( boost::python::arg_( "_copy" ) = true ) )
 		.def( "channelDataHash", &channelDataHash )
 		.def( "format", &format )
 		.def( "formatHash", &formatHash )
@@ -357,7 +357,7 @@ void GafferImageModule::bindCore()
 			init<const GafferImage::ImagePlug *, const std::string &, const Imath::Box2i &, Sampler::BoundingMode>
 			(
 				(
-					arg( "boundingMode" ) = Sampler::Black
+					boost::python::arg_( "boundingMode" ) = Sampler::Black
 				)
 			)
 		)
