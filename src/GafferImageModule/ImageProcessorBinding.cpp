@@ -62,9 +62,9 @@ void GafferImageModule::bindImageProcessor()
 	GafferBindings::DependencyNodeClass<ImageProcessor, ImageProcessorWrapper>()
 		.def( init<const std::string &, size_t, size_t>(
 				(
-					arg( "name" ) = GraphComponent::defaultName<ImageProcessor>(),
-					arg( "minInputs" ),
-					arg( "maxInputs" ) = std::numeric_limits<size_t>::max()
+					boost::python::arg_( "name" ) = GraphComponent::defaultName<ImageProcessor>(),
+					boost::python::arg_( "minInputs" ),
+					boost::python::arg_( "maxInputs" ) = std::numeric_limits<size_t>::max()
 				)
 			)
 		)
