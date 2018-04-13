@@ -74,7 +74,7 @@ class GAFFERSCENE_API Renderer : public IECore::RefCounted
 
 	public :
 
-		enum RenderType
+		enum GAFFERSCENE_API RenderType
 		{
 			/// Locations are emitted to the renderer immediately
 			/// and not retained for later editing.
