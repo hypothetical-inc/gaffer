@@ -47,7 +47,7 @@ class OSLTestCase( GafferSceneTest.SceneTestCase ) :
 
 		subprocess.check_call(
 			[ "oslc", "-q" ] +
-			[ "-I" + p for p in os.environ.get( "OSL_SHADER_PATHS", "" ).split( ":" ) ] +
+			[ "-I" + p for p in os.environ.get( "OSL_SHADER_PATHS", "" ).split( os.pathsep ) ] +
 			[ "-o", outputFileName, sourceFileName ]
 		)
 
