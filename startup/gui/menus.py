@@ -92,7 +92,7 @@ for menuItem, url in [
 ## Node creation menu
 ###########################################################################
 
-moduleSearchPath = IECore.SearchPath( os.environ["PYTHONPATH"] )
+moduleSearchPath = IECore.SearchPath( os.environ["PYTHONPATH"], os.pathsep )
 
 nodeMenu = GafferUI.NodeMenu.acquire( application )
 
@@ -233,7 +233,7 @@ if "APPLESEED" in os.environ :
 
 		GafferSceneUI.ShaderUI.appendShaders(
 			nodeMenu.definition(), "/Appleseed/Shader",
-			os.environ["APPLESEED_SEARCHPATH"].split( ":" ),
+			os.environ["APPLESEED_SEARCHPATH"].split( os.pathsep ),
 			[ "oso" ],
 			__shaderNodeCreator,
 			# Show only the OSL shaders from the Appleseed shader
@@ -395,7 +395,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
-		os.environ["OSL_SHADER_PATHS"].split( ":" ),
+		os.environ["OSL_SHADER_PATHS"].split( os.pathsep ),
 		[ "oso" ],
 		__shaderNodeCreator,
 		# Appleseed comes with a library of OSL shaders which we put
