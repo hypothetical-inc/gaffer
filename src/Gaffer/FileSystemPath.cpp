@@ -51,8 +51,11 @@
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/operations.hpp"
 
-#include <grp.h>
-#include <pwd.h>
+#ifndef _MSC_VER
+	#include <grp.h>
+	#include <pwd.h>
+#endif
+
 #include <sys/stat.h>
 
 using namespace std;
@@ -184,8 +187,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				{
 					struct stat s;
 					stat( it->c_str(), &s );
+					#ifndef _MSC_VER
 					struct passwd *pw = getpwuid( s.st_uid );
 					std::string value = pw ? pw->pw_name : "";
+					#else
+					std::string value = "";
+					#endif
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -201,8 +208,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		std::string n = this->string();
 		struct stat s;
 		stat( n.c_str(), &s );
+		#ifndef _MSC_VER
 		struct passwd *pw = getpwuid( s.st_uid );
 		return new StringData( pw ? pw->pw_name : "" );
+		#else
+		return new StringData( "" );
+		#endif
 	}
 	else if( name == g_groupPropertyName )
 	{
@@ -221,8 +232,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				{
 					struct stat s;
 					stat( it->c_str(), &s );
+					#ifndef _MSC_VER
 					struct group *gr = getgrgid( s.st_gid );
 					std::string value = gr ? gr->gr_name : "";
+					#else
+					std::string value = "";
+					#endif
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -238,8 +253,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		std::string n = this->string();
 		struct stat s;
 		stat( n.c_str(), &s );
+		#ifndef _MSC_VER
 		struct group *gr = getgrgid( s.st_gid );
 		return new StringData( gr ? gr->gr_name : "" );
+		#else
+		return new StringData( "" );
+		#endif
 	}
 	else if( name == g_modificationTimePropertyName )
 	{
