@@ -58,7 +58,7 @@ class GAFFER_API Monitor : boost::noncopyable
 		void setActive( bool active );
 		bool getActive() const;
 
-		class Scope : boost::noncopyable
+		class GAFFER_API Scope : boost::noncopyable
 		{
 
 			public :
