@@ -826,7 +826,7 @@ void ScriptNode::plugSet( Plug *plug )
 		bool isReadOnly = false;
 		if( boost::filesystem::exists( fileName ) )
 		{
-			std::ofstream testOpen( fileName.c_str() );
+			std::ofstream testOpen( fileName.c_str(), std::fstream::app );
 			isReadOnly = !testOpen.is_open();
 			testOpen.close();
 		}
