@@ -59,8 +59,6 @@
 
 #include <fstream>
 
-#include <unistd.h>
-
 using namespace Gaffer;
 
 //////////////////////////////////////////////////////////////////////////
@@ -833,10 +831,9 @@ void ScriptNode::plugSet( Plug *plug )
 			testOpen.close();
 		}
 
-		context()->set( g_scriptName, fileName.stem().string() );
 		MetadataAlgo::setReadOnly(
 			this,
-			boost::filesystem::exists( fileName ) && 0 != access( fileName.c_str(), W_OK ),
+			isReadOnly,
 			/* persistent = */ false
 		);
 	}
