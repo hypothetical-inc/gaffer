@@ -263,8 +263,9 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			taskContext = batch.context()
 			frames = str( IECore.frameListFromList( [ int(x) for x in batch.frames() ] ) )
 
-			args = [
-				"gaffer", "execute",
+			args = [ "gaffer.bat" ] if os.name == "nt" else [ "gaffer" ]
+			args = args + [
+				"execute",
 				"-script", self.__scriptFile,
 				"-nodes", batch.blindData()["nodeName"].value,
 				"-frames", frames,
