@@ -38,9 +38,10 @@
 import unittest
 import time
 import datetime
-import pwd
-import grp
 import os
+if os.name is not "nt":
+	import pwd
+	import grp
 
 import IECore
 
