@@ -200,6 +200,17 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertTrue( isinstance( mt, datetime.datetime ) )
 		self.assertLess( (datetime.datetime.utcnow() - mt).total_seconds(), 2 )
 
+	def testOwnerIsNotEmpty( self ) :
+
+		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
+		p.append( "t" )
+
+		with open( str( p ), "w" ) as f :
+			f.write( "AAAA" )
+
+		o = p.property( "fileSystem:owner" )
+		self.assertFalse( o == "" )
+
 	def testOwner( self ) :
 
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
@@ -210,7 +221,18 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		o = p.property( "fileSystem:owner" )
 		self.assertTrue( isinstance( o, str ) )
-		self.assertEqual( o, pwd.getpwuid( os.stat( str( p ) ).st_uid ).pw_name )
+
+		# Windows Python does not have a reliable native method to get the owner
+		# Call "dir" as a workaround
+		if os.name is not "nt" :
+			fileOwner = pwd.getpwuid( os.stat( str( p ) ).st_uid ).pw_name
+		else :
+			cmd = "dir /q {}".format( p )
+			fileInfo = os.popen( cmd ).read().split()
+			fileOwner = ""
+			if len( fileInfo ) > 0:
+				fileOwner = fileInfo[-11]
+		self.assertEqual( o, fileOwner )
 
 	def testGroup( self ) :
 
