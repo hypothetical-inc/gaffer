@@ -79,6 +79,11 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 	def testBrokenSymbolicLinks( self ) :
 
+		# Windows essentially doesn't support symbolic links (they are only able to be created by
+		# an administrator)
+		if os.name == "nt":
+			return
+
 		os.symlink( self.temporaryDirectory() + "/nonExistent", self.temporaryDirectory() + "/broken" )
 
 		# we do want symlinks to appear in children, even if they're broken
@@ -99,6 +104,11 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertIsNotNone( l.info() )
 
 	def testSymLinkInfo( self ) :
+
+		# Windows essentially doesn't support symbolic links (they are only able to be created by
+		# an administrator)
+		if os.name == "nt":
+			return
 
 		with open( self.temporaryDirectory() + "/a", "w" ) as f :
 			f.write( "AAAA" )
@@ -202,6 +212,10 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertEqual( o, pwd.getpwuid( os.stat( str( p ) ).st_uid ).pw_name )
 
 	def testGroup( self ) :
+
+		# Windows files do not have a separate group ownership
+		if os.name == "nt":
+			return
 
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
 		p.append( "t" )
