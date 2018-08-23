@@ -435,3 +435,24 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 
 	return result;
 }
+
+std::string FileSystemPath::nativeString() const
+{
+	#ifdef _MSC_VER
+		std::string separator = "\\";
+	#else
+		std::string separator = "/";
+	#endif
+
+	std::string result = this->root();
+	Path::Names names = this->names();
+	for( size_t i = 0, s = names.size(); i < s; ++i )
+	{
+		if( i != 0 )
+		{
+			result += separator;
+		}
+		result += names[i].string();
+	}
+	return result;
+}
