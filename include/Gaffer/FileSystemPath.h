@@ -82,6 +82,9 @@ class GAFFER_API FileSystemPath : public Path
 		// a FileSequence.
 		IECore::FileSequencePtr fileSequence() const;
 
+		// Returns the path converted to the OS native format
+		std::string nativeString() const;
+
 		static PathFilterPtr createStandardFilter( const std::vector<std::string> &extensions = std::vector<std::string>(), const std::string &extensionsLabel = "", bool includeSequenceFilter = false );
 
 	protected :
