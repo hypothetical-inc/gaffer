@@ -200,17 +200,6 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertTrue( isinstance( mt, datetime.datetime ) )
 		self.assertLess( (datetime.datetime.utcnow() - mt).total_seconds(), 2 )
 
-	def testOwnerIsNotEmpty( self ) :
-
-		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
-		p.append( "t" )
-
-		with open( str( p ), "w" ) as f :
-			f.write( "AAAA" )
-
-		o = p.property( "fileSystem:owner" )
-		self.assertFalse( o == "" )
-
 	def testOwner( self ) :
 
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
@@ -229,9 +218,9 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		else :
 			cmd = "dir /q {}".format( p )
 			fileInfo = os.popen( cmd ).read().split()
-			fileOwner = ""
-			if len( fileInfo ) > 0:
-				fileOwner = fileInfo[-11]
+			self.assertTrue( len( fileInfo ) > 11 )
+			fileOwner = fileInfo[-11]
+
 		self.assertEqual( o, fileOwner )
 
 	def testGroup( self ) :
