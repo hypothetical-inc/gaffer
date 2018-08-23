@@ -235,17 +235,6 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertTrue( isinstance( mt, datetime.datetime ) )
 		self.assertLess( (datetime.datetime.utcnow() - mt).total_seconds(), 2 )
 
-	def testOwnerIsNotEmpty( self ) :
-
-		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
-		p.append( "t" )
-
-		with open( str( p ), "w" ) as f :
-			f.write( "AAAA" )
-
-		o = p.property( "fileSystem:owner" )
-		self.assertFalse( o == "" )
-
 	def testOwner( self ) :
 
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
