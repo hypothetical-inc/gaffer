@@ -133,7 +133,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		self.assertEqual( p, p2 )
 		self.assertEqual( str( p ), str( p2 ) )
-		self.assertEqual( p.nativeString(), p2,nativeString() )
+		self.assertEqual( p.nativeString(), p2.nativeString() )
 
 	def testEmptyPath( self ) :
 
