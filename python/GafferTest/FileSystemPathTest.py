@@ -411,5 +411,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 			fileOwner = fileInfo[-11]
 
 
+		GafferTest.TestCase.tearDown( self )
+
 if __name__ == "__main__":
 	unittest.main()
