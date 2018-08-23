@@ -133,11 +133,13 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		self.assertEqual( p, p2 )
 		self.assertEqual( str( p ), str( p2 ) )
+		self.assertEqual( p.nativeString(), p2,nativeString() )
 
 	def testEmptyPath( self ) :
 
 		p = Gaffer.FileSystemPath()
 		self.assertEqual( str( p ), "" )
+		self.assertEqual( p.nativeString(), "" )
 		self.assertTrue( p.isEmpty() )
 		self.assertFalse( p.isValid() )
 
@@ -145,18 +147,20 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		os.chdir( self.temporaryDirectory() )
 
-		with open( self.temporaryDirectory() + "/a", "w" ) as f :
+		with open( os.path.join( self.temporaryDirectory(), "a" ), "w" ) as f :
 			f.write( "AAAA" )
 
 		p = Gaffer.FileSystemPath( "a" )
 
 		self.assertEqual( str( p ), "a" )
+		self.assertEqual( p.nativeString(), "a" )
 		self.assertFalse( p.isEmpty() )
 		self.assertTrue( p.isValid() )
 
 		p2 = Gaffer.FileSystemPath( "nonexistent" )
 
 		self.assertEqual( str( p2 ), "nonexistent" )
+		self.assertEqual( p2.nativeString(), "nonexistent" )
 		self.assertFalse( p2.isEmpty() )
 		self.assertFalse( p2.isValid() )
 
@@ -164,7 +168,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		os.chdir( self.temporaryDirectory() )
 		os.mkdir( "dir" )
-		with open( self.temporaryDirectory() + "/dir/a", "w" ) as f :
+		with open( os.path.join( self.temporaryDirectory(), "dir", "a" ), "w" ) as f :
 			f.write( "AAAA" )
 
 		p = Gaffer.FileSystemPath( "dir" )
@@ -172,6 +176,10 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		c = p.children()
 		self.assertEqual( len( c ), 1 )
 		self.assertEqual( str( c[0] ), "dir/a" )
+		if os.name == "nt":
+			self.assertEqual( c[0].nativeString(), "dir\\a" )
+		else:
+			self.assertEqual( c[0].nativeString(), "dir/a" )
 		self.assertTrue( c[0].isValid() )
 
 	def testChildrenOfFile( self ) :
@@ -184,7 +192,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
 		p.append( "t" )
 
-		with open( str( p ), "w" ) as f :
+		with open( p.nativeString(), "w" ) as f :
 			f.write( "AAAA" )
 
 		mt = p.property( "fileSystem:modificationTime" )
@@ -193,7 +201,7 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		time.sleep( 1 )
 
-		with open( str( p ), "w" ) as f :
+		with open( p.nativeString(), "w" ) as f :
 			f.write( "BBBB" )
 
 		mt = p.property( "fileSystem:modificationTime" )
@@ -205,23 +213,13 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
 		p.append( "t" )
 
-		with open( str( p ), "w" ) as f :
+		with open( p.nativeString(), "w" ) as f :
 			f.write( "AAAA" )
 
 		o = p.property( "fileSystem:owner" )
 		self.assertTrue( isinstance( o, str ) )
 
-		# Windows Python does not have a reliable native method to get the owner
-		# Call "dir" as a workaround
-		if os.name is not "nt" :
-			fileOwner = pwd.getpwuid( os.stat( str( p ) ).st_uid ).pw_name
-		else :
-			cmd = "dir /q {}".format( p )
-			fileInfo = os.popen( cmd ).read().split()
-			self.assertTrue( len( fileInfo ) > 11 )
-			fileOwner = fileInfo[-11]
-
-		self.assertEqual( o, fileOwner )
+		self.assertEqual( o, self.getFileOwner( p.nativeString() ) )
 
 	def testGroup( self ) :
 
@@ -232,12 +230,12 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		p = Gaffer.FileSystemPath( self.temporaryDirectory() )
 		p.append( "t" )
 
-		with open( str( p ), "w" ) as f :
+		with open( p.nativeString(), "w" ) as f :
 			f.write( "AAAA" )
 
 		g = p.property( "fileSystem:group" )
 		self.assertTrue( isinstance( g, str ) )
-		self.assertEqual( g, grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
+		self.assertEqual( g, grp.getgrgid( os.stat( p.nativeString() ).st_gid ).gr_name )
 
 	def testPropertyNames( self ) :
 
@@ -257,9 +255,9 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 	def testSequences( self ) :
 
-		os.mkdir( self.temporaryDirectory() + "/dir" )
+		os.mkdir( os.path.join( self.temporaryDirectory(), "dir" ) )
 		for n in [ "singleFile.txt", "a.001.txt", "a.002.txt", "a.004.txt", "b.003.txt" ] :
-			with open( self.temporaryDirectory() + "/" + n, "w" ) as f :
+			with open( os.path.join( self.temporaryDirectory(), n ), "w" ) as f :
 				f.write( "AAAA" )
 
 		p = Gaffer.FileSystemPath( self.temporaryDirectory(), includeSequences = True )
@@ -270,28 +268,37 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		s = sorted( c, key=str )
 		self.assertEqual( str(s[0]), self.temporaryDirectory() + "/a.###.txt" )
+		self.assertEqual( s[0].nativeString(), os.path.join( self.temporaryDirectory(), "a.###.txt" ) )
 		self.assertEqual( str(s[1]), self.temporaryDirectory() + "/a.001.txt" )
+		self.assertEqual( s[1].nativeString(), os.path.join( self.temporaryDirectory(), "a.001.txt" ) )
 		self.assertEqual( str(s[2]), self.temporaryDirectory() + "/a.002.txt" )
+		self.assertEqual( s[2].nativeString(), os.path.join( self.temporaryDirectory(), "a.002.txt" ) )
 		self.assertEqual( str(s[3]), self.temporaryDirectory() + "/a.004.txt" )
+		self.assertEqual( s[3].nativeString(), os.path.join( self.temporaryDirectory(), "a.004.txt" ) )
 		self.assertEqual( str(s[4]), self.temporaryDirectory() + "/b.###.txt" )
+		self.assertEqual( s[4].nativeString(), os.path.join( self.temporaryDirectory(), "b.###.txt" ) )
 		self.assertEqual( str(s[5]), self.temporaryDirectory() + "/b.003.txt" )
+		self.assertEqual( s[5].nativeString(), os.path.join( self.temporaryDirectory(), "b.003.txt" ) )
 		self.assertEqual( str(s[6]), self.temporaryDirectory() + "/dir" )
+		self.assertEqual( s[6].nativeString(), os.path.join( self.temporaryDirectory(), "dir" ) )
 		self.assertEqual( str(s[7]), self.temporaryDirectory() + "/singleFile.txt" )
+		self.assertEqual( s[7].nativeString(), os.path.join( self.temporaryDirectory(), "singleFile.txt" ) )
 
 		for x in s :
 
 			self.assertTrue( x.isValid() )
-			if not os.path.isdir( str(x) ) :
+			if not os.path.isdir( x.nativeString() ) :
 				self.assertTrue( x.isLeaf() )
 
-			self.assertEqual( x.property( "fileSystem:owner" ), pwd.getpwuid( os.stat( str( p ) ).st_uid ).pw_name )
-			self.assertEqual( x.property( "fileSystem:group" ), grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
+			self.assertEqual( x.property( "fileSystem:owner" ), self.getFileOwner( p.nativeString() ) )
+			if os.name is not "nt":
+				self.assertEqual( x.property( "fileSystem:group" ), grp.getgrgid( os.stat( str( p ) ).st_gid ).gr_name )
 			self.assertLess( (datetime.datetime.utcnow() - x.property( "fileSystem:modificationTime" )).total_seconds(), 2 )
-			if "###" not in str(x) :
+			if "###" not in str( x ) :
 				self.assertFalse( x.isFileSequence() )
 				self.assertEqual( x.fileSequence(), None )
 				self.assertEqual( x.property( "fileSystem:frameRange" ), "" )
-				if os.path.isdir( str(x) ) :
+				if os.path.isdir( x.nativeString() ) :
 					self.assertEqual( x.property( "fileSystem:size" ), 0 )
 				else :
 					self.assertEqual( x.property( "fileSystem:size" ), 4 )
@@ -322,11 +329,17 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 
 		s = sorted( c, key=str )
 		self.assertEqual( str(s[0]), self.temporaryDirectory() + "/a.001.txt" )
+		self.assertEqual( s[0].nativeString(), os.path.join( self.temporaryDirectory(), "a.001.txt" ) )
 		self.assertEqual( str(s[1]), self.temporaryDirectory() + "/a.002.txt" )
+		self.assertEqual( s[1].nativeString(), os.path.join( self.temporaryDirectory(), "a.002.txt" ) )
 		self.assertEqual( str(s[2]), self.temporaryDirectory() + "/a.004.txt" )
+		self.assertEqual( s[2].nativeString(), os.path.join( self.temporaryDirectory(), "a.004.txt" ) )
 		self.assertEqual( str(s[3]), self.temporaryDirectory() + "/b.003.txt" )
+		self.assertEqual( s[3].nativeString(), os.path.join( self.temporaryDirectory(), "b.003.txt" ) )
 		self.assertEqual( str(s[4]), self.temporaryDirectory() + "/dir" )
+		self.assertEqual( s[4].nativeString(), os.path.join( self.temporaryDirectory(), "dir" ) )
 		self.assertEqual( str(s[5]), self.temporaryDirectory() + "/singleFile.txt" )
+		self.assertEqual( s[5].nativeString(), os.path.join( self.temporaryDirectory(), "singleFile.txt" ) )
 
 		# and we can include them again
 		p.setIncludeSequences( True )
@@ -346,6 +359,19 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		os.chdir( self.__originalCWD )
 
 		GafferTest.TestCase.tearDown( self )
+
+	def getFileOwner( self, filepath ):
+
+		# Windows Python does not have a reliable native method to get the owner
+		# Call "dir" as a workaround
+		if os.name is not "nt" :
+			return pwd.getpwuid( os.stat( filepath ).st_uid ).pw_name
+		else :
+			cmd = "dir /q {}".format( filepath )
+			fileInfo = os.popen( cmd ).read().split()
+			self.assertTrue( len( fileInfo ) > 11 )
+			fileOwner = fileInfo[-11]
+
 
 if __name__ == "__main__":
 	unittest.main()
