@@ -50,6 +50,7 @@
 #include "boost/date_time/posix_time/conversion.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "boost/regex.hpp"
 
 #ifndef _MSC_VER
 	#include <grp.h>
@@ -85,7 +86,7 @@ FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 FileSystemPath::FileSystemPath( const std::string &path, PathFilterPtr filter, bool includeSequences )
 	:	Path( path, filter ), m_includeSequences( includeSequences )
 {
-	setFromString( sanitizePath( path ) );
+	setFromString( path );
 }
 
 FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString &root, PathFilterPtr filter, bool includeSequences )
@@ -95,6 +96,43 @@ FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString
 
 FileSystemPath::~FileSystemPath()
 {
+}
+
+void FileSystemPath::setFromString(const std::string &string)
+{
+	Names newNames;
+	std::string sanitizedString;
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)\/" };
+	boost::smatch result;
+
+	sanitizedString = string.c_str();
+	if (boost::starts_with(sanitizedString, g_uncPrefix))
+	{
+		boost::replace_first(sanitizedString, g_uncPrefix, g_genericSeparator);
+	}
+	boost::replace_all( sanitizedString, g_windowsSeparator, g_genericSeparator );
+
+	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
+
+	InternedString newRoot;
+	if (string.size() && string[0] == '/')
+	{
+		newRoot = "/";
+	}
+	else if ( string.size() && boost::regex_search( string, result, driveLetterPattern ) )
+	{
+		newRoot = result[0].str();
+	}
+
+	if (newRoot == m_root && newNames == m_names)
+	{
+		return;
+	}
+
+	m_names = newNames;
+	m_root = newRoot;
+
+	emitPathChanged();
 }
 
 bool FileSystemPath::isValid() const
@@ -374,14 +412,6 @@ void FileSystemPath::doChildren( std::vector<PathPtr> &children ) const
 			}
 		}
 	}
-}
-
-std::string FileSystemPath::sanitizePath( std::string pathString ) const
-{
-	boost::replace_all( pathString, g_uncPrefix.c_str(), g_genericSeparator.c_str() );
-	boost::replace_all( pathString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
-
-	return pathString.c_str();
 }
 
 PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::string> &extensions, const std::string &extensionsLabel, bool includeSequenceFilter )
