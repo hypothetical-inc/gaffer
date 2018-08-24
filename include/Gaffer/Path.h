@@ -131,7 +131,7 @@ class GAFFER_API Path : public IECore::RunTimeTyped
 
 		/// Sets the path root and names from a "/"
 		/// separated string.
-		void setFromString( const std::string &string );
+		virtual void setFromString( const std::string &string );
 
 		/// Returns a copy of this path. Must be reimplemented
 		/// by derived classes so that the copy has the appropriate
