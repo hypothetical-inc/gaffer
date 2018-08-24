@@ -73,6 +73,10 @@ static InternedString g_modificationTimePropertyName( "fileSystem:modificationTi
 static InternedString g_sizePropertyName( "fileSystem:size" );
 static InternedString g_frameRangePropertyName( "fileSystem:frameRange" );
 
+static InternedString g_windowsSeparator( "\\" );
+static InternedString g_genericSeparator( "/" );
+static InternedString g_uncPrefix( "\\\\" );
+
 FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 	:	Path( filter ), m_includeSequences( includeSequences )
 {
@@ -81,6 +85,7 @@ FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 FileSystemPath::FileSystemPath( const std::string &path, PathFilterPtr filter, bool includeSequences )
 	:	Path( path, filter ), m_includeSequences( includeSequences )
 {
+	setFromString( sanitizePath( path ) );
 }
 
 FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString &root, PathFilterPtr filter, bool includeSequences )
@@ -367,6 +372,14 @@ void FileSystemPath::doChildren( std::vector<PathPtr> &children ) const
 	}
 }
 
+std::string FileSystemPath::sanitizePath( std::string pathString ) const
+{
+	boost::replace_all( pathString, g_uncPrefix.c_str(), g_genericSeparator.c_str() );
+	boost::replace_all( pathString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
+
+	return pathString.c_str();
+}
+
 PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::string> &extensions, const std::string &extensionsLabel, bool includeSequenceFilter )
 {
 	CompoundPathFilterPtr result = new CompoundPathFilter();
@@ -439,9 +452,9 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 std::string FileSystemPath::nativeString() const
 {
 	#ifdef _MSC_VER
-		std::string separator = "\\";
+		std::string separator = g_windowsSeparator;
 	#else
-		std::string separator = "/";
+		std::string separator = g_genericSeparator;
 	#endif
 
 	std::string result = this->root();
