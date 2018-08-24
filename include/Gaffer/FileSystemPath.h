@@ -58,6 +58,9 @@ class GAFFER_API FileSystemPath : public Path
 
 		~FileSystemPath() override;
 
+		/// Sets the path root and names from an OS native path string
+		virtual void setFromString(const std::string &string) override;
+
 		bool isValid() const override;
 		bool isLeaf() const override;
 		void propertyNames( std::vector<IECore::InternedString> &names ) const override;
@@ -90,7 +93,6 @@ class GAFFER_API FileSystemPath : public Path
 	protected :
 
 		void doChildren( std::vector<PathPtr> &children ) const override;
-		std::string sanitizePath( std::string path ) const;
 
 	private :
 
