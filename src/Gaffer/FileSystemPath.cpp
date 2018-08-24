@@ -154,7 +154,7 @@ FileSequencePtr FileSystemPath::fileSequence() const
 	}
 
 	FileSequencePtr sequence = nullptr;
-	IECore::ls( this->string(), sequence, /* minSequenceSize = */ 1 );
+	IECore::ls( this->nativeString(), sequence, /* minSequenceSize = */ 1 );
 	return sequence;
 }
 
