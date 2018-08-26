@@ -55,6 +55,12 @@
 #ifndef _MSC_VER
 	#include <grp.h>
 	#include <pwd.h>
+#else
+#include <stdio.h>
+#include <Windows.h>
+#include <tchar.h>
+#include "accctrl.h"
+#include "aclapi.h"
 #endif
 
 #include <sys/stat.h>
@@ -241,14 +247,7 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				std::map<std::string,size_t> ownerCounter;
 				for( std::vector<std::string>::iterator it = files.begin(); it != files.end(); ++it )
 				{
-					struct stat s;
-					stat( it->c_str(), &s );
-					#ifndef _MSC_VER
-					struct passwd *pw = getpwuid( s.st_uid );
-					std::string value = pw ? pw->pw_name : "";
-					#else
-					std::string value = "";
-					#endif
+					std::string value = getOwner( it->c_str() );
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -539,4 +538,76 @@ std::string FileSystemPath::nativeString() const
 		result += names[i].string();
 	}
 	return result;
+}
+
+// Windows code to get file / directory owner from https://docs.microsoft.com/en-us/windows/desktop/SecAuthZ/finding-the-owner-of-a-file-object-in-c--
+std::string FileSystemPath::getOwner( const std::string &pathString ) const
+{
+	std::string value;
+#ifndef _MSC_VER
+	struct stat s;
+	stat(it->c_str(), &s);
+	struct passwd *pw = getpwuid(s.st_uid);
+	value = pw ? pw->pw_name : "";
+#else
+	DWORD dwRtnCode = 0;
+	PSID pSidOwner = NULL;
+	BOOL bRtnBool = TRUE;
+	LPTSTR AcctName = NULL;
+	LPTSTR DomainName = NULL;
+	DWORD dwAcctName = 1, dwDomainName = 1;
+	SID_NAME_USE eUse = SidTypeUnknown;
+	HANDLE hFile;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+
+
+	// Get the handle of the file object.
+	hFile = CreateFile( pathString.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	// Check GetLastError for CreateFile error code.
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return "";
+	}
+
+	// Get the owner SID of the file.
+	dwRtnCode = GetSecurityInfo(hFile, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, &pSidOwner, NULL, NULL, NULL, &pSD);
+
+	CloseHandle( hFile );
+
+	// Check GetLastError for GetSecurityInfo error condition.
+	if (dwRtnCode != ERROR_SUCCESS) {
+		return "";
+	}
+
+	// First call to LookupAccountSid to get the buffer sizes.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	// Reallocate memory for the buffers.
+	AcctName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwAcctName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (AcctName == NULL) {
+		return "";
+	}
+
+	DomainName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwDomainName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (DomainName == NULL) {
+		return "";
+	}
+
+	// Second call to LookupAccountSid to get the account name.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	if (bRtnBool == FALSE) {
+		return "";
+	}
+	else if (bRtnBool == TRUE)
+	{
+		value = AcctName;	//let's ignore unicode considerations for now
+	}
+		
+#endif
+	return value;
 }
