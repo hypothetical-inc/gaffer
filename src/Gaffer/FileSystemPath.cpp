@@ -129,11 +129,11 @@ void FileSystemPath::setFromString(const std::string &string)
 	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
 
 	InternedString newRoot;
-	if (string.size() && string[0] == '/')
+	if (sanitizedString.size() && sanitizedString[0] == '/')
 	{
 		newRoot = "/";
 	}
-	else if ( string.size() && boost::regex_search( newNames[0].string(), result, driveLetterPattern ) )
+	else if ( newNames.size() && boost::regex_search( newNames[0].string(), result, driveLetterPattern ) )
 	{
 		newRoot = newNames[0];
 		newNames.erase( newNames.begin() );
@@ -524,6 +524,12 @@ std::string FileSystemPath::nativeString() const
 	boost::smatch regex_result;
 
 	std::string result = this->root();
+#ifdef _MSC_VER
+	if( this->root() == "/" )
+	{
+		result = g_uncPrefix;
+	}
+#endif
 	if( boost::regex_match( result, regex_result, driveLetterPattern ) )
 	{
 		result += separator;
