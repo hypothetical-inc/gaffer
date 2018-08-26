@@ -529,12 +529,15 @@ std::string FileSystemPath::nativeString() const
 	boost::smatch regex_result;
 
 	std::string result = this->root();
+<<<<<<< HEAD
 #ifdef _MSC_VER
 	if( this->root() == "/" )
 	{
 		result = g_uncPrefix;
 	}
 #endif
+=======
+>>>>>>> add proper handling of drive letter paths for Windows
 	if( boost::regex_match( result, regex_result, driveLetterPattern ) )
 	{
 		result += separator;
