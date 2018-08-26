@@ -990,7 +990,7 @@ IECore::PathMatcher getSelection( uint64_t treeViewAddress )
 	IECore::PathMatcher result;
 	for( const auto &index : selectedIndices )
 	{
-		result.addPath( model->pathForIndex( index )->names() );
+		result.addPath( model->pathForIndex( index )->string() );
 	}
 	return result;
 }
