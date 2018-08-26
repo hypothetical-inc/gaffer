@@ -94,6 +94,7 @@ class GAFFER_API FileSystemPath : public Path
 	protected :
 
 		void doChildren( std::vector<PathPtr> &children ) const override;
+		std::string getOwner( const std::string &pathString ) const;
 
 	private :
 
