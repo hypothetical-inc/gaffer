@@ -98,19 +98,27 @@ FileSystemPath::~FileSystemPath()
 {
 }
 
+// Create a path that is aware of differences in OS naming schemes
+// Windows separates path elements with a backlash and Linux / Mac with forward slash
+// Windows also starts drive letter paths with not leading \, which looks like a relative
+// path but should be treated as though the drive letter is the root of the path
+// If we don't treat the drive letter as the root, there will be errors when repeatedly
+// popping the last path entry and getting to the drive letter path at the start of what
+// FileSystemPath thinks is a relative path
+
 void FileSystemPath::setFromString(const std::string &string)
 {
 	Names newNames;
 	std::string sanitizedString;
-	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)\/" };
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
 	boost::smatch result;
 
 	sanitizedString = string.c_str();
-	if (boost::starts_with(sanitizedString, g_uncPrefix))
+	if (boost::starts_with(sanitizedString, g_uncPrefix.c_str()))
 	{
-		boost::replace_first(sanitizedString, g_uncPrefix, g_genericSeparator);
+		boost::replace_first(sanitizedString, g_uncPrefix.c_str(), g_genericSeparator.c_str());
 	}
-	boost::replace_all( sanitizedString, g_windowsSeparator, g_genericSeparator );
+	boost::replace_all( sanitizedString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
 
 	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
 
@@ -119,18 +127,19 @@ void FileSystemPath::setFromString(const std::string &string)
 	{
 		newRoot = "/";
 	}
-	else if ( string.size() && boost::regex_search( string, result, driveLetterPattern ) )
+	else if ( string.size() && boost::regex_search( newNames[0].string(), result, driveLetterPattern ) )
 	{
-		newRoot = result[0].str();
+		newRoot = newNames[0];
+		newNames.erase( newNames.begin() );
 	}
 
-	if (newRoot == m_root && newNames == m_names)
+	if (newRoot == this->root() && newNames == this->names() )
 	{
 		return;
 	}
 
-	m_names = newNames;
-	m_root = newRoot;
+	set( 0, this->names().size(), newNames );
+	setRoot( newRoot );
 
 	emitPathChanged();
 }
@@ -483,6 +492,27 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 	return result;
 }
 
+std::string FileSystemPath::string() const
+{
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
+	boost::smatch regex_result;
+
+	std::string result = this->root();
+	if (boost::regex_match(result, regex_result, driveLetterPattern))
+	{
+		result += "/";
+	}
+	for (size_t i = 0, s = this->names().size(); i < s; ++i)
+	{
+		if (i != 0)
+		{
+			result += "/";
+		}
+		result += this->names()[i].string();
+	}
+	return result;
+}
+
 std::string FileSystemPath::nativeString() const
 {
 	#ifdef _MSC_VER
@@ -490,8 +520,15 @@ std::string FileSystemPath::nativeString() const
 	#else
 		std::string separator = g_genericSeparator;
 	#endif
+	
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
+	boost::smatch regex_result;
 
 	std::string result = this->root();
+	if( boost::regex_match( result, regex_result, driveLetterPattern ) )
+	{
+		result += separator;
+	}
 	Path::Names names = this->names();
 	for( size_t i = 0, s = names.size(); i < s; ++i )
 	{
