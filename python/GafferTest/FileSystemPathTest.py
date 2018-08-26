@@ -164,6 +164,33 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		self.assertFalse( p2.isEmpty() )
 		self.assertFalse( p2.isValid() )
 
+	def testDriveLetterPath( self ) :
+		p = Gaffer.FileSystemPath( "C:\\this\\path\\does\\not\\exist.ext" )
+
+		self.assertEqual( str( p ), "C:/this/path/does/not/exist.ext" )
+		if os.name == "nt":
+			self.assertEqual( p.nativeString(), "C:\\this\\path\\does\\not\\exist.ext")
+		self.assertFalse( p.isEmpty() )
+		self.assertFalse( p.isValid() )
+
+	def testUNCPath( self ) :
+		p = Gaffer.FileSystemPath( "\\\\this.server\\path\\does\\not\\exist.ext" )
+
+		self.assertEqual( str( p ), "/this.server/path/does/not/exist.ext" )
+		if os.name == "nt":
+			self.assertEqual( p.nativeString(), "\\\\this.server\\path\\does\\not\\exist.ext")
+		self.assertFalse( p.isEmpty() )
+		self.assertFalse( p.isValid() )
+
+	def testPosixPath( self ) :
+		p = Gaffer.FileSystemPath( "/this/path/does/not/exist.ext" )
+
+		self.assertEqual( str( p ), "/this/path/does/not/exist.ext" )
+		if os.name is not "nt":
+			self.assertEqual( p.nativeString(), "/this/path/does/not/exist.ext")
+		self.assertFalse( p.isEmpty() )
+		self.assertFalse( p.isValid() )
+
 	def testRelativePathChildren( self ) :
 
 		os.chdir( self.temporaryDirectory() )
