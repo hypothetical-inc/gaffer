@@ -89,6 +89,7 @@ class GAFFER_API Path : public IECore::RunTimeTyped
 		/// Returns the root of the path - this will be "/" for absolute
 		/// paths and "" for relative paths.
 		const IECore::InternedString &root() const;
+		void setRoot( IECore::InternedString &newRoot );
 
 		/// Returns true if this path is empty.
 		bool isEmpty() const;
@@ -170,7 +171,7 @@ class GAFFER_API Path : public IECore::RunTimeTyped
 
 		/// Returns the path concatenated into a string, using '/'
 		/// as a separator between names.
-		std::string string() const;
+		virtual std::string string() const;
 
 		bool operator == ( const Path &other ) const;
 		bool operator != ( const Path &other ) const;
