@@ -138,6 +138,11 @@ void FileSystemPath::setFromString(const std::string &string)
 		newRoot = newNames[0];
 		newNames.erase( newNames.begin() );
 	}
+	else if (newNames.size() && boost::regex_search(newNames[1].string(), result, driveLetterPattern))
+	{
+		newRoot = newNames[1];
+		newNames.erase(newNames.begin(), newNames.begin()+1);
+	}
 
 	if (newRoot == this->root() && newNames == this->names() )
 	{
