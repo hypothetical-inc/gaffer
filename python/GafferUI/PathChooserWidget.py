@@ -196,7 +196,9 @@ class PathChooserWidget( GafferUI.Widget ) :
 			return
 
 		with Gaffer.BlockedConnection( self.__pathChangedConnection ) :
-			self.__path.setFromString( selection.paths()[0] )
+			path_root = self.__directoryListing.getPath().root()
+			path_root = path_root if not selection.paths()[0].startswith(path_root) else ""
+			self.__path.setFromString( path_root + selection.paths()[0] )
 
 	# This slot is connected to the pathSelectedSignals of the children and just forwards
 	# them to our own pathSelectedSignal.
