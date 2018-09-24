@@ -120,7 +120,9 @@ class PathChooserDialogue( GafferUI.Dialogue ) :
 	def __result( self ) :
 
 		result = self.__pathChooserWidget.pathListingWidget().getSelection()
-		result = [ self.__path.copy().setFromString( x ) for x in result.paths() ]
+		path_root = self.__pathChooserWidget.pathListingWidget().getPath().root()
+		path_root = path_root if len(result.paths()) > 0 and not result.paths()[0].startswith(path_root) else ""
+		result = [ self.__path.copy().setFromString( path_root + x ) for x in result.paths() ]
 		if not result and not self.__allowMultipleSelection :
 			result = [ self.__path.copy() ]
 		return result
