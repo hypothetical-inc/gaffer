@@ -557,7 +557,7 @@ std::string FileSystemPath::getOwner( const std::string &pathString ) const
 	std::string value;
 #ifndef _MSC_VER
 	struct stat s;
-	stat(pathString(), &s);
+	stat(pathString, &s);
 	struct passwd *pw = getpwuid(s.st_uid);
 	value = pw ? pw->pw_name : "";
 #else
