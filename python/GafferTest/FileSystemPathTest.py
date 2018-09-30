@@ -375,6 +375,13 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 		c = p.children()
 		self.assertEqual( len( c ), 8 )
 
+	def testTruncateUntilValid( self ):
+
+		p = Gaffer.FileSystemPath( "T" )
+		print str( p )
+		print str (p.truncateUntilValid() )
+		self.assertEqual( str( p.truncateUntilValid() ), "" )
+
 	def setUp( self ) :
 
 		GafferTest.TestCase.setUp( self )
