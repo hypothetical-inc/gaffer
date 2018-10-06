@@ -720,7 +720,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			// prepend it to the source.
 
 			shaderName = "oslExpression" + MurmurHash().append( result ).toString();
- 			result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#ifdef _MSC_VER
+				result = "#include \"GafferOSL\\Expression.h\"\n\nshader " + shaderName + " " + result;
+			#else
+ 				result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#endif
 
 			return result;
 		}
@@ -748,7 +752,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			vector<string> options;
 			if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 			{
-				StringAlgo::tokenize( includePaths, ':', options );
+				#ifdef _MSC_VER
+					StringAlgo::tokenize( includePaths, ';', options );
+				#else
+	 				StringAlgo::tokenize( includePaths, ':', options );
+	 			#endif
 				for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
 				{
 					it->insert( 0, "-I" );
