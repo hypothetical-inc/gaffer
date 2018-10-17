@@ -56,8 +56,6 @@
 #include "IECore/MessageHandler.h"
 
 #include "boost/algorithm/string/replace.hpp"
-#include "boost/algorithm/string/split.hpp"
-#include "boost/algorithm/string/classification.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/regex.hpp"
 
@@ -112,27 +110,58 @@ const std::string formattedErrorContext( int lineNumber, const std::string &cont
 // with execution.
 bool tolerantExec( const char *pythonScript, boost::python::object globals, boost::python::object locals, const std::string &context )
 {
-	std::vector<boost::python::str> pythonScriptLines;
+	// The python parsing framework uses an arena to simplify memory allocation,
+	// which is handy for us, since we're going to manipulate the AST a little.
+	std::unique_ptr<PyArena, decltype( &PyArena_Free )> arena( PyArena_New(), PyArena_Free );
 
-	boost::algorithm::split( pythonScriptLines, pythonScript, boost::algorithm::is_any_of("\n"), boost::algorithm::token_compress_on );
-	
-	Py_Initialize();
-	
-	// Loop over the statements in the module body,
+	// Parse the whole script, getting an abstract syntax tree for a
+	// module which would execute everything.
+	mod_ty mod = PyParser_ASTFromString(
+		pythonScript,
+		"<string>",
+		Py_file_input,
+		nullptr,
+		arena.get()
+	);
+
+	if( !mod )
+	{
+		int lineNumber = 0;
+		std::string message = IECorePython::ExceptionAlgo::formatPythonException( /* withTraceback = */ false, &lineNumber );
+		IECore::msg( IECore::Msg::Error, formattedErrorContext( lineNumber, context ), message );
+		return false;
+	}
+
+	assert( mod->kind == Module_kind );
+
+	// Loop over the top-level statements in the module body,
 	// executing one at a time.
 	bool result = false;
-	int numStatements = pythonScriptLines.size();
+	int numStatements = asdl_seq_LEN( mod->v.Module.body );
 	for( int i=0; i<numStatements; ++i )
 	{
-		
-		try
-		{
-			// And execute it.
-			boost::python::object v = boost::python::exec(pythonScriptLines[i], globals, locals);
-		}
-		
+		// Make a new module containing just this one statement.
+		asdl_seq *newBody = asdl_seq_new( 1, arena.get() );
+		asdl_seq_SET( newBody, 0, asdl_seq_GET( mod->v.Module.body, i ) );
+		mod_ty newModule = Module(
+			newBody,
+			arena.get()
+		);
+
+		// Compile it.
+		boost::python::handle<PyCodeObject> code( PyAST_Compile( newModule, "<string>", nullptr, arena.get() ) );
+
+		// And execute it.
+		boost::python::handle<> v( boost::python::allow_null(
+			PyEval_EvalCode(
+				code.get(),
+				globals.ptr(),
+				locals.ptr()
+			)
+		) );
+
 		// Report any errors.
-		catch (boost::python::error_already_set const &)
+		if( v == nullptr)
 		{
 			int lineNumber = 0;
 			std::string message = IECorePython::ExceptionAlgo::formatPythonException( /* withTraceback = */ false, &lineNumber );
