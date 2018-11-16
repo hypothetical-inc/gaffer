@@ -6,12 +6,11 @@ set (CMAKE_CXX_STANDARD 11)
 # Declare a Cortex Project
 project( Gaffer )
 
-# Declare the version
-
-
 option( WITH_TESTS "Compile tests" OFF )
 
 set( GAFFER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/../.. )
+
+# Declare the version
 
 file( READ  ${GAFFER_SOURCE_DIR}/SConstruct SCONSTRUCT)
 
@@ -495,7 +494,7 @@ foreach( GAFFER_LIB ${GAFFER_LIB_NAMES} )
   if( DARWIN )
     set_target_properties( _${GAFFER_LIB} PROPERTIES SUFFIX ".so" )
     set_target_properties( _${GAFFER_LIB} PROPERTIES PREFIX "" )
-  elif( WINDOWS )
+  elseif( WINDOWS )
     set_target_properties( _${GAFFER_LIB} PROPERTIES SUFFIX ".pyd" )
   else()
     set_target_properties( _${GAFFER_LIB} PROPERTIES PREFIX "" )
@@ -506,9 +505,8 @@ foreach( GAFFER_LIB ${GAFFERTEST_LIB_NAMES} )
   if( DARWIN )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".so" )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
-  elif( WINDOWS )
+  elseif( WINDOWS )
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".pyd" )
-    set_target_properties( _${GAFFER_LIB} PROPERTIES SUFFIX ".pyd" )
   else()
     set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
   endif()
