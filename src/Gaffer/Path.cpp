@@ -107,7 +107,7 @@ void Path::setRoot( IECore::InternedString &newRoot )
 	emitPathChanged();
 }
 
-const bool Path::isEmpty() const
+bool Path::isEmpty() const
 {
 	return m_names.empty() && m_root.string().empty();
 }
