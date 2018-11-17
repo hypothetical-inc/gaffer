@@ -231,12 +231,6 @@ if "APPLESEED" in os.environ :
 
 			return node
 
-		# Windows uses back slash, which has to be doubled to compensate for the regular expression's escape syntax
-		path_separator = os.path.sep
-		if os.name == "nt":
-			path_separator = path_separator + path_separator
-		re_expression = "(^|.*{sep})as_[^{sep}]*$".format(sep=path_separator)
-
 		GafferSceneUI.ShaderUI.appendShaders(
 			nodeMenu.definition(), "/Appleseed/Shader",
 			os.environ["APPLESEED_SEARCHPATH"].split( os.pathsep ),
@@ -244,7 +238,7 @@ if "APPLESEED" in os.environ :
 			__shaderNodeCreator,
 			# Show only the OSL shaders from the Appleseed shader
 			# library.
-			matchExpression = re.compile( re_expression )
+			matchExpression = re.compile( "(^|.*/)as_[^/]*$")
 		)
 
 		GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
@@ -399,11 +393,6 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
-	path_separator = os.path.sep
-	if os.name == "nt":
-		path_separator = path_separator + path_separator
-	re_expression = "(^|.*{sep})(?<!maya{sep}osl{sep})(?<!3DelightForKatana{sep}osl{sep})(?!as_|oslCode)[^{sep}]*$".format(sep=path_separator)
-
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
 		os.environ["OSL_SHADER_PATHS"].split( os.pathsep ),
@@ -441,8 +430,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		#   shaders.
 		# - [^/]*$ matches the rest of the shader name, ensuring it
 		#   doesn't include any directory separators.
-	
-		matchExpression = re.compile( re_expression ),
+		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
 		searchTextPrefix = "osl",
 	)
 
