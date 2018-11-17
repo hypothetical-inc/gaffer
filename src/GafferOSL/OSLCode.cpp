@@ -283,7 +283,11 @@ boost::filesystem::path compile( const std::string &shaderName, const std::strin
 	vector<string> options;
 	if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 	{
-		StringAlgo::tokenize( includePaths, ':', options );
+		#ifdef _MSC_VER
+			StringAlgo::tokenize( includePaths, ';', options );
+		#else
+			StringAlgo::tokenize( includePaths, ':', options );
+		#endif
 		for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
 		{
 			it->insert( 0, "-I" );
