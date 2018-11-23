@@ -48,6 +48,7 @@
 #include "DirtyPropagationScopeBinding.h"
 #include "DotBinding.h"
 #include "ExpressionBinding.h"
+#include "FileSystemPathPlugBinding.h"
 #include "GraphComponentBinding.h"
 #include "ProcessMessageHandlerBinding.h"
 #include "MetadataAlgoBinding.h"
@@ -223,6 +224,7 @@ BOOST_PYTHON_MODULE( _Gaffer )
 	bindProcessMessageHandler();
 	bindNameValuePlug();
 	bindProcess();
+	bindFileSystemPathPlug();
 
 	NodeClass<Backdrop>();
 
