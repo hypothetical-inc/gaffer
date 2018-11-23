@@ -137,7 +137,7 @@ const std::string Dispatcher::jobDirectory() const
 
 void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::Context *context ) const
 {
-	boost::filesystem::path jobDirectory( context->substitute( jobsDirectoryPlug()->getValue() ) );
+	boost::filesystem::path jobDirectory( jobsDirectoryPlug()->getValue(nullptr, context, true) );
 	jobDirectory /= context->substitute( jobNamePlug()->getValue() );
 
 	if( jobDirectory == "" )
