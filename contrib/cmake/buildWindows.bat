@@ -1,4 +1,3 @@
-rem We hide the CMakeLists.txt here and copy it to root so it works correctly
 set ROOT_DIR=%~dp0%..\..
 cd %ROOT_DIR%
 
