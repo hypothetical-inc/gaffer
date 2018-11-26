@@ -2,11 +2,30 @@
 *.tmp
 *.swp
 *.os
+*.oso
 *.so
 *.dylib
+*.sln
+*.pdb
+install_manifest.txt
+CMakeCache.txt
+cmake_install.cmake
 .sconsign.dblite
 doc/html
 doc/python
 config.log
 .idea
 .sconf_temp
+Release/
+RelWithDebInfo/
+Debug/
+.vs/
+*.vcxproj*
+*.dir/
+CMakeFiles/
+x64/
+<<<<<<< HEAD
+cmake/
+=======
+>>>>>>> c5ebdebda... Windows Build : ignore additional build directories
+graphics/
