@@ -1,5 +1,5 @@
 SETLOCAL
-rem @echo off
+@echo off
 
 set GAFFER_ROOT=%~dp0%..
 
