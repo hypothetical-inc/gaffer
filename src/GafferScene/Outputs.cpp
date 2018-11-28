@@ -39,6 +39,7 @@
 
 #include "Gaffer/CompoundDataPlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "boost/multi_index/member.hpp"
 #include "boost/multi_index/ordered_index.hpp"
@@ -132,7 +133,7 @@ Gaffer::ValuePlug *Outputs::addOutput( const std::string &name, const IECoreScen
 	activePlug->setFlags( Plug::Dynamic, true );
 	outputPlug->addChild( activePlug );
 
-	StringPlugPtr fileNamePlug = new StringPlug( "fileName" );
+	FileSystemPathPlugPtr fileNamePlug = new FileSystemPathPlug( "fileName" );
 	fileNamePlug->setValue( output->getName() );
 	fileNamePlug->setFlags( Plug::Dynamic, true );
 	outputPlug->addChild( fileNamePlug );
@@ -196,7 +197,7 @@ IECore::ConstCompoundObjectPtr Outputs::computeProcessedGlobals( const Gaffer::C
 			const StringPlug *namePlug = outputPlug->getChild<StringPlug>( "name" );
 			const std::string name = namePlug->getValue();
 
-			const StringPlug *fileNamePlug = outputPlug->getChild<StringPlug>( "fileName" );
+			const FileSystemPathPlug *fileNamePlug = outputPlug->getChild<FileSystemPathPlug>( "fileName" );
 			const std::string fileName = fileNamePlug->getValue();
 
 			const std::string type = outputPlug->getChild<StringPlug>( "type" )->getValue();

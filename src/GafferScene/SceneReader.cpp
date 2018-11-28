@@ -38,6 +38,7 @@
 
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/TransformPlug.h"
 
 #include "IECoreScene/SceneCache.h"
@@ -71,7 +72,7 @@ SceneReader::SceneReader( const std::string &name )
 	:	SceneNode( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new IntPlug( "refreshCount" ) );
 	addChild( new StringPlug( "tags" ) );
 	addChild( new TransformPlug( "transform" ) );
@@ -82,14 +83,14 @@ SceneReader::~SceneReader()
 {
 }
 
-Gaffer::StringPlug *SceneReader::fileNamePlug()
+Gaffer::FileSystemPathPlug *SceneReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::StringPlug *SceneReader::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *SceneReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
 Gaffer::IntPlug *SceneReader::refreshCountPlug()

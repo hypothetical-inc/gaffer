@@ -44,6 +44,7 @@
 
 #include "Gaffer/TypedPlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/SceneInterface.h"
 
@@ -60,8 +61,8 @@ class GAFFERSCENE_API SceneWriter : public GafferDispatch::TaskNode
 
 		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::SceneWriter, SceneWriterTypeId, GafferDispatch::TaskNode );
 
-		Gaffer::StringPlug *fileNamePlug();
-		const Gaffer::StringPlug *fileNamePlug() const;
+		Gaffer::FileSystemPathPlug *fileNamePlug();
+		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 		ScenePlug *inPlug();
 		const ScenePlug *inPlug() const;

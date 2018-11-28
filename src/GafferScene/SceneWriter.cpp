@@ -40,6 +40,7 @@
 
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/SceneInterface.h"
 
@@ -179,14 +180,14 @@ const ScenePlug *SceneWriter::inPlug() const
 	return getChild<ScenePlug>( g_firstPlugIndex );
 }
 
-StringPlug *SceneWriter::fileNamePlug()
+FileSystemPathPlug *SceneWriter::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
-const StringPlug *SceneWriter::fileNamePlug() const
+const FileSystemPathPlug *SceneWriter::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
 ScenePlug *SceneWriter::outPlug()

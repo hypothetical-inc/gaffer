@@ -39,6 +39,7 @@
 
 #include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 namespace GafferScene
 {
@@ -62,8 +63,8 @@ class GAFFERSCENE_API Text : public ObjectSource
 		Gaffer::StringPlug *textPlug();
 		const Gaffer::StringPlug *textPlug() const;
 
-		Gaffer::StringPlug *fontPlug();
-		const Gaffer::StringPlug *fontPlug() const;
+		Gaffer::FileSystemPathPlug *fontPlug();
+		const Gaffer::FileSystemPathPlug *fontPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

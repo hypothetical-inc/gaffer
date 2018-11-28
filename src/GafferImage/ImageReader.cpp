@@ -40,6 +40,7 @@
 #include "GafferImage/OpenImageIOReader.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "OpenEXR/ImathFun.h"
 
@@ -118,7 +119,7 @@ ImageReader::ImageReader( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstChildIndex );
 	addChild(
-		new StringPlug(
+		new FileSystemPathPlug(
 			"fileName", Plug::In, "",
 			/* flags */ Plug::Default,
 			/* substitutions */ Context::AllSubstitutions & ~Context::FrameSubstitutions
@@ -166,14 +167,14 @@ ImageReader::~ImageReader()
 {
 }
 
-StringPlug *ImageReader::fileNamePlug()
+FileSystemPathPlug *ImageReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
-const StringPlug *ImageReader::fileNamePlug() const
+const FileSystemPathPlug *ImageReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
 IntPlug *ImageReader::refreshCountPlug()

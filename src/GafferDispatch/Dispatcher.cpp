@@ -40,6 +40,7 @@
 #include "Gaffer/Process.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/SubGraph.h"
 
 #include "IECore/FrameRange.h"
@@ -81,7 +82,7 @@ Dispatcher::Dispatcher( const std::string &name )
 	addChild( new IntPlug( "framesMode", Plug::In, CurrentFrame, CurrentFrame ) );
 	addChild( new StringPlug( "frameRange", Plug::In, "1-100x10" ) );
 	addChild( new StringPlug( "jobName", Plug::In, "" ) );
-	addChild( new StringPlug( "jobsDirectory", Plug::In, "" ) );
+	addChild( new FileSystemPathPlug( "jobsDirectory", Plug::In, "" ) );
 }
 
 Dispatcher::~Dispatcher()
@@ -118,14 +119,14 @@ const StringPlug *Dispatcher::jobNamePlug() const
 	return getChild<StringPlug>( g_firstPlugIndex + 2 );
 }
 
-StringPlug *Dispatcher::jobsDirectoryPlug()
+FileSystemPathPlug *Dispatcher::jobsDirectoryPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
-const StringPlug *Dispatcher::jobsDirectoryPlug() const
+const FileSystemPathPlug *Dispatcher::jobsDirectoryPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
 const std::string Dispatcher::jobDirectory() const
