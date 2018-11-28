@@ -65,5 +65,10 @@ rem )
 
 @echo on
 python %GAFFER_ROOT%/bin/gaffer.py %*
+if %ERRORLEVEL% NEQ 0 (
+	echo "Error(s) running Gaffer"
+	exit /b %ERRORLEVEL%
+	ENDLOCAL
+)
 
 ENDLOCAL
