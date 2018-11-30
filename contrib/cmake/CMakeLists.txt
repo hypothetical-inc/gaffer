@@ -149,10 +149,9 @@ set( BASE_LIBS
      )
 
 set( BASE_PYTHON_LIBS
-     ${PYTHON_LIBRARIES}
      ${Boost_PYTHON_LIBRARY}
      ${Cortex_IECOREPYTHON_LIBRARY}
-     Gaffer)
+     )
 
 #-******************************************************************************
 #-******************************************************************************
