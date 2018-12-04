@@ -55,11 +55,11 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 		else:
 			gaffer_root = os.path.expandvars( "$GAFFER_ROOT" )
 
-		fileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/circles.exr" ).nativeString()
-		colorSpaceFileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/circles_as_cineon.exr" ).nativeString()
-		offsetDataWindowFileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/rgb.100x100.exr" ).nativeString()
-		jpgFileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/circles.jpg" ).nativeString()
-		largeFileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/colorbars_max_clamp.exr" ).nativeString()
+		fileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles.exr" )
+		colorSpaceFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles_as_cineon.exr" )
+		offsetDataWindowFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/rgb.100x100.exr" )
+		jpgFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles.jpg" )
+		largeFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/colorbars_max_clamp.exr" )
 
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageReader.getDefaultColorSpaceFunction()
