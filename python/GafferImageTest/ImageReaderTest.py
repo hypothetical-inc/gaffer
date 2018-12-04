@@ -54,10 +54,10 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 		else:
 			gaffer_root = os.path.expandvars( "$GAFFER_ROOT" )
 
-		fileName = Gaffer.FileSystemPath( gaffer_root + "/python/GafferImageTest/images/circles.exr" ).nativeString()
-		colorSpaceFileName = Gaffer.FileSystemPath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/circles_as_cineon.exr" ).nativeString()
-		offsetDataWindowFileName = Gaffer.FileSystemPath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/rgb.100x100.exr" ).nativeString()
-		jpgFileName = Gaffer.FileSystemPath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/circles.jpg" ).nativeString()
+		self.fileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles.exr" )
+		self.colorSpaceFileName = os.path.abspath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/circles_as_cineon.exr" )
+		self.offsetDataWindowFileName = os.path.abspath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/rgb.100x100.exr" )
+		self.jpgFileName = os.path.abspath( gaffer_root + "$GAFFER_ROOT/python/GafferImageTest/images/circles.jpg" )
 
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageReader.getDefaultColorSpaceFunction()
