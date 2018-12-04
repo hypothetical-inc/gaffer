@@ -190,6 +190,12 @@ set( GAFFERTEST_LIB_NAMES
   GafferScene
   )
 
+set ( GAFFERTEST_MODULE_LIB_NAMES
+  Gaffer
+  GafferScene
+  GafferImage
+  )
+
 set( GAFFER_PYTHON_NAMES
   Gaffer
   GafferAppleseed
@@ -220,6 +226,11 @@ foreach( GAFFER_LIB ${GAFFERTEST_LIB_NAMES} )
   string( TOUPPER ${GAFFER_LIB} _GAFFER_LIB )
   file( GLOB ${_GAFFER_LIB}TEST_CXX_FILES ${GAFFER_SOURCE_DIR}/src/${GAFFER_LIB}Test/*.cpp )
   file( GLOB ${_GAFFER_LIB}TEST_H_FILES ${GAFFER_SOURCE_DIR}/include/${GAFFER_LIB}Test/*.h ${GAFFER_SOURCE_DIR}/include/${GAFFER_LIB}Test/*.inl )
+endforeach()
+
+# Get test modules lists of files
+foreach( GAFFER_LIB ${GAFFERTEST_MODULE_LIB_NAMES} )
+  string( TOUPPER ${GAFFER_LIB} _GAFFER_LIB )
   set( ${_GAFFER_LIB}TEST_CXX_MODULE_FILES ${GAFFER_SOURCE_DIR}/src/${GAFFER_LIB}TestModule/${GAFFER_LIB}TestModule.cpp)
 endforeach()
 
@@ -338,7 +349,7 @@ target_link_libraries( Gaffer ${BASE_LIBS} )
 
 # Gaffer Bindings
 add_library( GafferBindings SHARED ${GAFFERBINDINGS_CXX_FILES} ${GAFFERBINDINGS_H_FILES} )
-target_link_libraries( GafferBindings ${BASE_LIBS} ${BASE_PYTHON_LIBS} )
+target_link_libraries( GafferBindings ${BASE_LIBS} ${BASE_PYTHON_LIBS} Gaffer )
 
 # Gaffer Module
 add_library( _Gaffer MODULE ${GAFFER_CXX_MODULE_FILES} ${GAFFER_H_MODULE_FILES} )
@@ -378,6 +389,10 @@ target_link_libraries( GafferImage Gaffer GafferDispatch ${BASE_LIBS} ${ILMBASE_
 add_library( _GafferImage MODULE ${GAFFERIMAGE_CXX_MODULE_FILES} ${GAFFERIMAGE_H_MODULE_FILES} )
 target_link_libraries( _GafferImage GafferImage GafferBindings ${BASE_LIBS} ${BASE_PYTHON_LIBS} )
 
+# GafferImage Test Module
+add_library( _GafferImageTest MODULE ${GAFFERIMAGETEST_CXX_MODULE_FILES} )
+target_link_libraries( _GafferImageTest ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferBindings GafferImage GafferDispatch )
+
 # GafferImageUI
 add_library( GafferImageUI SHARED ${GAFFERIMAGEUI_CXX_FILES} ${GAFFERIMAGEUI_H_FILES} )
 target_link_libraries( GafferImageUI Gaffer GafferImage GafferUI ${BASE_LIBS} ${OPENGL_LIBRARIES} ${GLEW_LIBRARY} )
@@ -398,7 +413,7 @@ add_library( _GafferScene MODULE ${GAFFERSCENE_CXX_MODULE_FILES} ${GAFFERSCENE_H
 target_link_libraries( _GafferScene GafferScene GafferBindings GafferDispatch ${BASE_LIBS} ${BASE_PYTHON_LIBS} )
 
 # GafferScene Test
-add_library( GafferSceneTest SHARED ${GAFFERSCENETEST_CXX_FILES} ${GAFFERIMAGETEST_H_FILES} )
+add_library( GafferSceneTest SHARED ${GAFFERSCENETEST_CXX_FILES} ${GAFFERSCENETEST_H_FILES} )
 target_link_libraries( GafferSceneTest ${BASE_LIBS} Gaffer GafferScene GafferDispatch )
 
 # GafferScene Test Module
@@ -511,6 +526,17 @@ foreach( GAFFER_LIB ${GAFFERTEST_LIB_NAMES} )
   endif()
 endforeach()
 
+foreach( GAFFER_LIB ${GAFFERTEST_MODULE_LIB_NAMES} )
+  if( DARWIN )
+    set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".so" )
+    set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
+  elseif( WINDOWS )
+    set_target_properties( _${GAFFER_LIB}Test PROPERTIES SUFFIX ".pyd" )
+  else()
+    set_target_properties( _${GAFFER_LIB}Test PROPERTIES PREFIX "" )
+  endif()
+endforeach()
+
 # Gaffer OSL Shaders
 file( GLOB_RECURSE OSL_HEADER_FILES ${GAFFER_SOURCE_DIR}/shaders/*.h)
 file( GLOB_RECURSE OSL_SOURCE_FILES ${GAFFER_SOURCE_DIR}/shaders/*.osl)
@@ -591,6 +617,7 @@ add_dependencies( _GafferDelight Gaffer GafferScene GafferBindings GafferDispatc
 
 add_dependencies( _GafferTest Gaffer GafferBindings GafferTest )
 add_dependencies( _GafferSceneTest Gaffer GafferBindings GafferScene GafferSceneTest GafferDispatch )
+add_dependencies( _GafferImageTest Gaffer GafferBindings GafferImage GafferDispatch )
 
 # Install Libs
 foreach( GAFFER_LIB ${GAFFER_LIB_NAMES} )
@@ -606,6 +633,13 @@ foreach( GAFFER_LIB ${GAFFERTEST_LIB_NAMES} )
   string( TOUPPER ${GAFFER_LIB} _GAFFER_LIB )
   install( TARGETS ${GAFFER_LIB}Test
            DESTINATION lib/ )
+  install( FILES ${${_GAFFER_LIB}_H_FILES}
+           DESTINATION include/${GAFFER_LIB}Test )
+endforeach()
+
+# Install Test Module Libs
+foreach( GAFFER_LIB ${GAFFERTEST_MODULE_LIB_NAMES} )
+  string( TOUPPER ${GAFFER_LIB} _GAFFER_LIB )
   install( TARGETS _${GAFFER_LIB}Test
            DESTINATION python/${GAFFER_LIB}Test )
   install( FILES ${${_GAFFER_LIB}_H_FILES}
