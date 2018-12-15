@@ -53,14 +53,20 @@ import GafferImageTest
 
 class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
-	__largeFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/large.exr" )
-	__rgbFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/rgb.100x100" )
-	__negativeDataWindowFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/checkerWithNegativeDataWindow.200x150" )
-	__representativeDeepPath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/representativeDeepImage.exr" )
-
 	longMessage = True
 
 	def setUp( self ) :
+
+		if os.name == "nt":
+			gaffer_root = os.path.expandvars( "%GAFFER_ROOT%" )
+		else:
+			gaffer_root = os.path.expandvars( "$GAFFER_ROOT" )
+
+		self.__largeFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/large.exr" )
+		self.__rgbFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/rgb.100x100" )
+		self.__negativeDataWindowFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/checkerWithNegativeDataWindow.200x150" )
+		self.__representativeDeepPath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/representativeDeepImage.exr" )
+
 
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageWriter.getDefaultColorSpaceFunction()
@@ -492,7 +498,11 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 			# the writer adds several standard attributes that aren't in the original file
 			expectedMetadata["Software"] = IECore.StringData( "Gaffer " + Gaffer.About.versionString() )
 			expectedMetadata["HostComputer"] = IECore.StringData( platform.node() )
-			expectedMetadata["Artist"] = IECore.StringData( os.environ["USER"] )
+			if os.name == "nt":
+				user_key = "username"
+			else:
+				user_key = "USER"
+			expectedMetadata["Artist"] = IECore.StringData( os.environ[user_key] )
 			expectedMetadata["DocumentName"] = IECore.StringData( "untitled" )
 
 			for key in overrideMetadata :
@@ -787,7 +797,11 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		expectedMetadata["DateTime"] = regularReaderMetadata["DateTime"]
 		expectedMetadata["Software"] = IECore.StringData( "Gaffer " + Gaffer.About.versionString() )
 		expectedMetadata["HostComputer"] = IECore.StringData( platform.node() )
-		expectedMetadata["Artist"] = IECore.StringData( os.environ["USER"] )
+		if os.name == "nt":
+			user_key = "username"
+		else:
+			user_key = "USER"
+		expectedMetadata["Artist"] = IECore.StringData( os.environ[user_key] )
 		expectedMetadata["DocumentName"] = IECore.StringData( "untitled" )
 		expectedMetadata["fileFormat"] = regularReaderMetadata["fileFormat"]
 		expectedMetadata["dataType"] = regularReaderMetadata["dataType"]
@@ -986,7 +1000,13 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		with context :
 			s["w"]["task"].execute()
 
-		self.assertTrue( os.path.isfile( self.temporaryDirectory() + "/test.tif" ) )
+		self.assertTrue( os.path.isfile( os.path.join( self.temporaryDirectory(), "test.tif" ) ) )
+
+		s["w"]["fileName"].setValue( self.temporaryDirectory() + "/test.#.tif" )
+		context.setFrame( 5 )
+		with context :
+			s["w"]["task"].execute()
+		self.assertTrue( os.path.isfile( os.path.join( self.temporaryDirectory(), "test.5.tif" ) ) )
 
 	def testErrorMessages( self ) :
 
@@ -1073,7 +1093,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 				GafferImage.ImageWriter.__init__( self, name )
 
-				self["copyFileName"] = Gaffer.StringPlug()
+				self["copyFileName"] = Gaffer.FileSystemPathPlug()
 
 			def execute( self ) :
 
@@ -1115,7 +1135,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 	def __testFile( self, mode, channels, ext ) :
 
-		return self.temporaryDirectory() + "/test." + channels + "." + str( mode ) + "." + str( ext )
+		return os.path.join(self.temporaryDirectory(), "test." + channels + "." + str( mode ) + "." + str( ext ))
 
 	def testJpgChroma( self ):
 
@@ -1130,7 +1150,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		chromaSubSamplings = ( "4:4:4", "4:2:2", "4:2:0", "4:1:1", "" )
 		for chromaSubSampling in chromaSubSamplings:
 
-			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling ) )
+			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling.replace(":", ".") ) )
 
 			w["fileName"].setValue( testFile )
 			w["jpeg"]["chromaSubSampling"].setValue( chromaSubSampling )
