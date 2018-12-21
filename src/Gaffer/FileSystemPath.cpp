@@ -266,13 +266,14 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		}
 
 		std::string n = this->string();
-		struct stat s;
-		stat( n.c_str(), &s );
+
 		#ifndef _MSC_VER
+		struct stat s;
+		stat(n.c_str(), &s);
 		struct passwd *pw = getpwuid( s.st_uid );
 		return new StringData( pw ? pw->pw_name : "" );
 		#else
-		return new StringData( "" );
+		return new StringData( getOwner( n.c_str() ) );
 		#endif
 	}
 	else if( name == g_groupPropertyName )
