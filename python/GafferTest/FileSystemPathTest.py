@@ -390,14 +390,13 @@ class FileSystemPathTest( GafferTest.TestCase ) :
 	def getFileOwner( self, filepath ):
 
 		# Windows Python does not have a reliable native method to get the owner
-		# Call "dir" as a workaround
+		# without installing the Win32 package. Since the files being tested
+		# are created within the test process, assume the current user is
+		# an acceptable standin for the file owner
 		if os.name is not "nt" :
 			return pwd.getpwuid( os.stat( filepath ).st_uid ).pw_name
 		else :
-			cmd = "dir /q {}".format( filepath )
-			fileInfo = os.popen( cmd ).read().split()
-			self.assertTrue( len( fileInfo ) > 11 )
-			fileOwner = fileInfo[-11]
+			return os.environ["USERNAME"]
 
 		GafferTest.TestCase.tearDown( self )
 
