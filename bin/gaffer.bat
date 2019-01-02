@@ -64,11 +64,10 @@ rem if defined ARNOLD_ROOT (
 rem )
 
 @echo on
-python %GAFFER_ROOT%/bin/gaffer.py %*
+%GAFFER_ROOT%\bin\python.exe %GAFFER_ROOT%/bin/gaffer.py %*
 if %ERRORLEVEL% NEQ 0 (
 	echo "Error(s) running Gaffer"
 	exit /b %ERRORLEVEL%
-	ENDLOCAL
 )
 
 ENDLOCAL
