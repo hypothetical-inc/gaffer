@@ -1,12 +1,15 @@
 set ROOT_DIR=%~dp0%..\..
 cd %ROOT_DIR%
 
-set CMAKE_GENERATOR="Visual Studio 15 2017 Win64"
+set CMAKE_GENERATOR="NMake Makefiles JOM"
+
 if not "%1" == "" (
 	set BUILD_TYPE=%1
 ) else (
 	set BUILD_TYPE=RELEASE
 )
+
+set PATH=%ROOT_DIR%\contrib\cmake\jom;%PATH%
 
 del /f CMakeCache.txt
 

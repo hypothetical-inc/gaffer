@@ -24,8 +24,5 @@ Debug/
 *.dir/
 CMakeFiles/
 x64/
-<<<<<<< HEAD
-cmake/
-=======
->>>>>>> c5ebdebda... Windows Build : ignore additional build directories
+./cmake/
 graphics/
