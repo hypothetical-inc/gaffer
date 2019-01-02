@@ -34,5 +34,5 @@ Debug/
 *.dir/
 CMakeFiles/
 x64/
-cmake/
+./cmake/
 graphics/
