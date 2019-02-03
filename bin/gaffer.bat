@@ -63,6 +63,18 @@ if "%ARNOLD_ROOT%" NEQ "" (
 	call :appendToPath "%ARNOLD_ROOT%\python" PYTHONPATH
 )
 
+rem Set up 3rd party extensions
+for %%A in (%GAFFER_EXTENSION_PATHS%) do (
+	call :appendToPath "%%A\bin" PATH
+	call :appendToPath "%%A\python" PYTHONPATH
+	call :appendToPath "%%A\apps" GAFFER_APP_PATHS
+	call :appendToPath "%%A\graphics" GAFFERUI_IMAGE_PATHS
+	call :appendToPath "%%A\glsl" IECOREGL_SHADER_PATHS
+	call :appendToPath "%%A\glsl" IECOREGL_SHADER_INCLUDE_PATHS
+	call :appendToPath "%%A\shaders" OSL_SHADER_PATHS
+	call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
+)
+
 @echo on
 %GAFFER_ROOT%\bin\python.exe %GAFFER_ROOT%/bin/gaffer.py %*
 if %ERRORLEVEL% NEQ 0 (
