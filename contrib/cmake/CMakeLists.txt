@@ -475,7 +475,7 @@ target_compile_options( _GafferAppleseed PRIVATE -DAPPLESEED_ENABLE_IMATH_INTERO
 
 if (CORTEX_ARNOLD_FOUND)
   # GafferArnold
-  file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES RELATIVE ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
+  file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
   add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
   target_link_libraries( GafferArnold ${BASE_LIBS} Gaffer GafferDispatch GafferScene GafferOSL GafferVDB ${OpenVDB_LIBRARIES} ${CORTEX_ARNOLD_LIBS} ${Cortex_IECOREARNOLD_LIBRARY} )
   target_compile_options( GafferArnold PRIVATE )
