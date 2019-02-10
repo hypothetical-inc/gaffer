@@ -112,7 +112,9 @@ include_directories( ${ILMBASE_INCLUDE_DIR} )
 include_directories( ${OPENEXR_INCLUDE_DIRS} )
 include_directories( ${Cortex_INCLUDE_DIRS} )
 include_directories( ${FREETYPE_INCLUDE_DIRS} )
-include_directories( ${CORTEX_ARNOLD_INCLUDE_PATH} )
+if (Arnold_FOUND)
+  include_directories( ${CORTEX_ARNOLD_INCLUDE_PATH} )
+endif()
 include_directories( ${APPLESEED_INCLUDE_DIRS} )
 
 link_directories( ${TBB_LIBRARY_DIRS} )
@@ -174,9 +176,10 @@ set( GAFFER_LIB_NAMES
   GafferUI
   GafferVDB
   GafferVDBUI
-  GafferArnold
-  GafferArnoldUI
   )
+if (Arnold_FOUND)
+  SET(GAFFER_LIB_NAMES ${GAFFER_LIB_NAMES} GafferArnold GafferArnoldUI)
+endif()
 
 set( GAFFERBINDINGS_LIB_NAMES
   Gaffer
@@ -204,8 +207,10 @@ set( GAFFER_PYTHON_NAMES
   GafferScene
   GafferTractor
   GafferVDB
-  GafferArnold
   )
+if (Arnold_FOUND)
+  SET(GAFFER_PYTHON_NAMES ${GAFFER_PYTHON_NAMES} GafferArnold)
+endif()
 
 # Get lists of files
 foreach( GAFFER_LIB ${GAFFER_LIB_NAMES} )
@@ -468,24 +473,26 @@ add_library( _GafferAppleseed MODULE ${GAFFERAPPLESEED_CXX_MODULE_FILES} )
 target_link_libraries( _GafferAppleseed ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferDispatch GafferScene GafferBindings GafferAppleseed )
 target_compile_options( _GafferAppleseed PRIVATE -DAPPLESEED_ENABLE_IMATH_INTEROP -DAPPLESEED_USE_SSE )
 
-# GafferArnold
-file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
-add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
-target_link_libraries( GafferArnold ${BASE_LIBS} Gaffer GafferDispatch GafferScene GafferOSL GafferVDB ${OpenVDB_LIBRARIES} ${CORTEX_ARNOLD_LIBS} ${Cortex_IECOREARNOLD_LIBRARY} )
-target_compile_options( GafferArnold PRIVATE )
+if (Arnold_FOUND)
+  # GafferArnold
+  file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES RELATIVE ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
+  add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
+  target_link_libraries( GafferArnold ${BASE_LIBS} Gaffer GafferDispatch GafferScene GafferOSL GafferVDB ${OpenVDB_LIBRARIES} ${CORTEX_ARNOLD_LIBS} ${Cortex_IECOREARNOLD_LIBRARY} )
+  target_compile_options( GafferArnold PRIVATE )
 
 
-# GafferArnold Python Module
-add_library( _GafferArnold MODULE ${GAFFERARNOLD_CXX_MODULE_FILES} )
-target_link_libraries( _GafferArnold ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferScene GafferBindings GafferDispatch GafferArnold GafferBindings )
+  # GafferArnold Python Module
+  add_library( _GafferArnold MODULE ${GAFFERARNOLD_CXX_MODULE_FILES} )
+  target_link_libraries( _GafferArnold ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferScene GafferBindings GafferDispatch GafferArnold GafferBindings )
 
-# GafferArnoldUI
-add_library( GafferArnoldUI SHARED ${GAFFERARNOLDUI_CXX_FILES} ${GAFFERARNOLDUI_H_FILES} )
-target_link_libraries( GafferArnoldUI ${BASE_LIBS} Gaffer GafferScene GafferSceneUI GafferOSL ${Cortex_IECOREGL_LIBRARY} )
+  # GafferArnoldUI
+  add_library( GafferArnoldUI SHARED ${GAFFERARNOLDUI_CXX_FILES} ${GAFFERARNOLDUI_H_FILES} )
+  target_link_libraries( GafferArnoldUI ${BASE_LIBS} Gaffer GafferScene GafferSceneUI GafferOSL ${Cortex_IECOREGL_LIBRARY} )
 
-# GafferArnoldUI Python Module
-add_library( _GafferArnoldUI MODULE ${GAFFERARNOLDUI_CXX_MODULE_FILES} )
-target_link_libraries( _GafferArnoldUI GafferArnoldUI )
+  # GafferArnoldUI Python Module
+  add_library( _GafferArnoldUI MODULE ${GAFFERARNOLDUI_CXX_MODULE_FILES} )
+  target_link_libraries( _GafferArnoldUI GafferArnoldUI )
+endif()
 
 # GafferDelight
 add_library( GafferDelight SHARED ${GAFFERDELIGHT_CXX_FILES} ${GAFFERDELIGHT_H_FILES} )
@@ -569,8 +576,10 @@ add_custom_target(Shaders ALL DEPENDS ${COMPILED_OSL_SHADERS})
 
 # Dependencies
 add_dependencies( GafferAppleseed Gaffer GafferDispatch GafferScene )
-add_dependencies( GafferArnold Gaffer GafferDispatch GafferScene GafferOSL )
-add_dependencies( GafferArnoldUI Gaffer GafferScene GafferOSL GafferArnoldUI )
+if (Arnold_FOUND)
+  add_dependencies( GafferArnold Gaffer GafferDispatch GafferScene GafferOSL )
+  add_dependencies( GafferArnoldUI Gaffer GafferScene GafferOSL GafferArnoldUI )
+endif()
 add_dependencies( GafferCortex Gaffer GafferDispatch )
 add_dependencies( GafferDispatch Gaffer )
 add_dependencies( GafferImage Gaffer GafferDispatch )
@@ -599,8 +608,10 @@ add_dependencies( _GafferSceneUI Gaffer GafferSceneUI GafferImageUI GafferBindin
 add_dependencies( _GafferUI Gaffer GafferUI GafferBindings )
 add_dependencies( _GafferOSL GafferBindings GafferScene GafferImage GafferOSL )
 add_dependencies( _GafferAppleseed GafferDispatch GafferScene GafferBindings GafferAppleseed )
-add_dependencies( _GafferArnold Gaffer GafferScene GafferBindings GafferDispatch GafferArnold )
-add_dependencies( _GafferArnoldUI Gaffer GafferArnoldUI )
+if (Arnold_FOUND)
+  add_dependencies( _GafferArnold Gaffer GafferScene GafferBindings GafferDispatch GafferArnold )
+  add_dependencies( _GafferArnoldUI Gaffer GafferArnoldUI )
+endif()
 add_dependencies( _GafferDelight Gaffer GafferScene GafferBindings GafferDispatch GafferDelight )
 
 add_dependencies( _GafferTest Gaffer GafferBindings GafferTest )
@@ -653,14 +664,20 @@ endforeach()
 # Install Gaffer Files
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/apps
          DESTINATION . )
+if (Arnold_FOUND)
   install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
          DESTINATION . )
+endif()
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/bin
          DESTINATION . )
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/glsl
          DESTINATION . )
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/python
          DESTINATION . )
+if (Arnold_FOUND)
+  install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
+         DESTINATION . )
+endif()
 
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/startup
          DESTINATION . )
