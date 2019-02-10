@@ -112,7 +112,7 @@ include_directories( ${ILMBASE_INCLUDE_DIR} )
 include_directories( ${OPENEXR_INCLUDE_DIRS} )
 include_directories( ${Cortex_INCLUDE_DIRS} )
 include_directories( ${FREETYPE_INCLUDE_DIRS} )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   include_directories( ${CORTEX_ARNOLD_INCLUDE_PATH} )
 endif()
 include_directories( ${APPLESEED_INCLUDE_DIRS} )
@@ -177,7 +177,7 @@ set( GAFFER_LIB_NAMES
   GafferVDB
   GafferVDBUI
   )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   SET(GAFFER_LIB_NAMES ${GAFFER_LIB_NAMES} GafferArnold GafferArnoldUI)
 endif()
 
@@ -208,7 +208,7 @@ set( GAFFER_PYTHON_NAMES
   GafferTractor
   GafferVDB
   )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   SET(GAFFER_PYTHON_NAMES ${GAFFER_PYTHON_NAMES} GafferArnold)
 endif()
 
@@ -473,7 +473,7 @@ add_library( _GafferAppleseed MODULE ${GAFFERAPPLESEED_CXX_MODULE_FILES} )
 target_link_libraries( _GafferAppleseed ${BASE_LIBS} ${BASE_PYTHON_LIBS} GafferDispatch GafferScene GafferBindings GafferAppleseed )
 target_compile_options( _GafferAppleseed PRIVATE -DAPPLESEED_ENABLE_IMATH_INTEROP -DAPPLESEED_USE_SSE )
 
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   # GafferArnold
   file( GLOB IECOREARNOLD_PREVIEW_CXX_FILES RELATIVE ${GAFFER_SOURCE_DIR}/src/GafferArnold/IECoreArnoldPreview/*.cpp )
   add_library( GafferArnold SHARED ${GAFFERARNOLD_CXX_FILES} ${GAFFERARNOLD_H_FILES} ${IECOREARNOLD_PREVIEW_CXX_FILES} )
@@ -576,7 +576,7 @@ add_custom_target(Shaders ALL DEPENDS ${COMPILED_OSL_SHADERS})
 
 # Dependencies
 add_dependencies( GafferAppleseed Gaffer GafferDispatch GafferScene )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   add_dependencies( GafferArnold Gaffer GafferDispatch GafferScene GafferOSL )
   add_dependencies( GafferArnoldUI Gaffer GafferScene GafferOSL GafferArnoldUI )
 endif()
@@ -608,7 +608,7 @@ add_dependencies( _GafferSceneUI Gaffer GafferSceneUI GafferImageUI GafferBindin
 add_dependencies( _GafferUI Gaffer GafferUI GafferBindings )
 add_dependencies( _GafferOSL GafferBindings GafferScene GafferImage GafferOSL )
 add_dependencies( _GafferAppleseed GafferDispatch GafferScene GafferBindings GafferAppleseed )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   add_dependencies( _GafferArnold Gaffer GafferScene GafferBindings GafferDispatch GafferArnold )
   add_dependencies( _GafferArnoldUI Gaffer GafferArnoldUI )
 endif()
@@ -664,7 +664,7 @@ endforeach()
 # Install Gaffer Files
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/apps
          DESTINATION . )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
          DESTINATION . )
 endif()
@@ -674,7 +674,7 @@ install( DIRECTORY ${GAFFER_SOURCE_DIR}/glsl
          DESTINATION . )
 install( DIRECTORY ${GAFFER_SOURCE_DIR}/python
          DESTINATION . )
-if (Arnold_FOUND)
+if (CORTEX_ARNOLD_FOUND)
   install( DIRECTORY ${GAFFER_SOURCE_DIR}/arnold
          DESTINATION . )
 endif()
