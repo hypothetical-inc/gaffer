@@ -67,9 +67,9 @@ GafferUI.Backups.acquire( application )
 ###########################################################################
 
 for menuItem, url in [
-		( "User Guide", "$GAFFER_ROOT/doc/gaffer/html/index.html" ),
-		( "Node Reference", "$GAFFER_ROOT/doc/gaffer/html/Reference/NodeReference/index.html" ),
-		( "License", "$GAFFER_ROOT/doc/gaffer/html/Appendices/License/index.html" ),
+		( "User Guide", os.path.join( os.environ["GAFFER_ROOT"], "doc", "gaffer", "html", "index.html" ) ),
+		( "Node Reference", os.path.join( os.environ["GAFFER_ROOT"], "doc", "gaffer", "html", "Reference", "NodeReference", "index.html" ) ),
+		( "License", os.path.join( os.environ["GAFFER_ROOT"], "doc", "gaffer", "html", "Appendices", "License", "index.html" ) ),
 		( "LocalDocsDivider", None ),
 		( "Forum", "https://groups.google.com/forum/#!forum/gaffer-dev" ),
 		( "Issue Tracker", "https://github.com/GafferHQ/gaffer/issues" ),
@@ -438,7 +438,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 	nodeMenu.append( "/OSL/Image", GafferOSL.OSLImage, searchText = "OSLImage" )
 	nodeMenu.append( "/OSL/Object", GafferOSL.OSLObject, searchText = "OSLObject" )
 
-	oslDocs = os.path.expandvars( "$GAFFER_ROOT/doc/osl-languagespec.pdf" )
+	oslDocs = os.path.expandvars( os.path.join( os.environ["GAFFER_ROOT"], "doc", "osl-languagespec.pdf" ) )
 	scriptWindowMenu.append(
 		"/Help/Open Shading Language/Language Reference",
 		{
