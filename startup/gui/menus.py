@@ -437,7 +437,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 	nodeMenu.append( "/OSL/Image", GafferOSL.OSLImage, searchText = "OSLImage" )
 	nodeMenu.append( "/OSL/Object", GafferOSL.OSLObject, searchText = "OSLObject" )
 
-	oslDocs = os.path.expandvars( "$GAFFER_ROOT/doc/osl-languagespec.pdf" )
+	oslDocs = os.path.expandvars( os.path.join( os.environ["GAFFER_ROOT"], "doc", "osl-languagespec.pdf" ) )
 	scriptWindowMenu.append(
 		"/Help/Open Shading Language/Language Reference",
 		{
