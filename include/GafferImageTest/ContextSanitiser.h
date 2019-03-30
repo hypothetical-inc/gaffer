@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2013, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2019, Image Engine Design Inc. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,31 +34,44 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferSceneTest/TestShader.h"
+#ifndef GAFFERIMAGETEST_CONTEXTSANITISER_H
+#define GAFFERIMAGETEST_CONTEXTSANITISER_H
 
-#include "Gaffer/CompoundNumericPlug.h"
-#include "Gaffer/StringPlug.h"
+#include "Gaffer/Monitor.h"
+#include "Gaffer/Plug.h"
 
-using namespace IECore;
-using namespace Gaffer;
-using namespace GafferSceneTest;
+#include "tbb/concurrent_unordered_set.h"
 
-IE_CORE_DEFINERUNTIMETYPED( TestShader )
-
-TestShader::TestShader( const std::string &name )
-	:	Shader( name )
+namespace GafferImageTest
 {
-	// The base class expects us to serialise a `loadShader()`
-	// call to set the values for these, but we just represent
-	// a fixed shader. Turn serialisation back on.
-	namePlug()->setFlags( Plug::Serialisable, true );
-	typePlug()->setFlags( Plug::Serialisable, true );
 
-	addChild( new Color3fPlug( "out", Plug::Out ) );
-	parametersPlug()->addChild( new IntPlug( "i" ) );
-	parametersPlug()->addChild( new Color3fPlug( "c" ) );
-}
-
-TestShader::~TestShader()
+/// A monitor which warns about common context handling mistakes.
+class GAFFER_API ContextSanitiser : public Gaffer::Monitor
 {
-}
+
+	public :
+
+		ContextSanitiser();
+
+	protected :
+
+		void processStarted( const Gaffer::Process *process ) override;
+		void processFinished( const Gaffer::Process *process ) override;
+
+	private :
+
+		/// First is the upstream plug where the problem was detected. Second
+		/// is the plug from the parent process responsible for calling upstream.
+		typedef std::pair<Gaffer::ConstPlugPtr, Gaffer::ConstPlugPtr> PlugPair;
+		typedef std::pair<PlugPair, IECore::InternedString> Warning;
+
+		void warn( const Gaffer::Process &process, const IECore::InternedString &contextVariable );
+
+		typedef tbb::concurrent_unordered_set<Warning> WarningSet;
+		WarningSet m_warningsEmitted;
+
+};
+
+} // namespace GafferImageTest
+
+#endif // GAFFERIMAGETEST_CONTEXTSANITISER_H

@@ -192,6 +192,16 @@ def __licensingSummary( plug ) :
 
 	return ", ".join( info )
 
+def __gpuSummary( plug ) :
+
+	info = []
+	if plug["renderDevice"]["enabled"].getValue() :
+		info.append( "Device: %s" %  plug["renderDevice"]["value"].getValue() )
+
+	if plug["gpuMaxTextureResolution"]["enabled"].getValue() :
+		info.append( "Max Res: %i" % plug["gpuMaxTextureResolution"]["value"].getValue() )
+	return ", ".join( info )
+
 Gaffer.Metadata.registerNode(
 
 	GafferArnold.ArnoldOptions,
@@ -221,6 +231,7 @@ Gaffer.Metadata.registerNode(
 			"layout:section:Logging:summary", __loggingSummary,
 			"layout:section:Statistics:summary", __statisticsSummary,
 			"layout:section:Licensing:summary", __licensingSummary,
+			"layout:section:GPU:summary", __gpuSummary,
 
 		],
 
@@ -592,7 +603,7 @@ Gaffer.Metadata.registerNode(
 			A global override for the maximum polymesh.subdiv_iterations.
 			""",
 
-			"layout:section", "Subdivision", 
+			"layout:section", "Subdivision",
 			"label", "Max Subdivisions",
 		],
 
@@ -809,7 +820,7 @@ Gaffer.Metadata.registerNode(
 
 		"options.abortOnError" : [
 
-			"description", 
+			"description",
 			"""
 			Aborts the render if an error is encountered.
 			""",
@@ -931,6 +942,38 @@ Gaffer.Metadata.registerNode(
 			""",
 
 			"layout:section", "Licensing",
+
+		],
+
+		# GPU
+
+		"options.renderDevice" : [
+
+			"description",
+			"""
+			Can be used to put Arnold in GPU rendering mode, using your graphics card instead of CPU.  This is currently a beta with limited stability, and missing support for OSL and volumes.
+			""",
+
+			"layout:section", "GPU",
+
+		],
+
+		"options.renderDevice.value": [
+
+			"plugValueWidget:type", 'GafferUI.PresetsPlugValueWidget',
+			"presetNames", IECore.StringVectorData( ["CPU", "GPU"] ),
+			"presetValues", IECore.StringVectorData( ["CPU", "GPU"] ),
+		],
+
+		"options.gpuMaxTextureResolution" : [
+
+			"description",
+			"""
+			If non-zero, this will omit the high resolution mipmaps when in GPU mode, to avoid running out of GPU memory.
+			""",
+
+			"layout:section", "GPU",
+			"label", "Max Texture Resolution",
 
 		],
 
