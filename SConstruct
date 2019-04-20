@@ -778,6 +778,7 @@ libraries = {
 
 	"GafferArnoldTest" : {
 		"additionalFiles" : glob.glob( "python/GafferArnoldTest/volumes/*" ) + glob.glob( "python/GafferArnoldTest/metadata/*" ) + glob.glob( "python/GafferArnoldTest/images/*" ),
+		"requiredOptions" : [ "ARNOLD_ROOT" ],
 	},
 
 	"GafferArnoldUI" : {
@@ -787,9 +788,13 @@ libraries = {
 		"pythonEnvAppends" : {
 			"LIBS" : [ "GafferArnoldUI", "GafferSceneUI" ],
 		},
+		"requiredOptions" : [ "ARNOLD_ROOT" ],
 	},
 
-	"GafferArnoldUITest" : {},
+	"GafferArnoldUITest" : {
+		"additionalFiles" : glob.glob( "python/GafferArnoldUITest/metadata/*" ),
+		"requiredOptions" : [ "ARNOLD_ROOT" ],
+	},
 
 	"GafferOSL" : {
 		"envAppends" : {
