@@ -49,10 +49,15 @@ if "%APPLESEED%" == "" (
 )
 
 rem Appleseed
+
+if "%APPLESEED%" NEQ "" (
+	call :prependToPath "%APPLESEED%\shaders\gaffer" OSL_SHADER_PATHS
+	call :prependToPath "%APPLESEED%\shaders\appleseed" OSL_SHADER_PATHS
+)
+
 if "%APPLESEED%" NEQ "" (
 	call :prependToPath "%APPLESEED%\bin;%APPLESEED%\lib" PATH
 	call :prependToPath "%APPLESEED%\lib\python2.7" PYTHONPATH
-	call :prependToPath "%APPLESEED%\shaders\gaffer" OSL_SHADER_PATHS
 	call :prependToPath "%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplay" APPLESEED_SEARCHPATH
 )
 
