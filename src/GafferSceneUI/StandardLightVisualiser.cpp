@@ -222,7 +222,7 @@ StandardLightVisualiser::~StandardLightVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr StandardLightVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, IECoreGL::ConstStatePtr &state ) const
+IECoreGL::ConstRenderablePtr StandardLightVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
 	InternedString metadataTarget;
 	const IECore::CompoundData *shaderParameters = parametersAndMetadataTarget( attributeName, shaderNetwork, metadataTarget );
@@ -237,70 +237,82 @@ IECoreGL::ConstRenderablePtr StandardLightVisualiser::visualise( const IECore::I
 	const Color3f finalColor = color * intensity * pow( 2.0f, exposure );
 
 	GroupPtr result = new Group;
+	GroupPtr ornaments = new Group;  // Ornaments are affected by visualiser:scale while
+	GroupPtr geometry = new Group;   // geometry isn't as its size matters for rendering.
+	result->addChild( geometry );
+	result->addChild( ornaments );
 
-	/// \todo This is problematic for a few reasons :
-	///
-	/// - The name "locatorScale" doesn't fit Gaffer's terminology - perhaps "visualiserScale"
-	///    would be better?
-	/// - It doesn't make much sense to have a shader parameter which affects only the visualisation
-	///   and not the rendering - no out-of-the-box light has one that I know of. Perhaps it should
-	///   be an attribute that the `GafferScene::light()` node sets?
-	/// - We don't actually want to apply it to the area light shapes created below for "quad" etc.
-	///
-	/// Since this feature is only used by lights internal to Image Engine, we can ignore all this for
-	/// now, but it would be good to address in the future.
-	const float locatorScale = parameter<float>( metadataTarget, shaderParameters, "locatorScaleParameter", 1 );
-	Imath::M44f topTrans;
+	const FloatData *visualiserScaleData = attributes->member<FloatData>( "visualiser:scale" );
+	float visualiserScale = visualiserScaleData ? visualiserScaleData->readable() : 1.0;
+
+	/// \todo: We should find a better way to opt out of expensive visualisations
+	///        (in particular for large environment light textures)
+	if( visualiserScale == 0 )
+	{
+		return result;
+	}
+
+	Imath::M44f topTransform;
 	if( orientation )
 	{
-		topTrans = orientation->readable();
+		topTransform = orientation->readable();
 	}
-	topTrans.scale( V3f( locatorScale ) );
-	result->setTransform( topTrans );
+	result->setTransform( topTransform );
+
+	Imath::M44f ornamentsTransform;
+	ornamentsTransform.scale( V3f( visualiserScale ) );
+	ornaments->setTransform( ornamentsTransform );
 
 	if( type && type->readable() == "environment" )
 	{
 		const std::string textureName = parameter<std::string>( metadataTarget, shaderParameters, "textureNameParameter", "" );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( environmentSphere( finalColor, textureName ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( environmentSphere( finalColor, textureName ) ) );
 	}
 	else if( type && type->readable() == "spot" )
 	{
 		float innerAngle, outerAngle, lensRadius;
 		spotlightParameters( attributeName, shaderNetwork, innerAngle, outerAngle, lensRadius );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( spotlightCone( innerAngle, outerAngle, lensRadius / locatorScale ) ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( spotlightCone( innerAngle, outerAngle, lensRadius / visualiserScale ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
 	}
 	else if( type && type->readable() == "distant" )
 	{
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( distantRays() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( distantRays() ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
 	}
 	else if( type && type->readable() == "quad" )
 	{
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( quadShape() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
+		geometry->addChild( const_pointer_cast<IECoreGL::Renderable>( quadShape() ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
 	}
 	else if( type && type->readable() == "disk" )
 	{
 		const float radius = parameter<float>( metadataTarget, shaderParameters, "radiusParameter", 1 );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( diskShape( radius ) ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
+		geometry->addChild( const_pointer_cast<IECoreGL::Renderable>( diskShape( radius ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( ray() ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
 	}
 	else if( type && type->readable() == "cylinder" )
 	{
 		const float radius = parameter<float>( metadataTarget, shaderParameters, "radiusParameter", 1 );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( cylinderShape( radius ) ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( cylinderRays( radius ) ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
+		geometry->addChild( const_pointer_cast<IECoreGL::Renderable>( cylinderShape( radius ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( cylinderRays( radius ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ false ) ) );
 	}
 	else
 	{
 		// Treat everything else as a point light.
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( pointRays() ) );
-		result->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ true ) ) );
+		const float radius = parameter<float>( metadataTarget, shaderParameters, "radiusParameter", 0 );
+		if( radius > 0 )
+		{
+			geometry->addChild( const_pointer_cast<IECoreGL::Renderable>( pointShape( radius ) ) );
+		}
+
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( pointRays( radius ) ) );
+		ornaments->addChild( const_pointer_cast<IECoreGL::Renderable>( colorIndicator( finalColor, /* cameraFacing = */ true ) ) );
+
 	}
 
 	return result;
@@ -457,7 +469,7 @@ IECoreGL::ConstRenderablePtr StandardLightVisualiser::ray()
 	return group;
 }
 
-IECoreGL::ConstRenderablePtr StandardLightVisualiser::pointRays()
+IECoreGL::ConstRenderablePtr StandardLightVisualiser::pointRays( float radius )
 {
 	IECoreGL::GroupPtr group = new IECoreGL::Group();
 	addWireframeCurveState( group.get() );
@@ -476,7 +488,7 @@ IECoreGL::ConstRenderablePtr StandardLightVisualiser::pointRays()
 	{
 		const float angle = M_PI * 2.0f * float(i)/(float)numRays;
 		const V2f dir( cos( angle ), sin( angle ) );
-		addRay( dir * .5, dir * 1, vertsPerCurve->writable(), p->writable() );
+		addRay( dir * (.5 + radius), dir * (1 + radius), vertsPerCurve->writable(), p->writable() );
 	}
 
 	IECoreGL::CurvesPrimitivePtr curves = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), false, vertsPerCurve );
@@ -745,6 +757,37 @@ IECoreGL::ConstRenderablePtr StandardLightVisualiser::cylinderShape( float radiu
 	vertsPerCurve.push_back( 2 );
 
 	IECoreGL::CurvesPrimitivePtr curves = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), false, vertsPerCurveData );
+	curves->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, pData ) );
+	curves->addPrimitiveVariable( "Cs", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Constant, new Color3fData( Color3f( 1.0f, 0.835f, 0.07f ) ) ) );
+
+	group->addChild( curves );
+
+	return group;
+}
+
+IECoreGL::ConstRenderablePtr StandardLightVisualiser::pointShape( float radius )
+{
+	IECoreGL::GroupPtr group = new IECoreGL::Group();
+	addWireframeCurveState( group.get() );
+
+	IECore::CompoundObjectPtr parameters = new CompoundObject;
+	parameters->members()["aimType"] = new IntData( 1 );
+	group->getState()->add(
+		new IECoreGL::ShaderStateComponent( ShaderLoader::defaultShaderLoader(), TextureLoader::defaultTextureLoader(), faceCameraVertexSource(), "", IECoreGL::Shader::constantFragmentSource(), parameters )
+	);
+
+	IntVectorDataPtr vertsPerCurveData = new IntVectorData;
+	V3fVectorDataPtr pData = new V3fVectorData;
+
+	addCircle( V3f( 0 ), radius, vertsPerCurveData->writable(), pData->writable() );
+
+	M44f t = M44f().rotate( V3f( 0, M_PI * 0.5, 0 ) );
+	for( V3f &p : pData->writable() )
+	{
+		p *= t;
+	}
+
+	IECoreGL::CurvesPrimitivePtr curves = new IECoreGL::CurvesPrimitive( IECore::CubicBasisf::linear(), /* periodic = */ false, vertsPerCurveData );
 	curves->addPrimitiveVariable( "P", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Vertex, pData ) );
 	curves->addPrimitiveVariable( "Cs", IECoreScene::PrimitiveVariable( IECoreScene::PrimitiveVariable::Constant, new Color3fData( Color3f( 1.0f, 0.835f, 0.07f ) ) ) );
 

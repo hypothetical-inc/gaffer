@@ -56,7 +56,8 @@ class PythonEditor( GafferUI.Editor ) :
 
 	def __init__( self, scriptNode, **kw ) :
 
-		self.__splittable = GafferUI.SplitContainer()
+		self.__splittable = GafferUI.SplitContainer( borderWidth = 2 )
+		self.__splittable._qtWidget().setObjectName( "gafferPythonEditor" )
 
 		GafferUI.Editor.__init__( self, self.__splittable, scriptNode, **kw )
 
@@ -70,11 +71,14 @@ class PythonEditor( GafferUI.Editor ) :
 			role = GafferUI.MultiLineTextWidget.Role.Code,
 		)
 
+		self.__outputWidget._qtWidget().setObjectName( "gafferPythonEditorOutput" )
+		self.__inputWidget._qtWidget().setObjectName( "gafferPythonEditorInput" )
+
 		self.__splittable.append( self.__outputWidget )
 		self.__splittable.append( self.__inputWidget )
 
-		self.__inputWidgetActivatedConnection = self.__inputWidget.activatedSignal().connect( Gaffer.WeakMethod( self.__activated ) )
-		self.__inputWidgetDropTextConnection = self.__inputWidget.dropTextSignal().connect( Gaffer.WeakMethod( self.__dropText ) )
+		self.__inputWidget.activatedSignal().connect( Gaffer.WeakMethod( self.__activated ), scoped = False )
+		self.__inputWidget.dropTextSignal().connect( Gaffer.WeakMethod( self.__dropText ), scoped = False )
 
 		self.__executionDict = {
 			"imath" : imath,

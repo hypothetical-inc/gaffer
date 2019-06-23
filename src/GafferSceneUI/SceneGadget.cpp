@@ -39,25 +39,8 @@
 #include "GafferUI/ViewportGadget.h"
 
 #include "Gaffer/BackgroundTask.h"
-#include "Gaffer/Node.h"
-#include "Gaffer/StringPlug.h"
 
-#include "IECoreGL/CachedConverter.h"
-#include "IECoreGL/CurvesPrimitive.h"
-#include "IECoreGL/PointsPrimitive.h"
-#include "IECoreGL/Primitive.h"
-#include "IECoreGL/Renderable.h"
-#include "IECoreGL/Selector.h"
-
-#include "IECoreScene/CurvesPrimitive.h"
-
-#include "IECore/MessageHandler.h"
-
-#include "boost/algorithm/string/predicate.hpp"
 #include "boost/bind.hpp"
-
-#include "tbb/concurrent_unordered_set.h"
-#include "tbb/task.h"
 
 using namespace std;
 using namespace Imath;
@@ -186,6 +169,22 @@ void SceneGadget::setBlockingPaths( const IECore::PathMatcher &blockingPaths )
 const IECore::PathMatcher &SceneGadget::getBlockingPaths() const
 {
 	return m_blockingPaths;
+}
+
+void SceneGadget::setPriorityPaths( const IECore::PathMatcher &priorityPaths )
+{
+	if( m_updateTask )
+	{
+		m_updateTask->cancelAndWait();
+		m_updateTask.reset();
+	}
+	m_priorityPaths = priorityPaths;
+	requestRender();
+}
+
+const IECore::PathMatcher &SceneGadget::getPriorityPaths() const
+{
+	return m_priorityPaths;
 }
 
 SceneGadget::State SceneGadget::state() const
@@ -505,7 +504,7 @@ void SceneGadget::updateRenderer()
 	}
 
 	m_updateErrored = false;
-	m_updateTask = m_controller.updateInBackground( progressCallback );
+	m_updateTask = m_controller.updateInBackground( progressCallback, m_priorityPaths );
 	stateChangedSignal()( this );
 
 	// Give ourselves a 0.1s grace period in which we block

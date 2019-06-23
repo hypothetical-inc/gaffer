@@ -54,7 +54,7 @@ class HierarchyView( GafferUI.NodeSetEditor ) :
 
 	def __init__( self, scriptNode, **kw ) :
 
-		column = GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Vertical, borderWidth = 8, spacing = 4 )
+		column = GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Vertical, borderWidth = 4, spacing = 4 )
 
 		GafferUI.NodeSetEditor.__init__( self, column, scriptNode, **kw )
 
@@ -321,7 +321,7 @@ class _SearchFilterWidget( GafferUI.PathFilterWidget ) :
 		GafferUI.PathFilterWidget.__init__( self, self.__patternWidget, pathFilter )
 
 		self.__patternWidget._qtWidget().setPlaceholderText( "Filter..." )
-		self.__patternWidgetEditingFinishedConnection = self.__patternWidget.editingFinishedSignal().connect( Gaffer.WeakMethod( self.__patternEditingFinished ) )
+		self.__patternWidget.editingFinishedSignal().connect( Gaffer.WeakMethod( self.__patternEditingFinished ), scoped = False )
 
 		self._updateFromPathFilter()
 

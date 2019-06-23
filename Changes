@@ -16,16 +16,37 @@
 > being available separately by setting the `GAFFEROSL_OSLOBJECT_CONTEXTCOMPATIBILITY` environment
 > variable to `1`.
 
+Features
+--------
+
+- Extended support for Arnold's light filters by adding blockers (#3020) :
+  - Added new node representing Arnold's blockers.
+  - Added attribute for specifying filtered lights to StandardAttributes node.
+  - Added special visualisation for blockers.
+- SetVisualiser node : Added node allowing to visualise set membership in the Viewer (#3117). 
+- ExtensionAlgo : Added mechanism to export Boxes as Gaffer extensions via `exportExtension()` (#3158).
+  - Gaffer extensions each define a new node type and are automatically integrated into the node menu.
+
 Improvements
 ------------
 
+- Viewer : Prioritised update of objects being manipulated resulting in much more fluid update (#3144).
+- CompoundEditor : Improved tab management (#3179).
+  - Tabs can now be drag re-arranged, detached into new windows and closed/detached using a context menu.
+  - Layouts will now store and recall detached panels, and all positions, sizes and maximised/full screen state.
+- Menu search (#2986) :
+  - Added an improved "fuzzy matching" search algorithm.
+  - Added an error indicator when a search matches nothing.
 - Text : Added support for unicode characters (#2999).
 - TextWidget/MultiLineTextWidget : Added support for unicode characters. In this
   case the `getText()` method will return a UTF8 encoded string (#2999).
 - PythonCommand : Improved performance (#3029).
-- GraphEditor : Added support for arbitrary node annotations specified by metadata.
-  Use "annotation:<name>:text" to specify the text to render, and "annotation:<name>:color"
-  to specify an associated colour (#3028).
+- GraphEditor :
+  - Added support for arbitrary node annotations specified by metadata.
+    Use "annotation:<name>:text" to specify the text to render, and "annotation:<name>:color"
+    to specify an associated colour (#3028).
+  - Added Ctrl-Drag functionality to deselect nodes (#3090).
+  - Made it show the root instead of removing the GraphEditor when the viewed Box is deleted (#3163).
 - Stats app :
   - Added `annotatedScript` argument to allow the saving of the script with
     monitor annotations added to it (#3028).
@@ -34,6 +55,7 @@ Improvements
   - Added support for render output profiling via `-scene` argument (#3053).
   - Added a `-contextSanitiser` argument, used to check for common context handling
     errors (#3060).
+  - Added entries for SharedSceneInterface limits and usage (#3126).
 - ArnoldTextureBake (#3026) : Added optional median filter.
 - Hash cache (#3033) : Reduced memory usage and improved performance.
 - GraphComponent : Reduced memory usage and improved script loading times (#3080).
@@ -42,6 +64,19 @@ Improvements
   by scene location (via the "scene:path" context variable) (#3074).
 - OSLImage : Improved performance of shader input evaluation (#3074).
 - OSLObject : Improved performance of shader input evaluation (#3074).
+- AnimationEditor : Improved behaviour of the plug listing (#3106).
+  - Only selected nodes are shown, not their descendants.
+  - The ancestor node hierarchy is not shown redundantly.
+  - Improved performance.
+- Test app :
+  - All tests are now run by default (#3101).
+  - Added support for detecting performance regression/improvement (#3127).
+- MeshTangents : Added support for additional computation modes (#3030).
+- GafferImageUI: Added DWA compression presets (#3153).
+- Numeric Bookmarks : Added serialisation to preserve numeric bookmarks across sessions (#3157).
+- SetExpressions : Added support for wildcard characters in set names (#3172).
+- Lights : Added "visualiserScale" setting in new "Visualisation" tab (#3180).
+- StandardLightVisualiser : By setting "visualiserScale" to 0 all visualisation computations can now be avoided (#3178).
 
 Fixes
 -----
@@ -64,6 +99,15 @@ Fixes
 - Scene : Fixed context handling bugs in Transform, SceneWriter, SceneAlgo, Set,
   Isolate and Prune. This improves performance on some complex scenes (#3060).
 - Offset : Fixed context handling bug (#3073).
+- AnimationEditor (#3106) :
+  - Fixed visibility glitch in timeline hover indicator. It wasn't being
+    hidden when the mouse left the editor.
+  - Fixed bug when deselecting a curve - the plug listing selection was not being updated
+    to reflect the change.
+- PythonCommand : Prevented inadvertent modification of outer context (#3101).
+- Fixed widget signal/slot lifetime issues (#3179).
+    - Using ScopedConnections is no longer needed as `Widget` now derives from `Trackable`.
+    - ScopedConnections can still be used when wanting to replace connections on the fly.
 
 Documentation
 -------------
@@ -73,6 +117,13 @@ Documentation
 - Added a "Camera" section to "Working with Scenes" which covers usage and task information
   about the Camera node, manipulating camera objects, the CameraTweaks node, render overrides,
   and demos of a spherical and anamorphic camera setup (#3050).
+- Added "Light Linking" which shows how light linking is set up and runs through an example
+  scenario that would necessitate light links (#3114).
+- Added mechanism for providing example node networks in the help menu. Examples can optionally be
+  associated with certain node types. The Cog menu in the Node Editor lists any applicable
+  Examples for the node type being edited (#3108).
+- Added general improvements to readability and appearance in the stylesheet. Most notably,
+  this makes the headings consistent, and the spacing between elements uniform (#3149).
 
 API
 ---
@@ -99,6 +150,9 @@ API
   - Improved assert methods.
 - GraphComponent : Added protected `parentChanged()` virtual method (#3080).
 - ImagePlug : Added convenience methods for evaluating global image properties (#3073).
+- GraphComponentPath : Added property for accessing the GraphComponent (#3106).
+- LightFilter : Added LightFilter class used as base for renderer-specific implementations (#3020).
+- NameValuePlug : Introduced new plug type for associating a name with a value (#3161).
 
 Build
 -----
@@ -108,6 +162,9 @@ Build
   - Enabled TBB debugging features in DEBUG builds.
   - Added `-fno-omit-frame-pointer` compiler flag for RELWITHDEBINFO builds.
 - Fixed warnings when building with XCode 10.2 (#3094).
+- Fixed problem where some Arnold modules were installed when ARNOLD_ROOT was
+  not specified (#3101).
+- Made GafferCortex an optional component at build time (#3168).
 
 Breaking Changes
 ----------------
@@ -128,6 +185,7 @@ Breaking Changes
   - Removed less-than operator.
   - The equality operator now compares plug and context instead of
     hash.
+- ArrayPlug : Inputs are now required to be ArrayPlugs too (#3116).
 - BackdropNodeGadget/StandardNodeGadget (#3028) : Removed private member variables.
 - SceneTestCase (#3060) : Changed signatures for the following functions :
   - `assertPathsEqual()`
@@ -138,6 +196,88 @@ Breaking Changes
   - `assertSceneHashesNotEqual()`
 - Shader : Changed base class to ComputeNode (#3074).
 - TweakPlug : Added compulsory ValuePlug argument to constructor used for serialisation (#3084).
+- AnimationEditor : Removed `connectedCurvePlug()` method (#3106).
+- ParallelAlgo : Replaced `registerUIThreadCallHandler()` with `push/popUIThreadCallHandler()` (#3101).
+- Renderer API : Added `lightBlocker()` virtual method (#3020).
+- CompoundDataPlug : Removed MemberPlug and `addMember()` as well as `addOptionalMember()`. Use NameValuePlug instead (#3161).
+- TransformTool : Added private members (ABI change only - source compatibility is maintained) (#3144).
+- RenderController : Added argument to `updateInBackground()` (ABI change only, source compatibility is maintained) (#3144).
+- SceneGadget : Added new private member (ABI change only, source compatibility is maintained) (#3144).
+- LightVisualiser : The signature for `visualise()` now also includes the attributes (#3180).
+
+0.53.6.2 (relative to 0.53.6.1)
+========
+
+Improvements
+------------
+
+- CustomAttributes : Added extraAttributes plug that can be set from CompoundData (#3191)
+- StandardLightVisualiser : Setting locatorScale to 0 now avoids costly computations (#3178)
+- GafferUI : Added compatibility patch to allow >0.54 layouts to load (#3206)
+
+Fixes
+-----
+
+- MultiLineTextWidget : Fixed unicode handling in `selectedText()` (#3183)
+- SplineWidget : Fixed display transform management bug (#3187)
+- ArnoldLight : Nodules no longer disappear when copy/pasting Arnold quad_light and skydome_light nodes (#3188)
+
+0.53.6.0 (relative to 0.53.5.0)
+========
+
+Improvements
+------------
+
+- FileSequenceParameterValueWidget : Added support for typeHint:includeSequences (#3164).
+
+ Fixes
+-----
+
+- ViewportGadget::SelectionScope : Fixed bug causing GL attribute state to leak (#2991).
+- GafferUI::PlugValueWidget : Fixed bug causing output plugs to be unaffected by context (#3132).
+- GafferImage::BleedFill : Fixed bug regarding negative inputs (#3132).
+- TransformTool :
+  - Fixed issue causing unnecessary work when disabled (#3144).
+  - Fixed crash in selection processing code (#3136).
+- Stats app : Fixed context management bug when computing image properties (#3147).
+- Docs : Fixed broken link in introduction (#3140).
+
+0.53.5.0 (relative to 0.53.4.0)
+========
+
+Features
+--------
+
+- Reference : Added support for fileName search paths (#3049).
+  - Set the new `GAFFER_REFERENCE_PATHS` environment variable in order to load relative Reference files.
+
+Improvements
+------------
+
+- ArnoldShader/ArnoldLight :
+  - Added support for "gaffer.default" and "gaffer.userDefault" metadata (#3112).
+    There is an example .mtd file which provides Arnold 5.2 compatibility in contrib/arnold (#3115).
+  - Exposed the geometry parameters for the `standard_surface` shader in the NodeEditor (#3104).
+
+Fixes
+-----
+
+- Catalogue : Fixed bug when viewing a Catalogue after a ShaderView (#3113).
+  - Note this is actually a change to ShaderPlug itself, not to Catalogue.
+- Camera : Fixed bug in compatibility config (#3100).
+- Wedge : Fixed to work without compatibility configs (#3122).
+- AnimationEditor : Fixed bug affecting animated promoted plugs (#3106).
+- UIEditor : Fixed bug with '/' in presets (we now replace '/' with '_') (#3103).
+- Viewer : Fixed potential deadlocks when editing the camera in the Viewer (#3121).
+
+Documentation
+-------------
+
+- Added "Anatomy of a Camera" article to "Working with Scenes" section (#3050).
+- Added missing shortguts for "Controls and Shortcuts" (#3111).
+- Fixed recent screengrab errors and build targets (#3066).
+- Fixed shader assignment variable in Python tutorial (#3099).
+- Fixed reference to 'root' in Expression Scripting Reference (#3107).
 
 0.53.4.0 (relative to 0.53.3.0)
 ========

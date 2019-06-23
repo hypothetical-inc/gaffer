@@ -46,7 +46,7 @@ import GafferImage
 import GafferScene
 import GafferSceneTest
 
-@unittest.skipIf( "TRAVIS" in os.environ, "OpenGL not set up on Travis" )
+@unittest.skipIf( "TRAVIS" in os.environ or "TF_BUILD" in os.environ, "OpenGL not set up" )
 class OpenGLRenderTest( GafferSceneTest.SceneTestCase ) :
 
 	def test( self ) :
@@ -107,7 +107,7 @@ class OpenGLRenderTest( GafferSceneTest.SceneTestCase ) :
 	def testOutputDirectoryCreation( self ) :
 
 		s = Gaffer.ScriptNode()
-		s["variables"].addMember( "renderDirectory", self.temporaryDirectory() + "/openGLRenderTest" )
+		s["variables"].addChild( Gaffer.NameValuePlug( "renderDirectory", self.temporaryDirectory() + "/openGLRenderTest" ) )
 
 		s["plane"] = GafferScene.Plane()
 

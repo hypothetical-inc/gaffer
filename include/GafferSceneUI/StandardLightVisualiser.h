@@ -62,7 +62,7 @@ class GAFFERSCENEUI_API StandardLightVisualiser : public LightVisualiser
 		StandardLightVisualiser();
 		~StandardLightVisualiser() override;
 
-		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, IECoreGL::ConstStatePtr &state ) const override;
+		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 		static void spotlightParameters( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, float &innerAngle, float &outerAngle, float &lensRadius );
 
@@ -71,7 +71,7 @@ class GAFFERSCENEUI_API StandardLightVisualiser : public LightVisualiser
 		static const char *faceCameraVertexSource();
 
 		static IECoreGL::ConstRenderablePtr ray();
-		static IECoreGL::ConstRenderablePtr pointRays();
+		static IECoreGL::ConstRenderablePtr pointRays( float radius = 0 );
 		static IECoreGL::ConstRenderablePtr distantRays();
 		static IECoreGL::ConstRenderablePtr spotlightCone( float innerAngle, float outerAngle, float lensRadius );
 		static IECoreGL::ConstRenderablePtr environmentSphere( const Imath::Color3f &color, const std::string &textureFileName );
@@ -84,6 +84,7 @@ class GAFFERSCENEUI_API StandardLightVisualiser : public LightVisualiser
 		static IECoreGL::ConstRenderablePtr quadShape();
 		static IECoreGL::ConstRenderablePtr diskShape( float radius );
 		static IECoreGL::ConstRenderablePtr cylinderShape( float radius );
+		static IECoreGL::ConstRenderablePtr pointShape( float radius );
 		static IECoreGL::ConstRenderablePtr cylinderRays( float radius );
 
 };

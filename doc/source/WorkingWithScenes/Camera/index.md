@@ -9,7 +9,7 @@ In this article, we will assume you are fairly familiar with camera terminology 
 Before you begin, we highly recommend you read [Anatomy of a Camera](../AnatomyOfACamera/index.md).
 
 
-## Camera Basics ##
+## Camera basics ##
 
 Each Camera node (_Scene_ > _Source_ > _Camera_) adds a scene containing a single location (`/camera` by default) with a camera object. When previewing the scene in the _Viewer_, the camera object is represented by a wireframe model. The width and size of the frustum on the model roughly corresponds to the angle of view and aspect ratio of the camera.
 
@@ -52,7 +52,7 @@ To select a look-through camera for a _Viewer:_
 
 #### Translating and rotating the look-through camera ####
 
-With the Camera Tool ![Camera Tool](images/gafferSceneUICameraTool.png "Camera Tool") toggled on, you can translate and rotate the look-through camera with the <a href="../../Interface/ControlsAndShortcuts/index.html#d-scenes">camera controls</a>.
+With the Camera Tool ![Camera Tool](images/gafferSceneUICameraTool.png "Camera Tool") toggled on, you can translate and rotate the look-through camera with the [camera controls](../../../../Interface/ControlsAndShortcuts/index.html#d-scenes).
 
 ![Manipulating the camera with the Camera Tool and camera controls](images/taskCameraToolLookThroughCamera.gif "Manipulating the camera with the Camera Tool and camera controls")
 
@@ -71,7 +71,7 @@ To orbit with the look-through camera:
 1. Make sure the Camera Tool ![Camera Tool](images/gafferSceneUICameraTool.png "Camera Tool") (<kbd>T</kbd>) is activated.
 2. Select an object in the scene.
 3. Hit <kbd>F</kbd>. The camera will aim at the object and adjust position.
-4. Use the <a href="../../Interface/ControlsAndShortcuts/index.html#d-scenes">camera controls</a> to orbit around the object.
+4. Use the [camera controls](../../../../Interface/ControlsAndShortcuts/index.html#d-scenes) to orbit around the object.
 
 
 ### Constructing a perspective camera ###
@@ -148,11 +148,11 @@ To add depth of field blur:
 > Depth of field information will only be passed to the renderer if the Camera node's _F Stop_ plug is greater than `0` and a downstream StandardOptions node has its _Depth of Field Blur_ plug enabled and turned on. Otherwise, your render will not have depth of field blur.
 
 
-## Render Overrides and Camera Tweaks ##
+## Render overrides and camera tweaks ##
 
 Depending on your workflow and pipeline process, and how upstream data is inherited by your graph (such as from Reference nodes), you may find yourself in situations where you need to:
 
-- Introduce a camera that, to work correctly, must override one or more of the scene's <a href="../AnatomyOfAScene/index.html#options">render options</a> (such as the film fit), preempting the downstream StandardOptions node.
+- Introduce a camera that, to work correctly, must override one or more of the scene's [render options](../../../AnatomyOfAScene/index.html#options) (such as the film fit), preempting the downstream StandardOptions node.
 - Override an upstream camera's parameters, or preempt the downstream render options, without modifying the associated nodes.
 - Completely override a camera to create a custom camera type.
 
@@ -199,16 +199,14 @@ To add a camera tweak:
     - Value: The new value to use in the operation.
 
 
-## Demos ##
+## Example graphs ##
 
 
 ### Anamorphic camera setup ###
 
-![Preview of anamorphic camera setup demo](images/renderAnamorphicCameraSetup.png "Preview of anamorphic camera setup demo")
+![Preview of anamorphic camera setup demo](images/demoAnamorphicCameraSetup.png "Preview of anamorphic camera setup demo")
 
-```eval_rst
-    :download:`Download demo <demos/demoAnamorphicCameraSetup.gfr>`
-```
+This can be loaded in Gaffer from _Help_ > _Examples_ > _Rendering_ > _Anamorphic Cameras_.
 
 A setup that replicates an anamorphic camera and lens, by rendering with a non-square pixel aspect ratio.
 
@@ -217,9 +215,7 @@ A setup that replicates an anamorphic camera and lens, by rendering with a non-s
 
 ![Preview of Arnold spherical camera demo](images/renderSphericalCameraSetupArnold.png "Preview of Arnold spherical camera demo")
 
-```eval_rst
-    :download:`Download demo <demos/demoSphericalCameraSetupArnold.gfr>`
-```
+This can be loaded in Gaffer from _Help_ > _Examples_ > _Rendering_ > _Spherical Cameras (Arnold)_.
 
 A camera with spherical projection that is compatible with the Arnold renderer. To achieve this, a CameraTweaks node overrides certain camera parameters to create a custom projection type. The tweaks are:
 
@@ -232,7 +228,7 @@ A camera with spherical projection that is compatible with the Arnold renderer. 
 > Due to a bug, when rendering a spherical camera for Arnold, the `filmFit` tweak must be set to _Horizontal_, not _Distort_.
 
 
-## See Also ##
+## See also ##
 
 - [Anatomy of a Camera](../AnatomyOfACamera/index.md)
 - [Camera Node Reference](../../Reference/NodeReference/GafferScene/Camera.md)

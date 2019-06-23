@@ -30,7 +30,7 @@ As with the other startup configs in this tutorial, this one will run in the GUI
     def __macbethTexturePostCreator( node, menu ) :
     
     	node.load(
-    		os.path.expandvars( "$GAFFER_ROOT/resources/references/macbethTexture.grf" )
+    		os.path.expandvars( "$GAFFER_ROOT/resources/examples/references/macbethTexture.grf" )
     	)
     
     nodeMenu = GafferUI.NodeMenu.acquire( application )
@@ -72,7 +72,7 @@ Next, onto the post-creation function, which modifies the recently-created node.
     def __macbethTexturePostCreator( node, menu ) :
     
     	node.load(
-    		os.path.expandvars( "$GAFFER_ROOT/resources/references/macbethTexture.grf" )
+    		os.path.expandvars( "$GAFFER_ROOT/resources/examples/references/macbethTexture.grf" )
     	)
 ```
 
@@ -85,7 +85,7 @@ Next, onto the post-creation function, which modifies the recently-created node.
         :lineno-start: 11
 
         resourcesPath = script["variables"]["projectResources"]["value"].getValue()
-        node.load( resourcesPath + "/references/macbethTexture.grf" )
+        node.load( resourcesPath + "/examples/references/macbethTexture.grf" )
 
     With this approach, you can integrate contextual paths from your pipeline directly into the config.
 ```
@@ -122,24 +122,11 @@ The `append()` convenience method is quite useful, as it wraps several other beh
 That's all! You can add more customized nodes to this config with similar ease, as long as each is managed by its own separate function and registered to the node menu with an `append()` call.
 
 
-## Testing the Node Menu Entry ##
+## Testing the node menu entry ##
 
 Let's try testing the custom node. If you haven't already, save the startup config, then launch a new instance of Gaffer. In the _Graph Editor_, the new entry should appear in the node menu under _Custom_ > _MacbethTexture_, and will create a MacbethTexture node when selected.
 
 ![The MacbethTexture node in the Graph Editor](images/tutorialMacbethTextureNode.png "The MacbethTexture node in the Graph Editor")
-
-
-## Demo: Procedural Macbeth Chart ##
-
-![Demo of the Macbeth texture assigned to a plane, to make a Macbeth chart](images/demoMacbethChart.png "Demo of the Macbeth texture assigned to a plane, to make a Macbeth chart")
-
-Here is a demo of the MacbethTexture node in action. We procedurally generate a Macbeth chart in a 3D scene by connecting the node's output to the _color_ input plug of a surface shader, and then assigning the shader to a plane mesh.
-
-```eval_rst
-    :download:`Download demo <demos/demoMacbethChart.gfr>`
-
-    :download:`Download MacbethTexture reference <../../../../../resources/references/macbethTexture.grf>`
-```
 
 
 ## Recap ##
@@ -147,7 +134,7 @@ Here is a demo of the MacbethTexture node in action. We procedurally generate a 
 Each of the three startup configs in this tutorial series provided relatively simple examples, but we hope to have demonstrated that with just a bit of Python and a few files, you can easily customize the startup of the Gaffer's apps to suit your worklflow and pipeline needs.
 
 
-## See Also ##
+## See also ##
 
 - [Tutorial: Startup Config 1, Custom Global Context Variables](../CreatingConfigurationFiles1/index.md)
 - [Tutorial: Startup Config 2, Custom Bookmarks](../CreatingConfigurationFiles2/index.md)

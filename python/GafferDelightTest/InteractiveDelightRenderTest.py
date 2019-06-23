@@ -63,6 +63,13 @@ class InteractiveDelightRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 
 		pass
 
+	# Disable this test for now as we don't have light filter support in
+	# 3Delight, yet.
+	@unittest.skip( "No light filter support just yet" )
+	def testLightFilters( self ) :
+
+		pass
+
 	def _createInteractiveRender( self ) :
 
 		return GafferDelight.InteractiveDelightRender()
@@ -93,7 +100,7 @@ class InteractiveDelightRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 		light["shape"].setValue( light.Shape.Sphere )
 		light["radius"].setValue( 0.01 )
 		light.loadShader( "maya/osl/pointLight" )
-		light["attributes"].addMember( "dl:visibility.camera", False )
+		light["attributes"].addChild( Gaffer.NameValuePlug( "dl:visibility.camera", False ) )
 
 		return light, light["parameters"]["i_color"]
 

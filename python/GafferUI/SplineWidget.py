@@ -75,7 +75,7 @@ class SplineWidget( GafferUI.Widget ) :
 
 		self.setSpline( spline )
 
-		self.__displayTransformChangedConnection = GafferUI.DisplayTransform.changedSignal().connect( Gaffer.WeakMethod( self.__displayTransformChanged ) )
+		GafferUI.DisplayTransform.changedSignal().connect( Gaffer.WeakMethod( self.__displayTransformChanged ), scoped = False )
 
 		self._qtWidget().paintEvent = Gaffer.WeakMethod( self.__paintEvent )
 
@@ -234,4 +234,5 @@ class SplineWidget( GafferUI.Widget ) :
 
 	def __displayTransformChanged( self ) :
 
+		self.__gradientToDraw = None
 		self._qtWidget().update()

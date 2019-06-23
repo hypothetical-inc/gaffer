@@ -124,7 +124,8 @@ class RenderController::SceneGraph
 		{
 			CameraType = 0,
 			LightType = 1,
-			ObjectType = 2,
+			LightFilterType = 2,
+			ObjectType = 3,
 			FirstType = CameraType,
 			LastType = ObjectType,
 			NoType = LastType + 1
@@ -492,7 +493,7 @@ class RenderController::SceneGraph
 			m_objectHash = objectHash;
 
 			const IECore::NullObject *nullObject = runTimeCast<const IECore::NullObject>( object.get() );
-			if( (type != LightType) && nullObject )
+			if( (type != LightType && type != LightFilterType) && nullObject )
 			{
 				m_objectInterface = nullptr;
 				return hadObjectInterface;
@@ -538,6 +539,10 @@ class RenderController::SceneGraph
 			else if( type == LightType )
 			{
 				m_objectInterface = renderer->light( name, nullObject ? nullptr : object.get(), attributesInterface( renderer ) );
+			}
+			else if( type == LightFilterType )
+			{
+				m_objectInterface = renderer->lightFilter( name, nullObject ? nullptr : object.get(), attributesInterface( renderer ) );
 			}
 			else
 			{
@@ -702,7 +707,7 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 			SceneGraph *sceneGraph,
 			SceneGraph::Type sceneGraphType,
 			unsigned changedGlobalComponents,
-			const Context *context,
+			const ThreadState &threadState,
 			const ScenePlug::ScenePath &scenePath,
 			const ProgressCallback &callback,
 			const PathMatcher *pathsToUpdate
@@ -711,7 +716,7 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 				m_sceneGraph( sceneGraph ),
 				m_sceneGraphType( sceneGraphType ),
 				m_changedGlobalComponents( changedGlobalComponents ),
-				m_context( context ),
+				m_threadState( threadState ),
 				m_scenePath( scenePath ),
 				m_callback( callback ),
 				m_pathsToUpdate( pathsToUpdate )
@@ -742,7 +747,7 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 			// Set up a context to compute the scene at the right
 			// location.
 
-			ScenePlug::PathScope pathScope( m_context, m_scenePath );
+			ScenePlug::PathScope pathScope( m_threadState, m_scenePath );
 
 			// Update the scene graph at this location.
 
@@ -770,7 +775,7 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 				for( const auto &child : children )
 				{
 					childPath.back() = child->name();
-					SceneGraphUpdateTask *t = new( allocate_child() ) SceneGraphUpdateTask( m_controller, child.get(), m_sceneGraphType, m_changedGlobalComponents, m_context, childPath, m_callback, m_pathsToUpdate );
+					SceneGraphUpdateTask *t = new( allocate_child() ) SceneGraphUpdateTask( m_controller, child.get(), m_sceneGraphType, m_changedGlobalComponents, m_threadState, childPath, m_callback, m_pathsToUpdate );
 					spawn( *t );
 				}
 
@@ -808,6 +813,8 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 					return m_controller->m_renderSets.camerasSet().match( m_scenePath );
 				case SceneGraph::LightType :
 					return m_controller->m_renderSets.lightsSet().match( m_scenePath );
+				case SceneGraph::LightFilterType :
+					return m_controller->m_renderSets.lightFiltersSet().match( m_scenePath );
 				case SceneGraph::ObjectType :
 				{
 					unsigned m = m_controller->m_renderSets.lightsSet().match( m_scenePath ) |
@@ -830,7 +837,7 @@ class RenderController::SceneGraphUpdateTask : public tbb::task
 		SceneGraph *m_sceneGraph;
 		SceneGraph::Type m_sceneGraphType;
 		unsigned m_changedGlobalComponents;
-		const Context *m_context;
+		const ThreadState &m_threadState;
 		ScenePlug::ScenePath m_scenePath;
 		const ProgressCallback &m_callback;
 		const PathMatcher *m_pathsToUpdate;
@@ -1067,7 +1074,7 @@ void RenderController::update( const ProgressCallback &callback )
 	updateInternal( callback );
 }
 
-std::shared_ptr<Gaffer::BackgroundTask> RenderController::updateInBackground( const ProgressCallback &callback )
+std::shared_ptr<Gaffer::BackgroundTask> RenderController::updateInBackground( const ProgressCallback &callback, const IECore::PathMatcher &priorityPaths )
 {
 	if( !m_scene || !m_context )
 	{
@@ -1083,7 +1090,11 @@ std::shared_ptr<Gaffer::BackgroundTask> RenderController::updateInBackground( co
 	m_backgroundTask = ParallelAlgo::callOnBackgroundThread(
 		// Subject
 		m_scene.get(),
-		[this, callback] {
+		[this, callback, priorityPaths] {
+			if( !priorityPaths.isEmpty() )
+			{
+				updateInternal( callback, &priorityPaths );
+			}
 			updateInternal( callback );
 		}
 	);
@@ -1151,7 +1162,7 @@ void RenderController::updateInternal( const ProgressCallback &callback, const I
 
 			tbb::task_group_context taskGroupContext( tbb::task_group_context::isolated );
 			SceneGraphUpdateTask *task = new( tbb::task::allocate_root( taskGroupContext ) ) SceneGraphUpdateTask(
-				this, sceneGraph, (SceneGraph::Type)i, m_changedGlobalComponents, Context::current(), ScenePlug::ScenePath(), callback, pathsToUpdate
+				this, sceneGraph, (SceneGraph::Type)i, m_changedGlobalComponents, ThreadState::current(), ScenePlug::ScenePath(), callback, pathsToUpdate
 			);
 			tbb::task::spawn_root_and_wait( *task );
 		}

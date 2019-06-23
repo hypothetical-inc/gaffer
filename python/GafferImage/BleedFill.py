@@ -107,6 +107,7 @@ class BleedFill( GafferImage.ImageProcessor ) :
 		self["__grade"] = GafferImage.Grade( "Grade" )
 		self["__grade"]['channels'].setValue( "*" )
 		self["__grade"]['multiply'].setValue( imath.Color4f( 0.1 ) )
+		self["__grade"]['blackClamp'].setValue( False )
 		self["__grade"]["in"].setInput( self["__downsample"]["out"] )
 
 		self["__blurLoop"]["next"].setInput( self["__grade"]["out"] )
@@ -114,7 +115,7 @@ class BleedFill( GafferImage.ImageProcessor ) :
 
 		self["__reverseLoopContext"] = GafferImage.ImageContextVariables()
 		self["__reverseLoopContext"]["in"].setInput( self["__blurLoop"]["previous"] )
-		self["__reverseLoopContext"]["variables"].addMember( "loop:index", IECore.IntData( 0 ), "loopIndex" )
+		self["__reverseLoopContext"]["variables"].addChild( Gaffer.NameValuePlug( "loop:index", IECore.IntData( 0 ), "loopIndex" ) )
 
 		self["__reverseLoopExpression"] = Gaffer.Expression()
 		self["__reverseLoopExpression"].setExpression( inspect.cleandoc(

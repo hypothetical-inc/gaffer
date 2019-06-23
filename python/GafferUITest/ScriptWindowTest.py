@@ -87,5 +87,23 @@ class ScriptWindowTest( GafferUITest.TestCase ) :
 		w6 = GafferUI.ScriptWindow.acquire( s3, createIfNecessary = True )
 		self.assertTrue( w6.scriptNode().isSame( s3 ) )
 
+	def testTitleChangedSignal( self ) :
+
+		self.__title = ""
+
+		s = Gaffer.ScriptNode()
+		w = GafferUI.ScriptWindow.acquire( s )
+
+		initialTitle = w.setTitle( "a" )
+		self.assertEqual( w.getTitle(), "a" )
+
+		def grabTitle( window, newTitle ) :
+			self.__title = newTitle
+
+		w.titleChangedSignal().connect( grabTitle, scoped = False )
+
+		w.setTitle( "b" )
+		self.assertEqual( self.__title, "b" )
+
 if __name__ == "__main__":
 	unittest.main()

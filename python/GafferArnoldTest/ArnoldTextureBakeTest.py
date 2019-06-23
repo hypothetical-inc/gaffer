@@ -36,6 +36,7 @@
 
 import os
 import inspect
+import unittest
 
 import imath
 
@@ -98,7 +99,6 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		shaderAssignment["filter"].setInput( allFilter["out"] )
 		shaderAssignment["shader"].setInput( standardSurface["out"] )
 
-
 		uvScaleCode = GafferOSL.OSLCode()
 		uvScaleCode["out"].addChild( Gaffer.V3fPlug( "uvScaled", direction = Gaffer.Plug.Direction.Out ) )
 		uvScaleCode["code"].setValue( 'uvScaled = vector( u * 2, v * 2, 0 );' )
@@ -114,7 +114,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		uvScaleOSL = GafferOSL.OSLObject()
 		uvScaleOSL["in"].setInput( shaderAssignment["out"] )
 		uvScaleOSL["filter"].setInput( allFilter["out"] )
-		uvScaleOSL["shader"].setInput( outObject2["out"] )
+		uvScaleOSL["shader"].setInput( outObject2["out"]["out"] )
 		uvScaleOSL["interpolation"].setValue( 5 )
 
 
@@ -134,9 +134,10 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 
 		lights = []
 		for color, rotate in [
-				((1,0,0),(0,0,0) ), 
-				((0,1,0),(0,90,0) ), 
-				((0,0,1),(-90,0,0) ) ]:
+			( ( 1, 0, 0 ), ( 0, 0, 0) ),
+			( ( 0, 1, 0 ), ( 0, 90, 0 ) ),
+			( ( 0, 0, 1 ), ( -90, 0, 0 ) )
+		] :
 			light = GafferArnold.ArnoldLight()
 			light.loadShader( "distant_light" )
 			light["parameters"]["color"].setValue( imath.Color3f( *color ) )
@@ -186,7 +187,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 			"""
 			i = context.get( "loop:index", 0 )
 			layer = context.get( "collect:layerName", "beauty" )
-			x = i % 2 
+			x = i % 2
 			y = i / 2
 			parent["ImageReader"]["fileName"] = '""" + self.temporaryDirectory() + """/bakeSpheres/%s/%s.%i.tx' % ( layer, layer, 1001 + x + y * 10 )
 
@@ -269,7 +270,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		uvScaleOSL = GafferOSL.OSLObject()
 		uvScaleOSL["in"].setInput( sphere["out"] )
 		uvScaleOSL["filter"].setInput( allFilter["out"] )
-		uvScaleOSL["shader"].setInput( outObject2["out"] )
+		uvScaleOSL["shader"].setInput( outObject2["out"]["out"] )
 		uvScaleOSL["interpolation"].setValue( 5 )
 
 		mapOffset = GafferScene.MapOffset()
@@ -310,6 +311,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 			self.assertGreater( l, 2 )
 			self.assertLess( l, 8 )
 
+	@unittest.skipIf( "TRAVIS" in os.environ or "TF_BUILD" in os.environ, "Arnold license not available" )
 	def testMerging( self ):
 
 		allFilter = GafferScene.PathFilter()
@@ -329,7 +331,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		shaderAssignment["shader"].setInput( uvGradientCode["out"]["out"] )
 
 		# Set up a random id from 0 - 3 on each face
-		
+
 		randomCode = GafferOSL.OSLCode()
 		randomCode["out"].addChild( Gaffer.IntPlug( "randomId", direction = Gaffer.Plug.Direction.Out ) )
 		randomCode["code"].setValue( 'randomId = int(cellnoise( P * 100 ) * 4);' )
@@ -346,7 +348,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		oSLObject = GafferOSL.OSLObject()
 		oSLObject["in"].setInput( shaderAssignment["out"] )
 		oSLObject["filter"].setInput( allFilter["out"] )
-		oSLObject["shader"].setInput( outObject["out"] )
+		oSLObject["shader"].setInput( outObject["out"]["out"] )
 		oSLObject["interpolation"].setValue( 2 )
 
 		# Create 4 meshes by picking each of the 4 ids
@@ -377,7 +379,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		oSLObject1 = GafferOSL.OSLObject()
 		oSLObject1["in"].setInput( deleteContextVariables["out"] )
 		oSLObject1["filter"].setInput( allFilter["out"] )
-		oSLObject1["shader"].setInput( outObject1["out"] )
+		oSLObject1["shader"].setInput( outObject1["out"]["out"] )
 		oSLObject1["interpolation"].setValue( 2 )
 
 		deleteFaces = GafferScene.DeleteFaces()
@@ -392,7 +394,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		# First variant:  bake everything, covering the whole 1001 UDIM
 
 		customAttributes1 = GafferScene.CustomAttributes()
-		customAttributes1["attributes"].addMember( 'bake:fileName', IECore.StringData( '${bakeDirectory}/complete/<AOV>/<AOV>.<UDIM>.exr' ) )
+		customAttributes1["attributes"].addChild( Gaffer.NameValuePlug( 'bake:fileName', IECore.StringData( '${bakeDirectory}/complete/<AOV>/<AOV>.<UDIM>.exr' ) ) )
 		customAttributes1["in"].setInput( collectScenes["out"] )
 
 		# Second vaiant: bake just 2 of the 4 meshes, leaving lots of holes that will need filling
@@ -405,21 +407,21 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 
 
 		customAttributes2 = GafferScene.CustomAttributes()
-		customAttributes2["attributes"].addMember( 'bake:fileName', IECore.StringData( '${bakeDirectory}/incomplete/<AOV>/<AOV>.<UDIM>.exr' ) )
+		customAttributes2["attributes"].addChild( Gaffer.NameValuePlug( 'bake:fileName', IECore.StringData( '${bakeDirectory}/incomplete/<AOV>/<AOV>.<UDIM>.exr' ) ) )
 		customAttributes2["in"].setInput( prune["out"] )
 
 
 		# Third variant: bake everything, but with one mesh at a higher resolution
-		
+
 		customAttributes3 = GafferScene.CustomAttributes()
-		customAttributes3["attributes"].addMember( 'bake:fileName', IECore.StringData( '${bakeDirectory}/mismatch/<AOV>/<AOV>.<UDIM>.exr' ) )
+		customAttributes3["attributes"].addChild( Gaffer.NameValuePlug( 'bake:fileName', IECore.StringData( '${bakeDirectory}/mismatch/<AOV>/<AOV>.<UDIM>.exr' ) ) )
 		customAttributes3["in"].setInput( collectScenes["out"] )
 
 		pathFilter2 = GafferScene.PathFilter()
 		pathFilter2["paths"].setValue( IECore.StringVectorData( [ '/2' ] ) )
 
 		customAttributes = GafferScene.CustomAttributes()
-		customAttributes["attributes"].addMember( 'bake:resolution', IECore.IntData( 200 ) )
+		customAttributes["attributes"].addChild( Gaffer.NameValuePlug( 'bake:resolution', IECore.IntData( 200 ) ) )
 		customAttributes["filter"].setInput( pathFilter2["out"] )
 		customAttributes["in"].setInput( customAttributes3["out"] )
 
@@ -436,7 +438,7 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 		arnoldTextureBake["defaultResolution"].setValue( 128 )
 
 		# We want to check the intermediate results
-		arnoldTextureBake["cleanupIntermediateFiles"].setValue( False ) 
+		arnoldTextureBake["cleanupIntermediateFiles"].setValue( False )
 
 		# Dispatch the bake
 		script = Gaffer.ScriptNode()
@@ -504,14 +506,14 @@ class ArnoldTextureBakeTest( GafferSceneTest.SceneTestCase ) :
 				( "mismatch",   200, 0.01,     0.01,     0.01 ) ]:
 			imageReader["fileName"].setValue( self.temporaryDirectory() + "/bakeMerge/" + name + "/beauty/beauty.1001.tx"  )
 			oneLayerReader["fileName"].setValue( self.temporaryDirectory() + "/bakeMerge/" + name + "/beauty/beauty.1001.exr"  )
-			
+
 			self.assertEqual( imageReader["out"]["format"].getValue().width(), expectedSize )
 			self.assertEqual( imageReader["out"]["format"].getValue().height(), expectedSize )
 
 			edgeStats["area"].setValue( imath.Box2i( imath.V2i( 1 ), imath.V2i( expectedSize - 1 ) ) )
 			refDiffStats["area"].setValue( imath.Box2i( imath.V2i( 1 ), imath.V2i( expectedSize - 1 ) ) )
 			refDiffCoveredStats["area"].setValue( imath.Box2i( imath.V2i( 0 ), imath.V2i( expectedSize ) ) )
-		
+
 			# Blue channel is constant, so everything should line up perfectly
 			self.assertEqual( 0, edgeStats["max"].getValue()[2] )
 			self.assertEqual( 0, refDiffStats["max"].getValue()[2] )

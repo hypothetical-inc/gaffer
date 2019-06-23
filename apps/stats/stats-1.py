@@ -234,8 +234,6 @@ class stats( Gaffer.Application ) :
 			}
 		)
 
-		self.__vtuneMonitor = None
-
 	def _run( self, args ) :
 
 		if args["cacheMemoryLimit"].value :
@@ -278,8 +276,8 @@ class stats( Gaffer.Application ) :
 		if args["vtune"].value :
 			try:
 				self.__vtuneMonitor = Gaffer.VTuneMonitor()
-				self.__vtuneMonitor.setActive(True)
 			except AttributeError:
+				self.__vtuneMonitor = None
 				IECore.msg( IECore.Msg.Level.Error, "gui", "unable to create requested VTune monitor" )
 
 		self.__output = file( args["outputFile"].value, "w" ) if args["outputFile"].value else sys.stdout
@@ -488,7 +486,7 @@ class stats( Gaffer.Application ) :
 
 		memory = _Memory.maxRSS()
 		with _Timer() as sceneTimer :
-			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager() :
+			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
 				with contextSanitiser :
 					computeScene()
 
@@ -528,18 +526,19 @@ class stats( Gaffer.Application ) :
 
 		memory = _Memory.maxRSS()
 		with _Timer() as imageTimer :
-			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager() :
+			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
 				with contextSanitiser :
 					computeImage()
 
 		self.__timers["Image generation"] = imageTimer
 		self.__memory["Image generation"] = _Memory.maxRSS() - memory
 
-		items = [
-			( "Format", image["format"].getValue() ),
-			( "Data window", image["dataWindow"].getValue() ),
-			( "Channel names", image["channelNames"].getValue() ),
-		]
+		with self.__context( script, args ) as context :
+			items = [
+				( "Format", image["format"].getValue() ),
+				( "Data window", image["dataWindow"].getValue() ),
+				( "Channel names", image["channelNames"].getValue() ),
+			]
 
 		self.__output.write( "\nImage :\n\n" )
 		self.__writeItems( items )
@@ -561,7 +560,7 @@ class stats( Gaffer.Application ) :
 
 		memory = _Memory.maxRSS()
 		with _Timer() as taskTimer :
-			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager() :
+			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
 				with Gaffer.Context( script.context() ) as context :
 					for frame in self.__frames( script, args ) :
 						context.setFrame( frame )
@@ -583,6 +582,17 @@ class stats( Gaffer.Application ) :
 			( "", "" ),
 			( "Object pool limit", _Memory( objectPool.getMaxMemoryUsage() ) ),
 			( "Object pool usage", _Memory( objectPool.memoryUsage() ) ),
+		] )
+
+		import IECoreScene
+		if "IECoreScene" in sys.modules :
+			items.extend( [
+				( "", "" ),
+				( "Scene interface limit", IECoreScene.SharedSceneInterfaces.getMaxScenes() ),
+				( "Scene interfaces", IECoreScene.SharedSceneInterfaces.numScenes() ),
+			] )
+
+		items.extend( [
 			( "", "" ),
 			( "Max resident size", _Memory.maxRSS() ),
 		] )

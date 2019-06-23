@@ -34,6 +34,7 @@
 #
 ##########################################################################
 
+import os
 import sys
 import unittest
 
@@ -73,6 +74,15 @@ class TestCase( GafferTest.TestCase ) :
 		GafferUI.EventLoop.addIdleCallback( f )
 		GafferUI.EventLoop.mainEventLoop().start()
 
+	def assertExampleFilesExist( self ) :
+
+		examples = GafferUI.Examples.registeredExamples()
+		for e in examples.values():
+			self.assertIsNotNone( e['filePath'] )
+			self.assertNotEqual( e['filePath'], "" )
+			expanded = os.path.expandvars( e['filePath'] )
+			self.assertTrue( os.path.exists( expanded ), "%s does not exist" % expanded )
+
 	@staticmethod
 	def __widgetInstances() :
 
@@ -85,3 +95,4 @@ class TestCase( GafferTest.TestCase ) :
 				result.append( w() )
 
 		return result
+
