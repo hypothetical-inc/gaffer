@@ -394,6 +394,8 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
+	shader_regex = "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$" if os.name != "nt" else r"(^|.*\\)(?<!maya\\osl\\)(?<!3DelightForKatana\\osl\\)(?!as_|oslCode)[^\\]*$"
+
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
 		os.environ["OSL_SHADER_PATHS"].split( ":" ),
@@ -431,7 +433,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		#   shaders.
 		# - [^/]*$ matches the rest of the shader name, ensuring it
 		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		matchExpression = re.compile( shader_regex ),
 		searchTextPrefix = "osl",
 	)
 
