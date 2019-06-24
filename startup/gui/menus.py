@@ -231,6 +231,8 @@ if "APPLESEED" in os.environ :
 
 			return node
 
+		appleseed_matcher = "(^|.*/)as_[^/]*$" if os.name != "nt" else r"(^|.*\\)as_[^\\]*$"
+
 		GafferSceneUI.ShaderUI.appendShaders(
 			nodeMenu.definition(), "/Appleseed/Shader",
 			os.environ["APPLESEED_SEARCHPATH"].split( os.pathsep ),
@@ -238,7 +240,7 @@ if "APPLESEED" in os.environ :
 			__shaderNodeCreator,
 			# Show only the OSL shaders from the Appleseed shader
 			# library.
-			matchExpression = re.compile( "(^|.*/)as_[^/]*$")
+			matchExpression = re.compile( appleseed_matcher )
 		)
 
 		GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
@@ -393,6 +395,8 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
+	shader_regex = "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$" if os.name != "nt" else r"(^|.*\\)(?<!maya\\osl\\)(?<!3DelightForKatana\\osl\\)(?!as_|oslCode)[^\\]*$"
+
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
 		os.environ["OSL_SHADER_PATHS"].split( os.pathsep ),
@@ -430,7 +434,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		#   shaders.
 		# - [^/]*$ matches the rest of the shader name, ensuring it
 		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		matchExpression = re.compile( shader_regex ),
 		searchTextPrefix = "osl",
 	)
 
