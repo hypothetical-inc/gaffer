@@ -50,12 +50,13 @@ else
 	platform=osx
 fi
 
-buildDir="build/gaffer-$gafferMilestoneVersion.$gafferMajorVersion.$gafferMinorVersion.$gafferPatchVersion-$platform"
+# The first argument can be used to specify a directory to install to
+buildDir=${1:-"build/gaffer-$gafferMilestoneVersion.$gafferMajorVersion.$gafferMinorVersion.$gafferPatchVersion-$platform"}
 
 # Get the prebuilt dependencies package and unpack it into the build directory
 
 dependenciesVersion="0.54.0.0"
-dependenciesVersionSuffix="-rc2"
+dependenciesVersionSuffix=""
 dependenciesFileName="gafferDependencies-$dependenciesVersion-$platform.tar.gz"
 downloadURL="https://github.com/GafferHQ/dependencies/releases/download/$dependenciesVersion$dependenciesVersionSuffix/$dependenciesFileName"
 

@@ -282,7 +282,7 @@ options.Add(
 		"GAFFERCORTEX",
 		"Builds and installs the GafferCortex modules. These are deprecated and will "
 		"be removed completely in a future version.",
-		True
+		False
 	)
 )
 
@@ -791,7 +791,7 @@ libraries = {
 		"pythonEnvAppends" : {
 			"CPPPATH" : [ "$ARNOLD_ROOT/include" ],
 			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
-			"LIBS" : [ "Gaffer", "GafferScene", "GafferBindings", "GafferVDB", "GafferDispatch", "GafferArnold", "GafferOSL" ],
+			"LIBS" : [ "Gaffer", "GafferScene", "GafferBindings", "GafferVDB", "GafferDispatch", "GafferArnold", "GafferOSL", "IECoreScene$CORTEX_LIB_SUFFIX" ],
 		},
 		"requiredOptions" : [ "ARNOLD_ROOT" ],
 		"additionalFiles" : [ "arnold/plugins/gaffer.mtd" ],

@@ -1,3 +1,5 @@
+<!-- !NO_SCROLLSPY -->
+
 # Getting Started #
 
 Here you can find information and instructions about how to install and configure Gaffer.
@@ -7,6 +9,8 @@ Here you can find information and instructions about how to install and configur
 
 - [Installing Gaffer](InstallingGaffer/index.md)
 - [Launching Gaffer for the First Time](LaunchingGafferFirstTime/index.md)
+
+After you have installed Gaffer, we recommend that you familiarize yourself with the application and its basic concepts by following the [Assembling the Gaffer Bot](TutorialAssemblingTheGafferBot/index.md) tutorial.
 
 
 ### Complete installation ###
@@ -24,6 +28,7 @@ Here you can find information and instructions about how to install and configur
 
     InstallingGaffer/index.md
     LaunchingGafferFirstTime/index.md
+    TutorialAssemblingTheGafferBot/index.md
     SettingUpGafferCommand/index.md
     ConfiguringGafferForThirdPartyTools/index.md
 ```

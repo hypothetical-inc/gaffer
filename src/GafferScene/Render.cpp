@@ -281,25 +281,31 @@ void Render::execute() const
 		GafferScene::RendererAlgo::createOutputDirectories( globals.get() );
 	}
 
-	std::unique_ptr<PerformanceMonitor> performanceMonitor;
+	PerformanceMonitorPtr performanceMonitor;
 	if( const BoolData *d = globals->member<const BoolData>( g_performanceMonitorOptionName ) )
 	{
 		if( d->readable() )
 		{
-			performanceMonitor.reset( new PerformanceMonitor );
+			performanceMonitor = new PerformanceMonitor;
 		}
 	}
-	Monitor::Scope performanceMonitorScope( performanceMonitor.get() );
+	Monitor::Scope performanceMonitorScope( performanceMonitor );
 
 	RendererAlgo::outputOptions( globals.get(), renderer.get() );
 	RendererAlgo::outputOutputs( globals.get(), renderer.get() );
 
-	RendererAlgo::RenderSets renderSets( adaptedInPlug() );
+	{
+		// Using nested scope so that we free the memory used by `renderSets`
+		// and `lightLinks` before we call `render()`.
+		RendererAlgo::RenderSets renderSets( adaptedInPlug() );
+		RendererAlgo::LightLinks lightLinks;
 
-	RendererAlgo::outputCameras( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
-	RendererAlgo::outputLights( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
-	RendererAlgo::outputLightFilters( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
-	RendererAlgo::outputObjects( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
+		RendererAlgo::outputCameras( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
+		RendererAlgo::outputLights( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+		RendererAlgo::outputLightFilters( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+		lightLinks.outputLightFilterLinks( adaptedInPlug() );
+		RendererAlgo::outputObjects( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+	}
 
 	if( renderScope.sceneTranslationOnly() )
 	{

@@ -35,6 +35,7 @@
 ##########################################################################
 
 import os
+import sys
 import time
 import unittest
 import imath
@@ -50,7 +51,7 @@ import GafferSceneTest
 import GafferImage
 import GafferArnold
 
-@unittest.skipIf( "TRAVIS" in os.environ, "No license available on Travis" )
+@unittest.skipIf( GafferTest.inCI( { 'travis' } ), "No license available on Travis" )
 class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 
 	def testTwoRenders( self ) :
@@ -159,9 +160,6 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 		script["objectToImage"]["object"].setValue( IECoreImage.ImageDisplayDriver.storedImage( "subdivisionTest" ) )
 		self.assertAlmostEqual( script["imageStats"]["average"][3].getValue(), 0.424, delta = 0.001 )
 
-	# This test covers a sublety in how we get and return AtNodes from and to
-	# Arnold that can cause issues with light linking. See
-	# `ArnoldLight::attributes()` in Renderer.cpp for more information.
 	def testLightLinkingAfterParameterUpdates( self ) :
 
 		s = Gaffer.ScriptNode()
@@ -239,8 +237,7 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 
 		self.assertEqual( c, imath.Color3f( 1.0 ) )
 
-		# Change a value on the light causing it to get reconstructed in the
-		# backend. At this point the light should still be linked to the sphere
+		# Change a value on the light. The light should still be linked to the sphere
 		# and we should get the same result as before.
 		s["Light"]['parameters']['shadow_density'].setValue( 0.0 )
 

@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2017, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2019, Image Engine Design Inc. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,48 +34,47 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef GAFFERSCENE_EVALUATELIGHTLINKS_H
-#define GAFFERSCENE_EVALUATELIGHTLINKS_H
+#include "boost/python.hpp"
 
-#include "GafferScene/SceneProcessor.h"
+#include "ProcessBinding.h"
 
-namespace GafferScene
+#include "Gaffer/Context.h"
+#include "Gaffer/Plug.h"
+#include "Gaffer/Process.h"
+
+#include "IECorePython/ExceptionBinding.h"
+#include "IECorePython/RefCountedBinding.h"
+
+using namespace Gaffer;
+using namespace IECorePython;
+
+namespace
 {
 
-// SceneProcessor that prepares light linking for the renderer backend by
-// resolving SetExpressions. If no SetExpression is given to determine the
-// lights to be linked, the default set of lights is used to
-// determine linking.
-class GAFFERSCENE_API EvaluateLightLinks : public GafferScene::SceneProcessor
+PlugPtr processExceptionPlug( const ProcessException &e )
+{
+	return const_cast<Plug *>( e.plug() );
+}
+
+ContextPtr processExceptionContext( const ProcessException &e )
+{
+	return const_cast<Context *>( e.context() );
+}
+
+const char *processExceptionProcessType( const ProcessException &e )
+{
+	return e.processType().c_str();
+}
+
+} // namespace
+
+void GafferModule::bindProcess()
 {
 
-	public :
+	IECorePython::ExceptionClass<ProcessException>( "ProcessException", PyExc_RuntimeError )
+		.def( "plug", &processExceptionPlug )
+		.def( "context", &processExceptionContext )
+		.def( "processType", &processExceptionProcessType )
+	;
 
-		EvaluateLightLinks( const std::string &name=defaultName<EvaluateLightLinks>() );
-		~EvaluateLightLinks() override;
-
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::EvaluateLightLinks, EvaluateLightLinksTypeId, SceneProcessor );
-
-		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
-
-	protected:
-
-		void hashAttributes( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
-		IECore::ConstCompoundObjectPtr computeAttributes( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;
-
-		void hash( const Gaffer::ValuePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		void compute( Gaffer::ValuePlug *output, const Gaffer::Context *context ) const override;
-
- private:
-
-		Gaffer::ObjectPlug *lightNamesPlug();
-		const Gaffer::ObjectPlug *lightNamesPlug() const;
-
-		static size_t g_firstPlugIndex;
-};
-
-IE_CORE_DECLAREPTR( EvaluateLightLinks )
-
-} // namespace GafferScene
-
-#endif // GAFFERSCENE_EVALUATELIGHTLINKS_H
+}
