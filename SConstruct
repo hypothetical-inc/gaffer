@@ -320,6 +320,10 @@ options.Add(
 # Basic environment object. All the other environments will be based on this.
 ###############################################################################################
 
+###########################################################################################
+# All platforms
+###########################################################################################
+
 env = Environment(
 
 	options = options,
@@ -362,16 +366,32 @@ env = Environment(
 # this should turn off warnings from those headers, allowing us to
 # build with -Werror. there are so many warnings from boost
 # in particular that this would be otherwise impossible.
-for path in [
+
+# Using Scons recommendation of CPPPATH for cross-platform
+# would create a lot of extra code throughout the module
+# configuration, so it is handled here.
+
+def formatSystemIncludes( e, includeList ) :
+	if type(includeList) != list :
+		includeList = [includeList]
+
+	includeList = [ i for i in includeList if e.subst( i ) != "" ]
+	if e[ "PLATFORM" ] == "win32" :
+		formattedList = [ "/I{}".format(i) for i in includeList ]
+	else:
+		formattedList = []
+		for i in includeList:
+			formattedList += [ "-isystem", i ]
+	return formattedList
+
+systemIncludes = [
 		"$BUILD_DIR/include",
 		"$BUILD_DIR/include/python$PYTHON_VERSION",
 		"$BUILD_DIR/include/OpenEXR",
 		"$BUILD_DIR/include/GL",
-	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"] :
+	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"]
 
-	env.Append(
-		CXXFLAGS = [ "-isystem", path ]
-	)
+env.Append( CXXFLAGS = formatSystemIncludes( env, systemIncludes ) )
 
 if "clang++" in os.path.basename( env["CXX"] ):
 	env.Append(
