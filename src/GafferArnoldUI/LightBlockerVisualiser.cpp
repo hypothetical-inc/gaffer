@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "Export.h"
+
 #include "GafferSceneUI/LightFilterVisualiser.h"
 
 #include "Gaffer/Metadata.h"
@@ -55,7 +57,7 @@ using namespace IECoreGL;
 using namespace Gaffer;
 using namespace GafferSceneUI;
 
-namespace
+namespace GafferArnoldUI
 {
 
 const IECore::CompoundData *parametersAndMetadataTarget( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, InternedString &metadataTarget )
@@ -173,7 +175,7 @@ void setFalloffGroupSettings( IECoreGL::Group *group, const IECore::CompoundData
 // LightBlockerVisualiser implementation.
 //////////////////////////////////////////////////////////////////////////
 
-class GAFFERSCENEUI_API LightBlockerVisualiser : public LightFilterVisualiser
+class GAFFERARNOLDUI_API LightBlockerVisualiser : public LightFilterVisualiser
 {
 
 	public :
@@ -458,4 +460,4 @@ IECoreGL::ConstRenderablePtr LightBlockerVisualiser::planeShape( const IECore::C
 	return group;
 }
 
-} // namespace
+} // namespace GafferArnoldUI
