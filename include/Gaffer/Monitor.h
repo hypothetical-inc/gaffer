@@ -59,7 +59,7 @@ class GAFFER_API Monitor : public IECore::RefCounted
 
 		using MonitorSet = boost::container::flat_set<MonitorPtr>;
 
-		class GAFFER_API Scope : boost::noncopyable
+		class GAFFER_API Scope : ThreadState::Scope
 		{
 
 			public :
