@@ -34,9 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferArnoldUI/Private/VisualiserAlgo.h"
+#include "Export.h"
 
-#include "GafferOSL/ShadingEngineAlgo.h"
+#include "GafferOSL/ShadingEngine.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
 
@@ -69,7 +69,7 @@ using namespace IECoreGLPreview;
 using namespace GafferSceneUI;
 using namespace GafferArnoldUI::Private;
 
-namespace
+namespace GoboVisualiserUtils
 {
 
 // \todo Borrowed from StandardLightVisualiser, we need to extract these static
@@ -98,10 +98,10 @@ IECoreGL::RenderablePtr quadWireframe( const V2f &size )
 /// \todo We have similar methods in several places. Can we consolidate them all somewhere? Perhaps a new
 /// method of CompoundData?
 template<typename T>
-T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue )
+T parameterOrDefault(const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue)
 {
 	typedef IECore::TypedData<T> DataType;
-	if( const DataType *d = parameters->member<DataType>( name ) )
+	if (const DataType *d = parameters->member<DataType>(name))
 	{
 		return d->readable();
 	}
@@ -176,6 +176,7 @@ const char *texturedFragSource()
 	;
 }
 
+<<<<<<< HEAD
 const char *constantFragSource()
 {
 	return
@@ -187,7 +188,96 @@ const char *constantFragSource()
 }
 
 
+=======
+<<<<<<< HEAD
+>>>>>>> abc85190d... GafferArnoldUI : add symbol exports
 class GoboVisualiser final : public LightFilterVisualiser
+=======
+// OSLTextureEvaluation
+
+CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution )
+{
+	GafferOSL::ShadingEnginePtr shadingEngine = new GafferOSL::ShadingEngine( shaderNetwork );
+
+	CompoundDataPtr shadingPoints = new CompoundData();
+
+	V3fVectorDataPtr pData = new V3fVectorData;
+	FloatVectorDataPtr uData = new FloatVectorData;
+	FloatVectorDataPtr vData = new FloatVectorData;
+
+	vector<V3f> &pWritable = pData->writable();
+	vector<float> &uWritable = uData->writable();
+	vector<float> &vWritable = vData->writable();
+
+	int numPoints = resolution * resolution;
+
+	pWritable.reserve( numPoints );
+	uWritable.reserve( numPoints );
+	vWritable.reserve( numPoints );
+
+	for( int y = 0; y < resolution; ++y )
+	{
+		for( int x = 0; x < resolution; ++x )
+		{
+			uWritable.push_back( (float)(x + 0.5f) / resolution );
+			// V is flipped because we're generating a Cortex image,
+			// and Cortex has the pixel origin at the top left.
+			vWritable.push_back( 1.0f - ( (y + 0.5f) / resolution ) );
+			pWritable.push_back( V3f( x + 0.5f, y + 0.5f, 0.0f ) );
+		}
+	}
+
+	shadingPoints->writable()["P"] = pData;
+	shadingPoints->writable()["u"] = uData;
+	shadingPoints->writable()["v"] = vData;
+
+	CompoundDataPtr shadingResult = shadingEngine->shade( shadingPoints.get() );
+	ConstColor3fVectorDataPtr colors = shadingResult->member<Color3fVectorData>( "Ci" );
+
+	CompoundDataPtr result = new CompoundData();
+
+	if( colors )
+	{
+		Imath::Box2i dataWindow( Imath::V2i( 0.0f ), Imath::V2i( resolution - 1 ) );
+		Imath::Box2i displayWindow( Imath::V2i( 0.0f ), Imath::V2i( resolution - 1 ) );
+
+		result->writable()["dataWindow"] = new Box2iData( dataWindow );
+		result->writable()["displayWindow"] = new Box2iData( displayWindow );
+
+		FloatVectorDataPtr redChannelData = new FloatVectorData();
+		FloatVectorDataPtr greenChannelData = new FloatVectorData();
+		FloatVectorDataPtr blueChannelData = new FloatVectorData();
+		std::vector<float> &r = redChannelData->writable();
+		std::vector<float> &g = greenChannelData->writable();
+		std::vector<float> &b = blueChannelData->writable();
+
+		vector<Color3f>::size_type numColors = colors->readable().size();
+		r.reserve( numColors );
+		g.reserve( numColors );
+		b.reserve( numColors );
+
+		for( vector<Color3f>::size_type u = 0; u < numColors; ++u )
+		{
+			Color3f c = colors->readable()[u];
+
+			r.push_back( c[0] );
+			g.push_back( c[1] );
+			b.push_back( c[2] );
+		}
+
+		CompoundDataPtr channelData = new CompoundData;
+		channelData->writable()["R"] = redChannelData;
+		channelData->writable()["G"] = greenChannelData;
+		channelData->writable()["B"] = blueChannelData;
+
+		result->writable()["channels"] = channelData;
+	}
+
+	return result;
+}
+
+class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
+>>>>>>> GafferArnoldUI : add symbol exports
 {
 
 	public :
@@ -271,12 +361,18 @@ Visualisations GoboVisualiser::visualise( const IECore::InternedString &attribut
 			imageData->writable()["dataWindow"] = singlePixelWindow;
 			imageData->writable()["displayWindow"] = singlePixelWindow;
 
+<<<<<<< HEAD
 			CompoundDataPtr channels = new CompoundData;
 			channels->writable()["R"] = new FloatVectorData( { goboColor[0] } );
 			channels->writable()["G"] = new FloatVectorData( { goboColor[1] } );
 			channels->writable()["B"] = new FloatVectorData( { goboColor[2] } );
 			imageData->writable()["channels"] = channels;
 		}
+=======
+	if( imageData->readable().empty() )
+	{
+		const Color3f goboColor = GoboVisualiserUtils::parameterOrDefault( filterParameters, "slidemap", Color3f( 1 ) );
+>>>>>>> abc85190d... GafferArnoldUI : add symbol exports
 
 		shaderParameters->members()["texture"] = imageData;
 
@@ -307,10 +403,10 @@ Visualisations GoboVisualiser::visualise( const IECore::InternedString &attribut
 	const float baseRadius = sin( halfAngle ) + lensRadius;
 	const float baseDistance = cos( halfAngle );
 
-	float rotate = parameterOrDefault( filterParameters, "rotate", 0.0f );
-	float scaleS = parameterOrDefault( filterParameters, "scale_s", 1.0f );
-	float scaleT = parameterOrDefault( filterParameters, "scale_t", 1.0f );
-	V2f offset = parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
+	float rotate = GoboVisualiserUtils::parameterOrDefault( filterParameters, "rotate", 0.0f );
+	float scaleS = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_s", 1.0f );
+	float scaleT = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_t", 1.0f );
+	V2f offset = GoboVisualiserUtils::parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
 
 	Imath::M44f goboTrans;
 
@@ -324,4 +420,4 @@ Visualisations GoboVisualiser::visualise( const IECore::InternedString &attribut
 	return { Visualisation::createOrnament( result, true ) };
 }
 
-} // namespace
+} // namespace GafferArnoldUI
