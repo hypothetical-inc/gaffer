@@ -400,61 +400,149 @@ if "clang++" in os.path.basename( env["CXX"] ):
 
 env["BUILD_DIR"] = os.path.abspath( env["BUILD_DIR"] )
 
-# DISPLAY and HOME are essential for running gaffer when generating
-# the documentation. TERM is needed to get coloured output from the
-# compiler.
-for e in env["ENV_VARS_TO_IMPORT"].split() + [ "DISPLAY", "HOME", "TERM" ] :
-	if e in os.environ :
-		env["ENV"][e] = os.environ[e]
+###########################################################################################
+# POSIX configuration
+###########################################################################################
 
-if env["PLATFORM"] == "darwin" :
+if env["PLATFORM"] != "win32" :
 
-	env.Append( CXXFLAGS = [ "-D__USE_ISOC99" ] )
-	env["GAFFER_PLATFORM"] = "osx"
+	# DISPLAY and HOME are essential for running gaffer when generating
+	# the documentation. TERM is needed to get coloured output from the
+	# compiler.
+	for e in env["ENV_VARS_TO_IMPORT"].split() + [ "DISPLAY", "HOME", "TERM" ] :
+		if e in os.environ :
+			env["ENV"][e] = os.environ[e]
 
-	osxVersion = [ int( v ) for v in platform.mac_ver()[0].split( "." ) ]
-	if osxVersion[0] == 10 and osxVersion[1] > 7 :
-		# Fix problems with Boost 1.55 and recent versions of Clang.
-		env.Append( CXXFLAGS = [ "-DBOOST_HAS_INT128", "-Wno-unused-local-typedef" ] )
+	if env["PLATFORM"] == "darwin" :
 
-elif env["PLATFORM"] == "posix" :
+		env.Append( CXXFLAGS = [ "-D__USE_ISOC99" ] )
+		env["GAFFER_PLATFORM"] = "osx"
 
-	if "g++" in os.path.basename( env["CXX"] ) :
+		osxVersion = [ int( v ) for v in platform.mac_ver()[0].split( "." ) ]
+		if osxVersion[0] == 10 and osxVersion[1] > 7 :
+			# Fix problems with Boost 1.55 and recent versions of Clang.
+			env.Append( CXXFLAGS = [ "-DBOOST_HAS_INT128", "-Wno-unused-local-typedef" ] )
 
-		gccVersion = subprocess.Popen( [ env["CXX"], "-dumpversion" ], env=env["ENV"], stdout=subprocess.PIPE ).stdout.read().strip()
-		gccVersion = [ int( v ) for v in gccVersion.split( "." ) ]
+	else :
 
-		# GCC 4.1.2 in conjunction with boost::flat_map produces crashes when
-		# using the -fstrict-aliasing optimisation (which defaults to on with -O2),
-		# so we turn the optimisation off here, only for that specific GCC version.
-		if gccVersion == [ 4, 1, 2 ] :
-			env.Append( CXXFLAGS = [ "-fno-strict-aliasing" ] )
+		if "g++" in os.path.basename( env["CXX"] ) :
 
-		# GCC emits spurious "assuming signed overflow does not occur"
-		# warnings, typically triggered by the comparisons in Box3f::isEmpty().
-		# Downgrade these back to warning status.
-		if gccVersion >= [ 4, 2 ] :
-			env.Append( CXXFLAGS = [ "-Wno-error=strict-overflow" ] )
+			gccVersion = subprocess.Popen( [ env["CXX"], "-dumpversion" ], env=env["ENV"], stdout=subprocess.PIPE ).stdout.read().strip()
+			gccVersion = [ int( v ) for v in gccVersion.split( "." ) ]
 
-		if gccVersion >= [ 5, 1 ] :
-			env.Append( CXXFLAGS = [ "-D_GLIBCXX_USE_CXX11_ABI=0" ] )
+			# GCC 4.1.2 in conjunction with boost::flat_map produces crashes when
+			# using the -fstrict-aliasing optimisation (which defaults to on with -O2),
+			# so we turn the optimisation off here, only for that specific GCC version.
+			if gccVersion == [ 4, 1, 2 ] :
+				env.Append( CXXFLAGS = [ "-fno-strict-aliasing" ] )
 
-	env["GAFFER_PLATFORM"] = "linux"
+			# GCC emits spurious "assuming signed overflow does not occur"
+			# warnings, typically triggered by the comparisons in Box3f::isEmpty().
+			# Downgrade these back to warning status.
+			if gccVersion >= [ 4, 2 ] :
+				env.Append( CXXFLAGS = [ "-Wno-error=strict-overflow" ] )
 
-env.Append( CXXFLAGS = [ "-std=$CXXSTD", "-fvisibility=hidden" ] )
+			if gccVersion >= [ 5, 1 ] :
+				env.Append( CXXFLAGS = [ "-D_GLIBCXX_USE_CXX11_ABI=0" ] )
 
-if env["BUILD_TYPE"] == "DEBUG" :
-	env.Append( CXXFLAGS = ["-g", "-O0", "-DTBB_USE_DEBUG=1"] )
-elif env["BUILD_TYPE"] == "RELEASE" :
-	env.Append( CXXFLAGS = ["-DNDEBUG", "-DBOOST_DISABLE_ASSERTS", "-O3"] )
-elif env["BUILD_TYPE"] == "RELWITHDEBINFO" :
-	env.Append( CXXFLAGS = ["-DNDEBUG", "-DBOOST_DISABLE_ASSERTS", "-O3", "-g", "-fno-omit-frame-pointer"] )
+		env["GAFFER_PLATFORM"] = "linux"
 
-if env["WARNINGS_AS_ERRORS"] :
+	env.Append( CXXFLAGS = [ "-std=$CXXSTD", "-fvisibility=hidden" ] )
+
+	if env["BUILD_TYPE"] == "DEBUG" :
+		env.Append( CXXFLAGS = ["-g", "-O0", "-DTBB_USE_DEBUG=1"] )
+	elif env["BUILD_TYPE"] == "RELEASE" :
+		env.Append( CXXFLAGS = ["-DNDEBUG", "-DBOOST_DISABLE_ASSERTS", "-O3"] )
+	elif env["BUILD_TYPE"] == "RELWITHDEBINFO" :
+		env.Append( CXXFLAGS = ["-DNDEBUG", "-DBOOST_DISABLE_ASSERTS", "-O3", "-g", "-fno-omit-frame-pointer"] )
+
+	if env["WARNINGS_AS_ERRORS"] :
+		env.Append(
+			CXXFLAGS = [ "-Werror" ],
+			SHLINKFLAGS = [ "-Wl,-fatal_warnings" ],
+		)
+
+###########################################################################################
+# Windows configuration
+###########################################################################################
+
+else:
 	env.Append(
-		CXXFLAGS = [ "-Werror" ],
-		SHLINKFLAGS = [ "-Wl,-fatal_warnings" ],
+		CXXFLAGS = [
+			"/nologo", 
+			"/diagnostics:classic", 
+			"/DWIN32", 
+			"/D_WINDOWS", 
+			"/DOPENEXR_DLL", 
+			"/DNOMINMAX", 
+			"/D__PRETTY_FUNCTION__=__FUNCSIG__",
+			"/DBOOST_ALL_DYN_LINK",
+			"/DBOOST_FILESYSTEM_NO_DEPRICATED",
+			"/DBOOST_SIGNALS_NO_DEPRECATION_WARNING",
+			"/DBOOST_PYTHON_MAX_ARITY=20",
+			"/D_WINDLL",
+			"/D_MBCS",
+			"/Zc:inline", # Remove unreferenced function or data if it is COMDAT or has internal linkage only
+			"/GR", # enable RTTI
+			"/TP", # treat all files as c++ (vs C)
+			"/FC", # display full paths in diagnostics
+			"/EHsc\";\"/MP", # catch c++ exceptions only
+			"/wd4910",	# disable warning C4910 (https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4910?view=vs-2019) generated many times by OpenEXR
+		]
 	)
+
+	if env["WARNINGS_AS_ERRORS"] :
+		env.Append(
+			CXXFLAGS = [ "/WX" ],
+		)
+
+	if env["BUILD_TYPE"] == "DEBUG" :
+		env.Append(
+			CXXFLAGS = 
+			[
+				"-O0",
+				"-Zi",
+				"-MDd",
+				"-DBOOST_DISABLE_ASSERTS",
+				"-bigobj",
+			],
+			CCPDBFLAGS= 
+			[
+				"/Zi",
+				"/Fd${TARGET}.pdb",
+			],
+		)
+	elif env["BUILD_TYPE"] == "RELEASE" :
+		env.Append(
+			CXXFLAGS = 
+			[
+				"-DNDEBUG",  
+				"-MD",	# create multithreaded DLL
+				"-DBOOST_DISABLE_ASSERTS", 
+				"-Ox",
+			] 
+		)
+	elif env["BUILD_TYPE"] == "RELWITHDEBINFO" :
+		env.Append( 
+			CXXFLAGS = 
+			[
+				"-DNDEBUG",
+				"-MD",
+				"-bigobj",
+				"-DBOOST_DISABLE_ASSERTS", 
+				"-Zi",
+			],
+			LINKFLAGS =
+			[
+				"-DEBUG",
+			],
+			CCPDBFLAGS= 
+			[
+				"/Zi",
+				"/Fd${TARGET}.pdb",
+			],
+		)
+
 
 if env["BUILD_CACHEDIR"] != "" :
 	CacheDir( env["BUILD_CACHEDIR"] )
