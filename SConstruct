@@ -1311,7 +1311,8 @@ def buildGraphics( target, source, env ) :
 	if not os.path.isdir( dir ) :
 		os.makedirs( dir )
 
-	queryCommand = env["INKSCAPE"] + " --query-all \"" + svgFileName + "\""
+	inkscapeCmd = env["INKSCAPE"] if env["PLATFORM"] != "win32" else "\"{}\"".format( env["INKSCAPE"] )
+	queryCommand = inkscapeCmd + " --query-all \"" + svgFileName + "\""
 	inkscape = subprocess.Popen( queryCommand, stdout=subprocess.PIPE, shell=True )
 	objects, stderr = inkscape.communicate()
 	if inkscape.returncode :
@@ -1321,7 +1322,7 @@ def buildGraphics( target, source, env ) :
 		tokens = object.split( "," )
 		if tokens[0].startswith( "forExport:" ) :
 			subprocess.check_call(
-				env["INKSCAPE"] + " --export-png=%s/%s.png --export-id=%s --export-width=%d --export-height=%d %s --export-background-opacity=0" % (
+				inkscapeCmd + " --export-png=%s/%s.png --export-id=%s --export-width=%d --export-height=%d %s --export-background-opacity=0" % (
 					dir,
 					tokens[0].split( ":" )[-1],
 					tokens[0],
