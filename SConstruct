@@ -371,12 +371,12 @@ env = Environment(
 # would create a lot of extra code throughout the module
 # configuration, so it is handled here.
 
-def formatSystemIncludes( e, includeList ) :
+def formatSystemIncludes( includeList ) :
 	if type(includeList) != list :
 		includeList = [includeList]
 
-	includeList = [ i for i in includeList if e.subst( i ) != "" ]
-	if e[ "PLATFORM" ] == "win32" :
+	includeList = [ i for i in includeList if env.subst( i ) != "" ]
+	if env[ "PLATFORM" ] == "win32" :
 		formattedList = [ "/I{}".format(i) for i in includeList ]
 	else:
 		formattedList = []
@@ -748,7 +748,7 @@ gafferLib = {}
 if os.path.exists( vTuneRoot ):
 	gafferLib = {
 		"envAppends" : {
-			"CXXFLAGS" : [ "-isystem", "$VTUNE_ROOT/include", "-DGAFFER_VTUNE"],
+			"CXXFLAGS" : [ "-DGAFFER_VTUNE"] + formatSystemIncludes( "$VTUNE_ROOT/include" ),
 			"LIBPATH" : [ "$VTUNE_ROOT/lib64" ],
 			"LIBS" : [ "ittnotify" ]
 		},
@@ -983,12 +983,12 @@ libraries = {
 
 	"GafferAppleseed" : {
 		"envAppends" : {
-			"CXXFLAGS" : [ "-isystem", "$APPLESEED_ROOT/include", "-DAPPLESEED_ENABLE_IMATH_INTEROP", "-DAPPLESEED_USE_SSE" ],
+			"CXXFLAGS" : [ "-DAPPLESEED_ENABLE_IMATH_INTEROP", "-DAPPLESEED_USE_SSE" ] + formatSystemIncludes( "$APPLESEED_ROOT/include" ),
 			"LIBPATH" : [ "$APPLESEED_ROOT/lib" ],
 			"LIBS" : [ "Gaffer", "GafferDispatch", "GafferScene", "appleseed",  "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreAppleseed$CORTEX_LIB_SUFFIX", "OpenImageIO$OIIO_LIB_SUFFIX", "oslquery$OSL_LIB_SUFFIX" ],
 		},
 		"pythonEnvAppends" : {
-			"CXXFLAGS" : [ "-isystem", "$APPLESEED_ROOT/include", "-DAPPLESEED_ENABLE_IMATH_INTEROP", "-DAPPLESEED_USE_SSE" ],
+			"CXXFLAGS" : [ "-DAPPLESEED_ENABLE_IMATH_INTEROP", "-DAPPLESEED_USE_SSE" ] + formatSystemIncludes( "$APPLESEED_ROOT/include" ),
 			"LIBPATH" : [ "$APPLESEED_ROOT/lib" ],
 			"LIBS" : [ "Gaffer", "GafferDispatch", "GafferScene", "GafferBindings", "GafferAppleseed" ],
 		},
