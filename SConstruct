@@ -362,6 +362,25 @@ env = Environment(
 
 )
 
+# Take a dictionary of the form {"old": "new", "old2": "new2",...}
+# and perform platform-specific substitutions on the given file
+def substituteFileText( sourceFile, destFile, subs ) :
+	if len(subs.keys()) == 0:
+		return None
+
+	if env["PLATFORM"] != "win32" :
+		sedSubstitutions = "s/{}/{}/g".format( subs.keys()[ 0 ], subs[ subs.keys()[ 0 ] ] )
+		for i in range( 1, len(subs.keys() ) ) :
+			sedSubstitutions += "; s/{}/{}/g".format( subs.keys()[ i ], subs[subs.keys()[ i ] ] )
+		return env.Command( destFile, sourceFile, "sed \"" + sedSubstitutions + "\" $SOURCE > $TARGET" )
+	else :
+		psSubstitutions = ""
+		for key in subs.keys() :
+			psSubstitutions += " -replace \\\"{}\\\",\\\"{}\\\"".format( key.replace( "!", "\!" ), subs[ key ].replace( "!", "\!" ) )
+		return env.Command( destFile, sourceFile, "powershell -Command \"cat $SOURCE | % {{ $$_{} }} | Out-File -Encoding utf8 $TARGET\"".format( psSubstitutions ) )
+		
+
+
 # include 3rd party headers with -isystem rather than -I.
 # this should turn off warnings from those headers, allowing us to
 # build with -Werror. there are so many warnings from boost
@@ -1134,10 +1153,12 @@ for libraryName, libraryDef in libraries.items() :
 
 	# header install
 
-	sedSubstitutions = "s/!GAFFER_MILESTONE_VERSION!/$GAFFER_MILESTONE_VERSION/g"
-	sedSubstitutions += "; s/!GAFFER_MAJOR_VERSION!/$GAFFER_MAJOR_VERSION/g"
-	sedSubstitutions += "; s/!GAFFER_MINOR_VERSION!/$GAFFER_MINOR_VERSION/g"
-	sedSubstitutions += "; s/!GAFFER_PATCH_VERSION!/$GAFFER_PATCH_VERSION/g"
+	fileSubstitutions = {
+		"!GAFFER_MILESTONE_VERSION!" : "$GAFFER_MILESTONE_VERSION",
+		"!GAFFER_MAJOR_VERSION!" : "$GAFFER_MAJOR_VERSION",
+		"!GAFFER_MINOR_VERSION!" : "$GAFFER_MINOR_VERSION",
+		"!GAFFER_PATCH_VERSION!" : "$GAFFER_PATCH_VERSION",
+	}
 
 	headers = (
 		glob.glob( "include/" + libraryName + "/*.h" ) +
@@ -1147,7 +1168,7 @@ for libraryName, libraryDef in libraries.items() :
 	)
 
 	for header in headers :
-		headerInstall = env.Command( "$BUILD_DIR/" + header, header, "sed \"" + sedSubstitutions + "\" $SOURCE > $TARGET" )
+		headerInstall = substituteFileText( header, "$BUILD_DIR/" + header, fileSubstitutions )
 		libEnv.Alias( "build", headerInstall )
 
 	# bindings library
@@ -1175,7 +1196,7 @@ for libraryName, libraryDef in libraries.items() :
 	)
 
 	for header in bindingsHeaders :
-		headerInstall = env.Command( "$BUILD_DIR/" + header, header, "sed \"" + sedSubstitutions + "\" $SOURCE > $TARGET" )
+		headerInstall = substituteFileText( header, "$BUILD_DIR/" + header, fileSubstitutions )
 		bindingsEnv.Alias( "build", headerInstall )
 
 	# python module binary component
@@ -1211,7 +1232,7 @@ for libraryName, libraryDef in libraries.items() :
 
 	pythonFiles = glob.glob( "python/" + libraryName + "/*.py" ) + glob.glob( "python/" + libraryName + "/*/*.py" )
 	for pythonFile in pythonFiles :
-		pythonFileInstall = env.Command( "$BUILD_DIR/" + pythonFile, pythonFile, "sed \"" + sedSubstitutions + "\" $SOURCE > $TARGET" )
+		pythonFileInstall = substituteFileText( pythonFile, "$BUILD_DIR/" + pythonFile, fileSubstitutions )
 		env.Alias( "build", pythonFileInstall )
 
 	# apps
