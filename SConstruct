@@ -1121,6 +1121,8 @@ libraries = {
 for library in ( "GafferUI", "GafferScene", "GafferSceneUI", "GafferImageUI" ) :
 	if env["PLATFORM"] == "darwin" :
 		libraries[library]["envAppends"].setdefault( "FRAMEWORKS", [] ).append( "OpenGL" )
+	elif env["PLATFORM"] == "win32" :
+		libraries[library]["envAppends"]["LIBS"].append( "opengl32" )
 	else :
 		libraries[library]["envAppends"]["LIBS"].append( "GL" )
 	libraries[library]["envAppends"]["LIBS"].append( "GLEW$GLEW_LIB_SUFFIX" )
