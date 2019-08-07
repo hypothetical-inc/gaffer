@@ -405,12 +405,16 @@ def formatSystemIncludes( includeList ) :
 
 systemIncludes = [
 		"$BUILD_DIR/include",
-		"$BUILD_DIR/include/python$PYTHON_VERSION",
 		"$BUILD_DIR/include/OpenEXR",
 		"$BUILD_DIR/include/GL",
 	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"]
 
-env.Append( CXXFLAGS = formatSystemIncludes( env, systemIncludes ) )
+if env["PLATFORM"] != "win32" :
+	systemIncludes += "$BUILD_DIR/include/python$PYTHON_VERSION"
+else:
+	systemIncludes += "$BUILD_DIR/include/python",
+
+env.Append( CXXFLAGS = formatSystemIncludes( systemIncludes ) )
 
 if "clang++" in os.path.basename( env["CXX"] ):
 	env.Append(
@@ -694,7 +698,10 @@ def runCommand( command ) :
 pythonVersion = subprocess.Popen( [ "python", "--version" ], env=commandEnv["ENV"], stderr=subprocess.PIPE ).stderr.read().strip()
 pythonVersion = pythonVersion.split()[1].rpartition( "." )[0]
 
-env["PYTHON_VERSION"] = pythonVersion
+if env["PLATFORM"] != "win32" :
+	env["PYTHON_VERSION"] = pythonVersion
+else:
+	env["PYTHON_VERSION"] = pythonVersion.replace(".", "")
 
 ###############################################################################################
 # The basic environment for building libraries
