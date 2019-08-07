@@ -408,7 +408,12 @@ systemIncludes = [
 		"$BUILD_DIR/include/GL",
 	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"]
 
-env.Append( CXXFLAGS = formatSystemIncludes( env, systemIncludes ) )
+if env["PLATFORM"] != "win32" :
+	systemIncludes += "$BUILD_DIR/include/python$PYTHON_VERSION"
+else:
+	systemIncludes += "$BUILD_DIR/include/python",
+
+env.Append( CXXFLAGS = formatSystemIncludes( systemIncludes ) )
 
 if "clang++" in os.path.basename( env["CXX"] ):
 	env.Append(
