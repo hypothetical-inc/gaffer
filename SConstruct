@@ -190,7 +190,8 @@ options.Add(
 options.Add(
 	"LOCATE_DEPENDENCY_SYSTEMPATH",
 	"Locations on which to search for include files "
-	"for the dependencies. These are included with -isystem.",
+	"for the dependencies, separated by commas."
+	"These are included with -isystem.",
 	[],
 )
 
@@ -403,11 +404,15 @@ def formatSystemIncludes( includeList ) :
 			formattedList += [ "-isystem", i ]
 	return formattedList
 
+systemIncludesOption = env["LOCATE_DEPENDENCY_SYSTEMPATH"]
+if type(systemIncludesOption) != list :
+	systemIncludesOption = systemIncludesOption.split(",")
+
 systemIncludes = [
 		"$BUILD_DIR/include",
 		"$BUILD_DIR/include/OpenEXR",
 		"$BUILD_DIR/include/GL",
-	] + env["LOCATE_DEPENDENCY_SYSTEMPATH"]
+	] + systemIncludesOption
 
 if env["PLATFORM"] != "win32" :
 	systemIncludes += "$BUILD_DIR/include/python$PYTHON_VERSION"
