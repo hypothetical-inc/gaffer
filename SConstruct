@@ -1318,6 +1318,9 @@ for libraryName, libraryDef in libraries.items() :
 # Graphics
 #########################################################################################################
 
+def inkscapeCmd():
+	return env["INKSCAPE"] if env["PLATFORM"] != "win32" else "\"{}\"".format( env["INKSCAPE"] )	# Quote command string to support spaces in path on Windows
+
 def buildImageCommand( source, target, env ) :
 
 	# Requires env to have buildImageOptions set, containing, at minimum:
@@ -1344,7 +1347,7 @@ def buildImageCommand( source, target, env ) :
 		svgPath = os.path.abspath( svgFilename ),
 		**substitutions
 	)
-	subprocess.check_call( env["INKSCAPE"] + " " + args, shell = True )
+	subprocess.check_call( inkscapeCmd() + " " + args, shell = True )
 
 def inkscapeArgs( imageOptions, svg ) :
 
@@ -1377,7 +1380,7 @@ def svgQuery( svgFile, id_ ) :
 
 		objects = {}
 
-		queryCommand = env["INKSCAPE"] + " --query-all \"" + filepath + "\""
+		queryCommand = inkscapeCmd() + " --query-all \"" + filepath + "\""
 		output = subprocess.check_output( queryCommand, shell=True ).decode()
 		for line in output.split( "\n" ) :
 			tokens = line.split( "," )
