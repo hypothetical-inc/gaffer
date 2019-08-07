@@ -1581,6 +1581,8 @@ if commandEnv.subst( "$LOCATE_DEPENDENCY_RESOURCESPATH" ) :
 # Documentation
 #########################################################################################################
 
+gafferCmd = "gaffer" if env["PLATFORM"] != "win32" else "gaffer.bat"
+
 def generateDocs( target, source, env ) :
 
 	# Run a script in the document source tree. These are used to
@@ -1592,11 +1594,11 @@ def generateDocs( target, source, env ) :
 	ext = os.path.splitext( localFile )[1]
 	command = []
 	if localFile == "screengrab.py" :
-		command = [ "gaffer", "screengrab", "-commandFile", localFile ]
+		command = [ gafferCmd, "screengrab", "-commandFile", localFile ]
 	elif ext == ".py" :
-		command = [ "gaffer", "env", "python", localFile ]
+		command = [ gafferCmd, "env", "python", localFile ]
 	elif ext == ".sh" :
-		command = [ "gaffer", "env", "./" + localFile ]
+		command = [ gafferCmd, "env", "./" + localFile ]
 	if command :
 		sys.stdout.write( "Running {0}\n".format( os.path.join( root, localFile ) ) )
 		subprocess.check_call( command, cwd = root, env = env["ENV"] )
@@ -1642,7 +1644,11 @@ def buildDocs( target, source, env ) :
 
 	subprocess.check_call(
 		[
+<<<<<<< HEAD
 			"python",
+=======
+			gafferCmd, "env", "python",
+>>>>>>> 5903a6d88... Scons : build documentation on Windows
 			findOnPath( env.subst( "$SPHINX" ), env["ENV"]["PATH"] ),
 			"-b", "html",
 			str( source[0] ), os.path.dirname( str( target[0] ) )
@@ -1667,19 +1673,23 @@ if haveSphinx and haveInkscape :
 	# Ensure that Arnold, Appleseed and 3delight are available in the documentation
 	# environment.
 
-	libraryPathEnvVar = "DYLD_LIBRARY_PATH" if docEnv["PLATFORM"]=="darwin" else "LD_LIBRARY_PATH"
+	libraryPathEnvVars = {
+		"darwin" : "DYLD_LIBRARY_PATH",
+		"win32" : "PATH"
+	}
+	libraryPathEnvVar = libraryPathEnvVars.get( docEnv["PLATFORM"], "LD_LIBRARY_PATH" )
 
 	if docCommandEnv.subst( "$ARNOLD_ROOT" ) :
-		docCommandEnv["ENV"]["PATH"] += ":" + docCommandEnv.subst( "$ARNOLD_ROOT/bin" )
-		docCommandEnv["ENV"]["PYTHONPATH"] += ":" + docCommandEnv.subst( "$ARNOLD_ROOT/python" )
-		docCommandEnv["ENV"][libraryPathEnvVar] = docCommandEnv["ENV"].get( libraryPathEnvVar, "" ) + ":" + docCommandEnv.subst( "$ARNOLD_ROOT/bin" )
+		docCommandEnv["ENV"]["PATH"] += os.path.pathsep + docCommandEnv.subst( "$ARNOLD_ROOT/bin" )
+		docCommandEnv["ENV"]["PYTHONPATH"] += os.path.pathsep + docCommandEnv.subst( "$ARNOLD_ROOT/python" )
+		docCommandEnv["ENV"][libraryPathEnvVar] = docCommandEnv["ENV"].get( libraryPathEnvVar, "" ) + os.path.pathsep + docCommandEnv.subst( "$ARNOLD_ROOT/bin" )
 
 	if docCommandEnv.subst( "$APPLESEED_ROOT" ) and docCommandEnv["APPLESEED_ROOT"] != "$BUILD_DIR/appleseed" :
-		docCommandEnv["ENV"]["PATH"] += ":" + docCommandEnv.subst( "$APPLESEED_ROOT/bin" )
-		docCommandEnv["ENV"][libraryPathEnvVar] = docCommandEnv["ENV"].get( libraryPathEnvVar, "" ) + ":" + docCommandEnv.subst( "$APPLESEED_ROOT/lib" )
+		docCommandEnv["ENV"]["PATH"] += os.path.pathsep + docCommandEnv.subst( "$APPLESEED_ROOT/bin" )
+		docCommandEnv["ENV"][libraryPathEnvVar] = docCommandEnv["ENV"].get( libraryPathEnvVar, "" ) + os.path.pathsep + docCommandEnv.subst( "$APPLESEED_ROOT/lib" )
 		docCommandEnv["ENV"]["OSLHOME"] = docCommandEnv.subst( "$OSLHOME" )
 		docCommandEnv["ENV"]["OSL_SHADER_PATHS"] = docCommandEnv.subst( "$APPLESEED_ROOT/shaders/appleseed" )
-		docCommandEnv["ENV"]["APPLESEED_SEARCHPATH"] = docCommandEnv.subst( "$APPLESEED_ROOT/shaders/appleseed:$LOCATE_DEPENDENCY_APPLESEED_SEARCHPATH" )
+		docCommandEnv["ENV"]["APPLESEED_SEARCHPATH"] = docCommandEnv.subst( "$APPLESEED_ROOT/shaders/appleseed" + os.path.pathsep + ":$LOCATE_DEPENDENCY_APPLESEED_SEARCHPATH" )
 
 	#  Docs graphics generation
 	docGraphicsCommands = graphicsCommands( docEnv, "resources/docGraphics.svg", "$BUILD_DIR/doc/gaffer/graphics" )
