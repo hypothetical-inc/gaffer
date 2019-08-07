@@ -43,8 +43,6 @@
 #include "Gaffer/GraphComponent.h"
 #include "Gaffer/Set.h"
 
-#include "GafferBindings/Export.h"
-
 namespace GafferBindings
 {
 
