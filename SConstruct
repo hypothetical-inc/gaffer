@@ -815,8 +815,6 @@ else :
 
 vTuneRoot = env.subst("$VTUNE_ROOT")
 
-gafferLib = {}
-
 if os.path.exists( vTuneRoot ):
 	gafferLib = {
 		"envAppends" : {
@@ -828,6 +826,15 @@ if os.path.exists( vTuneRoot ):
 			"CXXFLAGS" : [ "-DGAFFER_VTUNE"]
 		}
 	}
+else:
+	if env["PLATFORM"] == "win32" : 
+		gafferLib = {
+			"envAppends" : {
+				"LIBS" : [ "Advapi32" ]
+			}
+		}
+	else:
+		gafferLib = {}
 
 libraries = {
 
