@@ -317,6 +317,11 @@ def __cmark() :
 		return __cmarkDLL
 
 	__cmarkDLL.cmark_markdown_to_html.restype = ctypes.c_char_p
-	__cmarkDLL.cmark_markdown_to_html.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_long]
+	# The second argument is 'size_t len', the length of the markdown string
+	# MSVC defines size_t as unsigned int64
+	if sys == "Windows" :
+		__cmarkDLL.cmark_markdown_to_html.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_long]
+	else:
+		__cmarkDLL.cmark_markdown_to_html.argtypes = [ctypes.c_char_p, ctypes.c_long, ctypes.c_long]
 
 	return __cmarkDLL
