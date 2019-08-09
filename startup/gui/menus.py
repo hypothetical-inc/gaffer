@@ -446,7 +446,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
-		os.environ["OSL_SHADER_PATHS"].split( ":" ),
+		os.environ["OSL_SHADER_PATHS"].split( os.path.pathsep ),
 		[ "oso" ],
 		__shaderNodeCreator,	
 		matchExpression = re.compile( shader_regex ),
