@@ -58,7 +58,7 @@ if "%APPLESEED%" NEQ "" (
 if "%APPLESEED%" NEQ "" (
 	call :prependToPath "%APPLESEED%\bin;%APPLESEED%\lib" PATH
 	call :prependToPath "%APPLESEED%\lib\python2.7" PYTHONPATH
-	call :prependToPath "%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplay" APPLESEED_SEARCHPATH
+	call :prependToPath "%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplays" APPLESEED_SEARCHPATH
 )
 
 rem Arnold
