@@ -678,14 +678,12 @@ def split( stringOrList, separator = os.path.pathsep ) :
 		return stringOrList.split( separator )
 
 commandEnv = env.Clone()
-commandEnv["ENV"]["PATH"] = commandEnv.subst( "$BUILD_DIR/bin" + os.path.pathsep ) + commandEnv["ENV"]["PATH"]
-if env["PLATFORM"] == "win32" :
-	commandEnv["ENV"]["PATH"] = commandEnv.subst( "$BUILD_DIR/lib" + os.path.pathsep ) + commandEnv["ENV"]["PATH"]
+commandEnv["ENV"]["PATH"] = commandEnv.subst( os.path.join( "$BUILD_DIR", "bin" ) + os.path.pathsep ) + commandEnv["ENV"]["PATH"]
 
 if commandEnv["PLATFORM"]=="darwin" :
 	commandEnv["ENV"]["DYLD_LIBRARY_PATH"] = commandEnv.subst( os.path.pathsep.join( [ "$BUILD_DIR/lib" ] + split( commandEnv["LOCATE_DEPENDENCY_LIBPATH"] ) ) )
 elif commandEnv["PLATFORM"] == "win32" :
-	commandEnv["ENV"]["PATH"] = commandEnv.subst( os.path.pathsep.join( [ "$BUILD_DIR/lib" ] + split( commandEnv[ "LOCATE_DEPENDENCY_LIBPATH" ] ) ) ) + commandEnv["ENV"]["PATH"]
+	commandEnv["ENV"]["PATH"] = commandEnv.subst( os.path.pathsep.join( [ "$BUILD_DIR/lib" ] + split( commandEnv[ "LOCATE_DEPENDENCY_LIBPATH" ] ) ) ) + os.path.pathsep + commandEnv["ENV"]["PATH"]
 else:
 	commandEnv["ENV"]["LD_LIBRARY_PATH"] = commandEnv.subst( os.path.pathsep.join( [ "$BUILD_DIR/lib" ] + split( commandEnv["LOCATE_DEPENDENCY_LIBPATH"] ) ) )
 
