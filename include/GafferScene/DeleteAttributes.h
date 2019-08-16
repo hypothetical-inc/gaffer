@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETEATTRIBUTES_H
 #define GAFFERSCENE_DELETEATTRIBUTES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/AttributeProcessor.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API DeleteAttributes : public AttributeProcessor
 		DeleteAttributes( const std::string &name=defaultName<DeleteAttributes>() );
 		~DeleteAttributes() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::DeleteAttributes, DeleteAttributesTypeId, AttributeProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::DeleteAttributes, DeleteAttributesTypeId, AttributeProcessor );
 
 	protected :
 

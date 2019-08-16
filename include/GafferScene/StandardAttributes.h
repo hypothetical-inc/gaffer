@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_STANDARDATTRIBUTES_H
 #define GAFFERSCENE_STANDARDATTRIBUTES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Attributes.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API StandardAttributes : public Attributes
 		StandardAttributes( const std::string &name=defaultName<StandardAttributes>() );
 		~StandardAttributes() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::StandardAttributes, StandardAttributesTypeId, Attributes );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::StandardAttributes, StandardAttributesTypeId, Attributes );
 
 	private:
 

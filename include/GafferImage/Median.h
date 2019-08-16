@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_MEDIAN_H
 #define GAFFERIMAGE_MEDIAN_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/RankFilter.h"
 
 namespace GafferImage
@@ -50,7 +51,7 @@ class GAFFERIMAGE_API Median : public RankFilter
 		Median( const std::string &name=defaultName<Median>() );
 		~Median() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::Median, MedianTypeId, RankFilter );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::Median, MedianTypeId, RankFilter );
 
 };
 

@@ -137,7 +137,7 @@ ShadingEngineCache g_shadingEngineCache( getter, 10000 );
 // OSLShader
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( OSLShader );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( OSLShader );
 
 OSLShader::OSLShader( const std::string &name )
 	:	GafferScene::Shader( name )
@@ -1171,7 +1171,7 @@ static IECore::ConstCompoundDataPtr metadataGetter( const std::string &key, size
 	OSLQuery query;
 	if( !query.open( key, searchPath ? searchPath : "" ) )
 	{
-		throw Exception( query.geterror() );
+		return nullptr;
 	}
 
 	CompoundDataPtr metadata = new CompoundData;

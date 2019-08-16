@@ -56,6 +56,7 @@ from ExecuteApplicationTest import ExecuteApplicationTest
 from TaskPlugTest import TaskPlugTest
 from FrameMaskTest import FrameMaskTest
 from DispatchApplicationTest import DispatchApplicationTest
+from ModuleTest import ModuleTest
 
 if __name__ == "__main__":
 	import unittest

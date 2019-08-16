@@ -40,6 +40,7 @@
 #include "GafferImage/Shape.h"
 
 #include "Gaffer/BoxPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 namespace Gaffer
 {
@@ -52,6 +53,12 @@ IE_CORE_FORWARDDECLARE( Transform2DPlug )
 namespace GafferImage
 {
 
+#ifdef _WIN32
+	#define ENVSEP ";"
+#else
+	#define ENVSEP ":"
+#endif
+
 class GAFFERIMAGE_API Text : public Shape
 {
 
@@ -60,7 +67,7 @@ class GAFFERIMAGE_API Text : public Shape
 		Text( const std::string &name=defaultName<Text>() );
 		~Text() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::Text, TextTypeId, Shape );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::Text, TextTypeId, Shape );
 
 		enum HorizontalAlignment
 		{
@@ -79,8 +86,8 @@ class GAFFERIMAGE_API Text : public Shape
 		Gaffer::StringPlug *textPlug();
 		const Gaffer::StringPlug *textPlug() const;
 
-		Gaffer::StringPlug *fontPlug();
-		const Gaffer::StringPlug *fontPlug() const;
+		Gaffer::FileSystemPathPlug *fontPlug();
+		const Gaffer::FileSystemPathPlug *fontPlug() const;
 
 		Gaffer::V2iPlug *sizePlug();
 		const Gaffer::V2iPlug *sizePlug() const;

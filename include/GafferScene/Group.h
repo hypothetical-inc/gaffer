@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_GROUP_H
 #define GAFFERSCENE_GROUP_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer
@@ -59,7 +60,7 @@ class GAFFERSCENE_API Group : public SceneProcessor
 		Group( const std::string &name=defaultName<Group>() );
 		~Group() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Group, GroupTypeId, SceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Group, GroupTypeId, SceneProcessor );
 
 		/// \deprecated. Use inPlugs() instead.
 		ScenePlug *nextInPlug();

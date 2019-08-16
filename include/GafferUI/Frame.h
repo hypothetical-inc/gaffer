@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_FRAME_H
 #define GAFFERUI_FRAME_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/IndividualContainer.h"
 
 namespace GafferUI
@@ -52,7 +53,7 @@ class GAFFERUI_API Frame : public IndividualContainer
 		Frame( GadgetPtr child );
 		~Frame() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::Frame, FrameTypeId, IndividualContainer );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::Frame, FrameTypeId, IndividualContainer );
 
 		Imath::Box3f bound() const override;
 

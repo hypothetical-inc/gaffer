@@ -117,7 +117,7 @@ struct CompareV2fX{
 // GraphGadget implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( GraphGadget );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( GraphGadget );
 
 GraphGadget::GraphGadget( Gaffer::NodePtr root, Gaffer::SetPtr filter )
 	:	m_dragStartPosition( 0 ), m_lastDragPosition( 0 ), m_dragMode( None ), m_dragReconnectCandidate( nullptr ), m_dragReconnectSrcNodule( nullptr ), m_dragReconnectDstNodule( nullptr )
@@ -1107,7 +1107,7 @@ bool GraphGadget::dragMove( GadgetPtr gadget, const DragDropEvent &event )
 			const std::vector<float> &snapOffsets = m_dragSnapOffsets[axis];
 
 			float offset = pos[axis] - m_dragStartPosition[axis];
-			float snappedDist = Imath::limits<float>::max();
+			float snappedDist = std::numeric_limits<float>::max();
 			float snappedOffset = offset;
 			vector<float>::const_iterator it = lower_bound( snapOffsets.begin(), snapOffsets.end(), offset );
 			if( it != snapOffsets.end() )

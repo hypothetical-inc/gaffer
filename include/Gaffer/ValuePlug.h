@@ -61,7 +61,7 @@ class GAFFER_API ValuePlug : public Plug
 		ValuePlug( const std::string &name=defaultName<ValuePlug>(), Direction direction=In, unsigned flags=Default );
 		~ValuePlug() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::ValuePlug, ValuePlugTypeId, Plug );
+		GAFFER_PLUG_DECLARE_TYPE( Gaffer::ValuePlug, ValuePlugTypeId, Plug );
 
 		bool acceptsChild( const GraphComponent *potentialChild ) const override;
 		/// Accepts the input only if it is derived from ValuePlug.
@@ -92,6 +92,9 @@ class GAFFER_API ValuePlug : public Plug
 		/// as the default value. The default implementation is sufficient
 		/// for all subclasses except those where the number of child plugs
 		/// varies based on the value.
+		/// > Note : If a plug's value is being driven by a ComputeNode,
+		/// > we always consider it to be non-default, because it may vary
+		/// > by context. `isSetToDefault()` does not trigger computes.
 		virtual bool isSetToDefault() const;
 
 		/// Returns a hash to represent the value of this plug

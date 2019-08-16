@@ -35,6 +35,7 @@
 #
 ##########################################################################
 
+import os
 import sys
 import logging
 import collections
@@ -188,12 +189,6 @@ class GLWidget( GafferUI.Widget ) :
 
 	def __draw( self ) :
 
-		# Qt sometimes enters our GraphicsScene.drawBackground() method
-		# with a GL error flag still set. We unset it here so it won't
-		# trigger our own error checking.
-		while GL.glGetError() :
-			pass
-
 		if not self.__framebufferValid() :
 			return
 
@@ -258,8 +253,9 @@ class _GLGraphicsView( QtWidgets.QGraphicsView ) :
 
 			# clear any existing errors that may trigger
 			# error checking code in _resize implementations.
-			while GL.glGetError() :
-				pass
+			if os.name == 'posix':
+				while GL.glGetError() :
+					pass
 
 			owner._makeCurrent()
 
@@ -406,6 +402,11 @@ class _GLGraphicsScene( QtWidgets.QGraphicsScene ) :
 	def drawBackground( self, painter, rect ) :
 
 		painter.beginNativePainting()
+
+		# Qt sometimes enters this method with a GL error flag still set.
+		# We unset it here so it won't trigger our own error checking.
+		while GL.glGetError() :
+			pass
 
 		GL.glPushAttrib( GL.GL_ALL_ATTRIB_BITS )
 		GL.glPushClientAttrib( GL.GL_CLIENT_ALL_ATTRIB_BITS )

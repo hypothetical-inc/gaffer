@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_CONSTRAINT_H
 #define GAFFERSCENE_CONSTRAINT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
@@ -57,7 +58,7 @@ class GAFFERSCENE_API Constraint : public SceneElementProcessor
 		Constraint( const std::string &name=defaultName<Constraint>() );
 		~Constraint() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Constraint, ConstraintTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Constraint, ConstraintTypeId, SceneElementProcessor );
 
 		enum TargetMode
 		{

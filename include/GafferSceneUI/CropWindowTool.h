@@ -62,7 +62,7 @@ class GAFFERSCENEUI_API CropWindowTool : public GafferUI::Tool
 
 		~CropWindowTool() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferSceneUI::CropWindowTool, CropWindowToolTypeId, GafferUI::Tool );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferSceneUI::CropWindowTool, CropWindowToolTypeId, GafferUI::Tool );
 
 	private :
 
@@ -76,6 +76,7 @@ class GAFFERSCENEUI_API CropWindowTool : public GafferUI::Tool
 
 		void viewportChanged();
 		void plugDirtied( const Gaffer::Plug *plug );
+		void metadataChanged( IECore::InternedString key );
 		void overlayRectangleChanged( unsigned reason );
 
 		void preRender();

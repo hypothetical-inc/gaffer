@@ -37,17 +37,25 @@
 #ifndef GAFFERSCENE_TEXT_H
 #define GAFFERSCENE_TEXT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 namespace GafferScene
 {
+
+#ifdef _WIN32
+	#define ENVSEP ";"
+#else
+	#define ENVSEP ":"
+#endif
 
 class GAFFERSCENE_API Text : public ObjectSource
 {
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Text, TextTypeId, ObjectSource );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Text, TextTypeId, ObjectSource );
 
 		Text( const std::string &name=defaultName<Text>() );
 		~Text() override;
@@ -55,8 +63,8 @@ class GAFFERSCENE_API Text : public ObjectSource
 		Gaffer::StringPlug *textPlug();
 		const Gaffer::StringPlug *textPlug() const;
 
-		Gaffer::StringPlug *fontPlug();
-		const Gaffer::StringPlug *fontPlug() const;
+		Gaffer::FileSystemPathPlug *fontPlug();
+		const Gaffer::FileSystemPathPlug *fontPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

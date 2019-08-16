@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "boost/asio/ip/host_name.hpp"
+
 #include "GafferImage/ImageWriter.h"
 
 #include "GafferImage/BufferAlgo.h"
@@ -45,6 +47,7 @@
 #include "Gaffer/Context.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreImage/OpenImageIOAlgo.h"
 
@@ -61,7 +64,6 @@
 
 #include <memory>
 
-#include <sys/utsname.h>
 #include <zlib.h>
 
 OIIO_NAMESPACE_USING
@@ -681,12 +683,15 @@ ImageSpec createImageSpec( const ImageWriter *node, const ImageOutput *out, cons
 	// Add common attribs to the spec
 	std::string software = ( boost::format( "Gaffer %d.%d.%d.%d" ) % GAFFER_MILESTONE_VERSION % GAFFER_MAJOR_VERSION % GAFFER_MINOR_VERSION % GAFFER_PATCH_VERSION ).str();
 	spec.attribute( "Software", software );
-	struct utsname info;
-	if ( !uname( &info ) )
-	{
-		spec.attribute( "HostComputer", info.nodename );
-	}
-	if ( const char *artist = getenv( "USER" ) )
+
+	spec.attribute( "HostComputer", boost::asio::ip::host_name() );
+
+#ifdef _WIN32
+	const char *artist = getenv("username");
+#else
+	const char *artist = getenv( "USER" );
+#endif
+	if ( artist )
 	{
 		spec.attribute( "Artist", artist );
 	}
@@ -710,7 +715,7 @@ ImageSpec createImageSpec( const ImageWriter *node, const ImageOutput *out, cons
 // ImageWriter implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( ImageWriter );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ImageWriter );
 
 size_t ImageWriter::g_firstPlugIndex = 0;
 
@@ -719,7 +724,7 @@ ImageWriter::ImageWriter( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new ImagePlug( "in" ) );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new StringPlug( "channels", Gaffer::Plug::In, "*" ) );
 	addChild( new StringPlug( "colorSpace" ) );
 	addChild( new ImagePlug( "out", Plug::Out, Plug::Default & ~Plug::Serialisable ) );
@@ -813,14 +818,14 @@ const GafferImage::ImagePlug *ImageWriter::inPlug() const
 	return getChild<ImagePlug>( g_firstPlugIndex );
 }
 
-Gaffer::StringPlug *ImageWriter::fileNamePlug()
+Gaffer::FileSystemPathPlug *ImageWriter::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex+1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex+1 );
 }
 
-const Gaffer::StringPlug *ImageWriter::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *ImageWriter::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex+1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex+1 );
 }
 
 Gaffer::StringPlug *ImageWriter::channelsPlug()

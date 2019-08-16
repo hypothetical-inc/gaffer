@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_INDIVIDUALCONTAINER_H
 #define GAFFERUI_INDIVIDUALCONTAINER_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/ContainerGadget.h"
 
 namespace GafferUI
@@ -53,7 +54,7 @@ class GAFFERUI_API IndividualContainer : public ContainerGadget
 		IndividualContainer( GadgetPtr child=nullptr );
 		~IndividualContainer() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::IndividualContainer, IndividualContainerTypeId, ContainerGadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::IndividualContainer, IndividualContainerTypeId, ContainerGadget );
 
 		/// Accepts the child only if there are currently no children.
 		bool acceptsChild( const Gaffer::GraphComponent *potentialChild ) const override;

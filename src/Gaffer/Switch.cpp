@@ -49,7 +49,7 @@ using namespace Gaffer;
 static IECore::InternedString g_inPlugsName( "in" );
 static IECore::InternedString g_outPlugName( "out" );
 
-IE_CORE_DEFINERUNTIMETYPED( Switch );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Switch );
 
 size_t Switch::g_firstPlugIndex = 0;
 
@@ -89,7 +89,7 @@ void Switch::setup( const Plug *plug )
 		Plug::In,
 		inElement,
 		0,
-		Imath::limits<size_t>::max()
+		std::numeric_limits<size_t>::max()
 	);
 	addChild( in );
 

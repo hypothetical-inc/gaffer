@@ -37,6 +37,7 @@
 #include "GafferScene/Text.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/Font.h"
 #include "IECoreScene/MeshPrimitive.h"
@@ -91,7 +92,7 @@ FontCache *fontCache()
 // Text implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( Text );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Text );
 
 size_t Text::g_firstPlugIndex = 0;
 
@@ -100,7 +101,7 @@ Text::Text( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "text", Plug::In, "Hello World" ) );
-	addChild( new StringPlug( "font", Plug::In, "Vera.ttf" ) );
+	addChild( new FileSystemPathPlug( "font", Plug::In, "Vera.ttf" ) );
 }
 
 Text::~Text()
@@ -117,14 +118,14 @@ const Gaffer::StringPlug *Text::textPlug() const
 	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-Gaffer::StringPlug *Text::fontPlug()
+Gaffer::FileSystemPathPlug *Text::fontPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
-const Gaffer::StringPlug *Text::fontPlug() const
+const Gaffer::FileSystemPathPlug *Text::fontPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
 void Text::affects( const Plug *input, AffectedPlugsContainer &outputs ) const

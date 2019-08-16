@@ -41,6 +41,7 @@
 
 #include "Gaffer/NumericPlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/Switch.h"
 
 #include "IECoreImage/DisplayDriver.h"
@@ -54,23 +55,23 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::Catalogue, CatalogueTypeId, ImageNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::Catalogue, CatalogueTypeId, ImageNode );
 
 		Catalogue( const std::string &name = defaultName<Catalogue>() );
 		~Catalogue() override;
 
 		/// Plug type used to represent an image in the catalogue.
-		class Image : public Gaffer::Plug
+		class GAFFERIMAGE_API Image : public Gaffer::Plug
 		{
 
 			public :
 
-				IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::Catalogue::Image, CatalogueImageTypeId, Gaffer::Plug );
+				GAFFER_PLUG_DECLARE_TYPE( GafferImage::Catalogue::Image, CatalogueImageTypeId, Gaffer::Plug );
 
 				Image( const std::string &name = defaultName<Image>(), Direction direction = In, unsigned flags = Default );
 
-				Gaffer::StringPlug *fileNamePlug();
-				const Gaffer::StringPlug *fileNamePlug() const;
+				Gaffer::FileSystemPathPlug *fileNamePlug();
+				const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 				Gaffer::StringPlug *descriptionPlug();
 				const Gaffer::StringPlug *descriptionPlug() const;
@@ -99,8 +100,8 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 		Gaffer::StringPlug *namePlug();
 		const Gaffer::StringPlug *namePlug() const;
 
-		Gaffer::StringPlug *directoryPlug();
-		const Gaffer::StringPlug *directoryPlug() const;
+		Gaffer::FileSystemPathPlug *directoryPlug();
+		const Gaffer::FileSystemPathPlug *directoryPlug() const;
 
 		/// All Catalogues share a single DisplayDriverServer instance
 		/// to receive rendered images. To send an image to the catalogues,

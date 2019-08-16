@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_OBJECTTOSCENE_H
 #define GAFFERSCENE_OBJECTTOSCENE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
 
 namespace GafferScene
@@ -47,7 +48,7 @@ class GAFFERSCENE_API ObjectToScene : public ObjectSource
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::ObjectToScene, ObjectToSceneTypeId, ObjectSource );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::ObjectToScene, ObjectToSceneTypeId, ObjectSource );
 
 		ObjectToScene( const std::string &name=defaultName<ObjectToScene>() );
 		~ObjectToScene() override;

@@ -987,5 +987,38 @@ class GraphComponentTest( GafferTest.TestCase ) :
 			c = s[n]
 			self.assertEqual( c.getName(), n )
 
+	def testNoneIsNotAGraphComponent( self ) :
+
+		g = Gaffer.GraphComponent()
+
+		with self.assertRaisesRegexp( Exception, r"did not match C\+\+ signature" ) :
+			g.addChild( None )
+
+		with self.assertRaisesRegexp( Exception, r"did not match C\+\+ signature" ) :
+			g.setChild( "x", None )
+
+		with self.assertRaisesRegexp( Exception, r"did not match C\+\+ signature" ) :
+			g.removeChild( None )
+
+	def testRanges( self ) :
+
+		g = Gaffer.GraphComponent()
+		g["c1"] = Gaffer.GraphComponent()
+		g["c2"] = Gaffer.GraphComponent()
+		g["c2"]["gc1"] = Gaffer.GraphComponent()
+		g["c3"] = Gaffer.GraphComponent()
+		g["c3"]["gc2"] = Gaffer.GraphComponent()
+		g["c3"]["gc3"] = Gaffer.GraphComponent()
+
+		self.assertEqual(
+			list( Gaffer.GraphComponent.Range( g ) ),
+			[ g["c1"], g["c2"], g["c3"] ],
+		)
+
+		self.assertEqual(
+			list( Gaffer.GraphComponent.RecursiveRange( g ) ),
+			[ g["c1"], g["c2"], g["c2"]["gc1"], g["c3"], g["c3"]["gc2"], g["c3"]["gc3"] ],
+		)
+
 if __name__ == "__main__":
 	unittest.main()

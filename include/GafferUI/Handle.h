@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_HANDLE_H
 #define GAFFERUI_HANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Gadget.h"
 #include "GafferUI/Style.h"
 
@@ -51,7 +52,7 @@ class GAFFERUI_API Handle : public Gadget
 
 		~Handle() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::Handle, HandleTypeId, Gadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::Handle, HandleTypeId, Gadget );
 
 		// A non-zero raster scale causes the handles to be
 		// drawn at a constant size in raster space.
@@ -84,7 +85,7 @@ class GAFFERUI_API Handle : public Gadget
 		// Helper for performing linear drags. Should be constructed
 		// in `dragBegin()` and then `position()` should be used
 		// to measure the progress of the drag.
-		struct LinearDrag
+		struct GAFFERUI_API LinearDrag
 		{
 
 			LinearDrag();
@@ -107,7 +108,7 @@ class GAFFERUI_API Handle : public Gadget
 		};
 
 		// Helper for performing drags in a plane.
-		struct PlanarDrag
+		struct GAFFERUI_API PlanarDrag
 		{
 
 			PlanarDrag();

@@ -38,6 +38,8 @@
 #ifndef GAFFERSCENE_CAMERA_H
 #define GAFFERSCENE_CAMERA_H
 
+#include "GafferScene/Export.h"
+
 #include "Gaffer/CompoundDataPlug.h"
 #include "GafferScene/ObjectSource.h"
 
@@ -49,7 +51,7 @@ class GAFFERSCENE_API Camera : public ObjectSource
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Camera, CameraTypeId, ObjectSource );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Camera, CameraTypeId, ObjectSource );
 
 		Camera( const std::string &name=defaultName<Camera>() );
 		~Camera() override;

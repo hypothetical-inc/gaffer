@@ -36,7 +36,11 @@
 
 import os
 import unittest
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 
 import IECore
 import IECoreScene
@@ -85,8 +89,8 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		s["options"] = GafferAppleseed.AppleseedOptions()
 		s["options"]["in"].setInput( s["plane"]["out"] )
-		s["options"]["options"]["aaSamples"]["value"].setValue( 1 )
-		s["options"]["options"]["aaSamples"]["enabled"].setValue( True )
+		s["options"]["options"]["maxAASamples"]["value"].setValue( 1 )
+		s["options"]["options"]["maxAASamples"]["enabled"].setValue( True )
 
 		s["outputs"] = GafferScene.Outputs()
 		s["outputs"].addOutput(
@@ -140,8 +144,8 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		s["options"] = GafferAppleseed.AppleseedOptions()
 		s["options"]["in"].setInput( s["plane"]["out"] )
-		s["options"]["options"]["aaSamples"]["value"].setValue( 1 )
-		s["options"]["options"]["aaSamples"]["enabled"].setValue( True )
+		s["options"]["options"]["maxAASamples"]["value"].setValue( 1 )
+		s["options"]["options"]["maxAASamples"]["enabled"].setValue( True )
 
 		s["outputs"] = GafferScene.Outputs()
 		s["outputs"].addOutput(

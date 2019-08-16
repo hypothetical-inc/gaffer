@@ -56,7 +56,7 @@ class GAFFER_API Expression : public ComputeNode
 		Expression( const std::string &name=defaultName<Expression>() );
 		~Expression() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::Expression, ExpressionTypeId, ComputeNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( Gaffer::Expression, ExpressionTypeId, ComputeNode );
 
 		/// Fills the vector with the names of all currently available languages.
 		static void languages( std::vector<std::string> &languages );
@@ -90,7 +90,7 @@ class GAFFER_API Expression : public ComputeNode
 		/// for use in the Expression node. All methods
 		/// are protected as Engines are for the internal
 		/// use of the Expression node only.
-		class Engine : public IECore::RefCounted
+		class GAFFER_API Engine : public IECore::RefCounted
 		{
 
 			public :

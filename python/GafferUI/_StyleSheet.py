@@ -75,7 +75,7 @@ _styleColors = {
 	"backgroundAlt" : (60, 60, 60),
 	"backgroundHighlight" : (76, 76, 76),
 
-	"backgroundRaisedLowlight" : (52, 52, 52),
+	"backgroundRaisedLowlight" : (60, 60, 60),
 	"backgroundRaised" : (72, 72, 72),
 	"backgroundRaisedAlt" : (66, 66, 66),
 	"backgroundRaisedHighlight" : (82, 82, 82),
@@ -95,7 +95,7 @@ _styleColors = {
 	# $foreground is the standard Text/marker color.
 
 	"foreground" : (224, 224, 224),
-	"foregroundFaded" : (153, 153, 153),
+	"foregroundFaded" : (163, 163, 163),
 
 	"errorColor" : (255, 85, 85),
 	"animatedColor" : (128, 152, 94),
@@ -122,7 +122,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -434,7 +434,7 @@ _styleSheet = string.Template(
 	}
 
 	QPushButton:disabled, QComboBox:disabled, QLabel::disabled {
-		color: $foregroundFaded;
+		color: $tintLighterStrong;
 	}
 
 	QPushButton[gafferWithFrame="true"]:disabled {
@@ -454,6 +454,11 @@ _styleSheet = string.Template(
 		background-repeat: none;
 		background-position: center right;
 		padding-right: 20px
+	}
+
+	QPushButton[gafferWithFrame="true"][gafferMenuIndicator="true"]:disabled {
+		color: $foregroundFaded;
+		background-image: url($GAFFER_ROOT/graphics/menuIndicatorDisabled.png);
 	}
 
 	QComboBox {
@@ -986,9 +991,9 @@ _styleSheet = string.Template(
 
 	QTreeView {
 		background-color: $backgroundRaised;
-		border: 1px solid transparent;
-		border-bottom-color: $backgroundRaisedAlt;
-		border-right-color: $backgroundRaisedAlt;
+		border: 1px solid $backgroundRaisedHighlight;
+		border-bottom-color: $backgroundRaisedLowlight;
+		border-right-color: $backgroundRaisedLowlight;
 		padding: 0;
 		alternate-background-color: $backgroundRaisedAlt;
 	}
@@ -1004,10 +1009,6 @@ _styleSheet = string.Template(
 
 	QTableView {
 		border: 1px solid transparent;
-	}
-
-	QTableView::item {
-		background-color: $background;
 	}
 
 	QTableView::item:selected {
@@ -1094,8 +1095,8 @@ _styleSheet = string.Template(
 
 	/* gl widget */
 
-	*[gafferClass="GafferUI.GlWidget"] QGraphicsView {
-		border: 0px;
+	QGraphicsView {
+		border: none;
 	}
 
 	/* frame variants */

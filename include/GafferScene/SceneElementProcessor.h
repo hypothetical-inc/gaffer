@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_SCENEELEMENTPROCESSOR_H
 #define GAFFERSCENE_SCENEELEMENTPROCESSOR_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/FilteredSceneProcessor.h"
 
 namespace GafferScene
@@ -57,7 +58,7 @@ class GAFFERSCENE_API SceneElementProcessor : public FilteredSceneProcessor
 		SceneElementProcessor( const std::string &name=defaultName<SceneElementProcessor>(), IECore::PathMatcher::Result filterDefault = IECore::PathMatcher::EveryMatch );
 		~SceneElementProcessor() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::SceneElementProcessor, SceneElementProcessorTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::SceneElementProcessor, SceneElementProcessorTypeId, FilteredSceneProcessor );
 
 		/// Implemented so that each child of inPlug() affects the corresponding child of outPlug()
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;

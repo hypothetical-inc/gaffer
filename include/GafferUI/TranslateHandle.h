@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_TRANSLATEHANDLE_H
 #define GAFFERUI_TRANSLATEHANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 namespace GafferUI
@@ -51,7 +52,7 @@ class GAFFERUI_API TranslateHandle : public Handle
 		TranslateHandle( Style::Axes axes );
 		~TranslateHandle() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::TranslateHandle, TranslateHandleTypeId, Handle );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::TranslateHandle, TranslateHandleTypeId, Handle );
 
 		void setAxes( Style::Axes axes );
 		Style::Axes getAxes() const;

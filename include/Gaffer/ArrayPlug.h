@@ -64,13 +64,13 @@ class GAFFER_API ArrayPlug : public Plug
 			Direction direction = In,
 			PlugPtr element = nullptr,
 			size_t minSize = 1,
-			size_t maxSize = Imath::limits<size_t>::max(),
+			size_t maxSize = std::numeric_limits<size_t>::max(),
 			unsigned flags = Default
 		);
 
 		~ArrayPlug() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::ArrayPlug, ArrayPlugTypeId, Plug );
+		GAFFER_PLUG_DECLARE_TYPE( Gaffer::ArrayPlug, ArrayPlugTypeId, Plug );
 
 		bool acceptsChild( const GraphComponent *potentialChild ) const override;
 		bool acceptsInput( const Plug *input ) const override;

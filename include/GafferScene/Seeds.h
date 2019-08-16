@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_SEEDS_H
 #define GAFFERSCENE_SEEDS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/BranchCreator.h"
 
 namespace GafferScene
@@ -51,7 +52,7 @@ class GAFFERSCENE_API Seeds : public BranchCreator
 		Seeds( const std::string &name=defaultName<Seeds>() );
 		~Seeds() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Seeds, SeedsTypeId, BranchCreator );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Seeds, SeedsTypeId, BranchCreator );
 
 		Gaffer::StringPlug *namePlug();
 		const Gaffer::StringPlug *namePlug() const;

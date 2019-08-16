@@ -48,6 +48,7 @@
 #include "DirtyPropagationScopeBinding.h"
 #include "DotBinding.h"
 #include "ExpressionBinding.h"
+#include "FileSystemPathPlugBinding.h"
 #include "GraphComponentBinding.h"
 #include "ProcessMessageHandlerBinding.h"
 #include "MetadataAlgoBinding.h"
@@ -106,6 +107,8 @@ bool isDebug()
 // This is documented as being for the use of extension
 // modules, but then isn't declared in the Python headers,
 // so we declare it ourselves.
+#ifndef _WIN32
+
 extern "C" void Py_GetArgcArgv( int *argc, char ***argv );
 
 void clobberArgv()
@@ -158,12 +161,15 @@ void clobberArgv()
 	argv[argc-1] = c;
 	memset( c, 0, end - c );
 }
+#endif
 
 void nameProcess()
 {
 	// Some things (for instance, `ps` in default mode) look at `argv` to get
 	// the name.
+#ifndef _WIN32
 	clobberArgv();
+#endif
 	// Others (for instance, `top` in default mode) use other methods.
 	// Cater to everyone as best we can.
 #ifdef __linux__
@@ -218,6 +224,7 @@ BOOST_PYTHON_MODULE( _Gaffer )
 	bindProcessMessageHandler();
 	bindNameValuePlug();
 	bindProcess();
+	bindFileSystemPathPlug();
 
 	NodeClass<Backdrop>();
 

@@ -43,7 +43,7 @@ using namespace Imath;
 using namespace IECore;
 using namespace Gaffer;
 
-IE_CORE_DEFINERUNTIMETYPED( NameValuePlug );
+GAFFER_PLUG_DEFINE_TYPE( NameValuePlug );
 
 NameValuePlug::NameValuePlug( const std::string &name, Direction direction, unsigned flags )
 	:	ValuePlug( name, direction, flags )
@@ -56,10 +56,14 @@ NameValuePlug::NameValuePlug( const std::string &nameDefault, const IECore::Data
 }
 
 NameValuePlug::NameValuePlug( const std::string &nameDefault, Gaffer::PlugPtr valuePlug, const std::string &name )
-	:	NameValuePlug( name, valuePlug->direction(), valuePlug->getFlags() )
+	:	NameValuePlug( nameDefault, valuePlug, name, valuePlug->getFlags() )
 {
-	addChild( new StringPlug( "name", valuePlug->direction(), nameDefault, valuePlug->getFlags() ) );
+}
 
+NameValuePlug::NameValuePlug( const std::string &nameDefault, Gaffer::PlugPtr valuePlug, const std::string &name, unsigned flags )
+	:	NameValuePlug( name, valuePlug->direction(), flags )
+{
+	addChild( new StringPlug( "name", valuePlug->direction(), nameDefault ) );
 	valuePlug->setName( "value" );
 	addChild( valuePlug );
 }
@@ -71,9 +75,14 @@ NameValuePlug::NameValuePlug( const std::string &nameDefault, const IECore::Data
 }
 
 NameValuePlug::NameValuePlug( const std::string &nameDefault, Gaffer::PlugPtr valuePlug, bool enabled, const std::string &name )
-	:	NameValuePlug( nameDefault, valuePlug, name )
+	:	NameValuePlug( nameDefault, valuePlug, enabled, name, valuePlug->getFlags() )
 {
-	addChild( new BoolPlug( "enabled", valuePlug->direction(), enabled, valuePlug->getFlags() ) );
+}
+
+NameValuePlug::NameValuePlug( const std::string &nameDefault, Gaffer::PlugPtr valuePlug, bool defaultEnabled, const std::string &name, unsigned flags )
+	:	NameValuePlug( nameDefault, valuePlug, name, flags )
+{
+	addChild( new BoolPlug( "enabled", direction(), defaultEnabled ) );
 }
 
 // We need to check if the namePlug exists because we offer a bare constructor that leaves the child plugs
@@ -148,7 +157,7 @@ PlugPtr NameValuePlug::createCounterpart( const std::string &name, Direction dir
 	{
 		// We'd like this to be an error, but when deserializing files, we might call
 		// createCounterpart on half-loaded NameValuePlugs, which don't have any plugs yet.
-		// To allow this to load, we have allow the counterpart to also be an invalid 
+		// To allow this to load, we have allow the counterpart to also be an invalid
 		// NameValuePlug.  We are depending on subsequent serialization code to actually
 		// add the required children, or else we will be left with an invalid plug
 		return new NameValuePlug( name, direction, getFlags() );
@@ -164,13 +173,13 @@ PlugPtr NameValuePlug::createCounterpart( const std::string &name, Direction dir
 	if( enabledPlug() )
 	{
 		return new NameValuePlug(
-			namePlug()->defaultValue(), valueCounterpart, enabledPlug()->defaultValue(), name
+			namePlug()->defaultValue(), valueCounterpart, enabledPlug()->defaultValue(), name, getFlags()
 		);
 	}
 	else
 	{
 		return new NameValuePlug(
-			namePlug()->defaultValue(), valueCounterpart, name
+			namePlug()->defaultValue(), valueCounterpart, name, getFlags()
 		);
 	}
 }

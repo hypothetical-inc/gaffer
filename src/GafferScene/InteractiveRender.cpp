@@ -64,7 +64,7 @@ static InternedString g_rendererContextName( "scene:renderer" );
 
 size_t InteractiveRender::g_firstPlugIndex = 0;
 
-IE_CORE_DEFINERUNTIMETYPED( InteractiveRender );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( InteractiveRender );
 
 InteractiveRender::InteractiveRender( const std::string &name )
 	:	InteractiveRender( /* rendererType = */ InternedString(), name )
@@ -210,7 +210,7 @@ void InteractiveRender::update()
 		m_controller.reset(
 			new RenderController( adaptedInPlug(), effectiveContext(), m_renderer )
 		);
-		m_controller->setMinimumExpansionDepth( limits<size_t>::max() );
+		m_controller->setMinimumExpansionDepth( numeric_limits<size_t>::max() );
 		m_controller->updateRequiredSignal().connect(
 			boost::bind( &InteractiveRender::update, this )
 		);

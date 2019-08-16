@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_STANDARDOPTIONS_H
 #define GAFFERSCENE_STANDARDOPTIONS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Options.h"
 
 namespace GafferScene
@@ -51,7 +52,7 @@ class GAFFERSCENE_API StandardOptions : public Options
 		StandardOptions( const std::string &name=defaultName<StandardOptions>() );
 		~StandardOptions() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::StandardOptions, StandardOptionsTypeId, Options );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::StandardOptions, StandardOptionsTypeId, Options );
 
 };
 

@@ -86,7 +86,7 @@ class GAFFER_API StringPlug : public ValuePlug
 
 		typedef std::string ValueType;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::StringPlug, StringPlugTypeId, ValuePlug );
+		GAFFER_PLUG_DECLARE_TYPE( Gaffer::StringPlug, StringPlugTypeId, ValuePlug );
 
 		StringPlug(
 			const std::string &name = defaultName<StringPlug>(),
@@ -110,7 +110,7 @@ class GAFFER_API StringPlug : public ValuePlug
 		/// Returns the value. See comments in TypedObjectPlug::getValue()
 		/// for details of the optional precomputedHash argument - and use
 		/// with care!
-		std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
+		virtual std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
 
 		void setFrom( const ValuePlug *other ) override;
 

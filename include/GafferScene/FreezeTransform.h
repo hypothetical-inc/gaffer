@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_FREEZETRANSFORM_H
 #define GAFFERSCENE_FREEZETRANSFORM_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/FilteredSceneProcessor.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API FreezeTransform : public FilteredSceneProcessor
 		FreezeTransform( const std::string &name=defaultName<FreezeTransform>() );
 		~FreezeTransform() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::FreezeTransform, FreezeTransformTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::FreezeTransform, FreezeTransformTypeId, FilteredSceneProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

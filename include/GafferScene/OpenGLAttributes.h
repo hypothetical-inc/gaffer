@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_OPENGLATTRIBUTES_H
 #define GAFFERSCENE_OPENGLATTRIBUTES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Attributes.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API OpenGLAttributes : public GafferScene::Attributes
 		OpenGLAttributes( const std::string &name=defaultName<OpenGLAttributes>() );
 		~OpenGLAttributes() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::OpenGLAttributes, OpenGLAttributesTypeId, Attributes );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::OpenGLAttributes, OpenGLAttributesTypeId, Attributes );
 
 };
 

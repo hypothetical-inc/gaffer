@@ -37,6 +37,7 @@
 #ifndef GAFFERCORTEX_EXECUTABLEOPHOLDER_H
 #define GAFFERCORTEX_EXECUTABLEOPHOLDER_H
 
+#include "GafferCortex/Export.h"
 #include "GafferCortex/ParameterisedHolder.h"
 
 namespace IECore
@@ -57,7 +58,7 @@ class GAFFERCORTEX_API ExecutableOpHolder : public ParameterisedHolderTaskNode
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferCortex::ExecutableOpHolder, ExecutableOpHolderTypeId, ParameterisedHolderTaskNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferCortex::ExecutableOpHolder, ExecutableOpHolderTypeId, ParameterisedHolderTaskNode );
 
 		ExecutableOpHolder( const std::string &name=defaultName<ExecutableOpHolder>() );
 

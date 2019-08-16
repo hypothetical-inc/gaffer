@@ -307,12 +307,8 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 			"a1" : IECore.StringData( "from extra" ),
 			"a2" : IECore.IntData( 2 ),
 		}))
-		s["a"]["attributes"].addChild(
-			Gaffer.NameValuePlug( "a1", IECore.StringData( "from attributes" ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
-		)
-		s["a"]["attributes"].addChild(
-			Gaffer.NameValuePlug( "a3", IECore.IntData( 5 ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
-		)
+		s["a"]["attributes"].addMember( "a1", IECore.StringData( "from attributes" ) )
+		s["a"]["attributes"].addMember( "a3", IECore.IntData( 5 ) )
 		self.assertEqual(
 			s["a"]["out"].attributes( "/sphere" ),
 			IECore.CompoundObject( {
@@ -322,6 +318,25 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 			} )
 		)
 
+	def testExtraAttributesOnlyEvaluatedForFilteredLocations( self ) :
+
+		script = Gaffer.ScriptNode()
+		script["grid"] = GafferScene.Grid()
+
+		script["filter"] = GafferScene.PathFilter()
+		script["filter"]["paths"].setValue( IECore.StringVectorData( [ "/grid" ] ) )
+
+		script["customAttributes"] = GafferScene.CustomAttributes()
+		script["customAttributes"]["in"].setInput( script["grid"]["out"] )
+		script["customAttributes"]["filter"].setInput( script["filter"]["out"] )
+
+		script["expression"] = Gaffer.Expression()
+		script["expression"].setExpression( """parent["customAttributes"]["extraAttributes"] = IECore.CompoundData( { "a" : IECore.StringData( str( context.get( "scene:path" ) ) ) } )""" )
+
+		with Gaffer.ContextMonitor( script["expression"] ) as monitor :
+			GafferSceneTest.traverseScene( script["customAttributes"]["out"] )
+
+		self.assertEqual( monitor.combinedStatistics().numUniqueValues( "scene:path" ), 1 )
 
 if __name__ == "__main__":
 	unittest.main()

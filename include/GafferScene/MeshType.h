@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_MESHTYPE_H
 #define GAFFERSCENE_MESHTYPE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
@@ -58,7 +59,7 @@ class GAFFERSCENE_API MeshType : public SceneElementProcessor
 		MeshType( const std::string &name=defaultName<MeshType>() );
 		~MeshType() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::MeshType, MeshTypeTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MeshType, MeshTypeTypeId, SceneElementProcessor );
 
 		Gaffer::StringPlug *meshTypePlug();
 		const Gaffer::StringPlug *meshTypePlug() const;

@@ -53,6 +53,10 @@ enum TypeId
 	ScaleToolTypeId = 110659,
 	RotateToolTypeId = 110660,
 	CameraToolTypeId = 110661,
+	UVViewTypeId = 110662,
+	UVSceneTypeId = 110663,
+	SourceSetTypeId = 110664,
+
 	LastTypeId = 110700
 };
 

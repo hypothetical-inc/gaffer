@@ -44,7 +44,7 @@
 namespace Gaffer
 {
 
-IE_CORE_FORWARDDECLARE( StringPlug )
+IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 
 } // namespace Gaffer
 
@@ -59,7 +59,7 @@ class GAFFERIMAGE_API LUT : public OpenColorIOTransform
 		LUT( const std::string &name=defaultName<LUT>() );
 		~LUT() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::LUT, LUTTypeId, OpenColorIOTransform );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::LUT, LUTTypeId, OpenColorIOTransform );
 
 		enum Interpolation
 		{
@@ -75,8 +75,8 @@ class GAFFERIMAGE_API LUT : public OpenColorIOTransform
 			Inverse
 		};
 
-		Gaffer::StringPlug *fileNamePlug();
-		const Gaffer::StringPlug *fileNamePlug() const;
+		Gaffer::FileSystemPathPlug *fileNamePlug();
+		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 		Gaffer::IntPlug *interpolationPlug();
 		const Gaffer::IntPlug *interpolationPlug() const;

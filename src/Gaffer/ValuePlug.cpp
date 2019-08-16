@@ -722,7 +722,7 @@ IE_CORE_DEFINERUNTIMETYPED( ValuePlug::SetValueAction );
 // ValuePlug implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( ValuePlug );
+GAFFER_PLUG_DEFINE_TYPE( ValuePlug );
 
 /// \todo We may want to avoid repeatedly storing copies of the same default value
 /// passed to this function. Perhaps by having a central map of unique values here,
@@ -876,7 +876,18 @@ bool ValuePlug::isSetToDefault() const
 {
 	if( m_defaultValue != nullptr )
 	{
-		return getObjectValue()->isEqualTo( m_defaultValue.get() );
+		const ValuePlug *s = source<ValuePlug>();
+		if( s->direction() == Plug::Out && IECore::runTimeCast<const ComputeNode>( s->node() ) )
+		{
+			// Value is computed, and therefore can vary by context. There is no
+			// single "current value", so no true concept of whether or not it's at
+			// the default.
+			return false;
+		}
+		return
+			s->m_staticValue == m_defaultValue ||
+			s->m_staticValue->isEqualTo( m_defaultValue.get() );
+		;
 	}
 	else
 	{

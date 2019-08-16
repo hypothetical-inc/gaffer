@@ -41,6 +41,7 @@
 #include "Gaffer/Process.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/SubGraph.h"
 #include "Gaffer/Switch.h"
 
@@ -73,7 +74,7 @@ Dispatcher::DispatchSignal Dispatcher::g_dispatchSignal;
 Dispatcher::PostDispatchSignal Dispatcher::g_postDispatchSignal;
 std::string Dispatcher::g_defaultDispatcherType = "";
 
-IE_CORE_DEFINERUNTIMETYPED( Dispatcher )
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Dispatcher )
 
 Dispatcher::Dispatcher( const std::string &name )
 	: Node( name )
@@ -83,7 +84,7 @@ Dispatcher::Dispatcher( const std::string &name )
 	addChild( new IntPlug( "framesMode", Plug::In, CurrentFrame, CurrentFrame ) );
 	addChild( new StringPlug( "frameRange", Plug::In, "1-100x10" ) );
 	addChild( new StringPlug( "jobName", Plug::In, "" ) );
-	addChild( new StringPlug( "jobsDirectory", Plug::In, "" ) );
+	addChild( new FileSystemPathPlug( "jobsDirectory", Plug::In, "" ) );
 }
 
 Dispatcher::~Dispatcher()
@@ -120,14 +121,14 @@ const StringPlug *Dispatcher::jobNamePlug() const
 	return getChild<StringPlug>( g_firstPlugIndex + 2 );
 }
 
-StringPlug *Dispatcher::jobsDirectoryPlug()
+FileSystemPathPlug *Dispatcher::jobsDirectoryPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
-const StringPlug *Dispatcher::jobsDirectoryPlug() const
+const FileSystemPathPlug *Dispatcher::jobsDirectoryPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
 const std::string Dispatcher::jobDirectory() const
@@ -137,7 +138,7 @@ const std::string Dispatcher::jobDirectory() const
 
 void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::Context *context ) const
 {
-	boost::filesystem::path jobDirectory( context->substitute( jobsDirectoryPlug()->getValue() ) );
+	boost::filesystem::path jobDirectory( jobsDirectoryPlug()->getValue(nullptr, context, true) );
 	jobDirectory /= context->substitute( jobNamePlug()->getValue() );
 
 	if( jobDirectory == "" )
@@ -179,7 +180,7 @@ void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::C
 	long i = -1;
 	for( const auto &d : boost::filesystem::directory_iterator( jobDirectory ) )
 	{
-		i = std::max( i, strtol( d.path().filename().c_str(), nullptr, 10 ) );
+		i = std::max( i, strtol( d.path().filename().string().c_str(), nullptr, 10 ) );
 	}
 
 	// Now create the next directory. We do this in a loop until we
@@ -737,9 +738,9 @@ void Dispatcher::dispatch( const std::vector<NodePtr> &nodes ) const
 		}
 		else if ( const SubGraph *subGraph = runTimeCast<const SubGraph>( nIt->get() ) )
 		{
-			for ( RecursiveOutputPlugIterator plugIt( subGraph ); !plugIt.done(); ++plugIt )
+			for( auto &plug : TaskNode::TaskPlug::RecursiveOutputRange( *subGraph ) )
 			{
-				Node *sourceNode = plugIt->get()->source()->node();
+				Node *sourceNode = plug->source()->node();
 				if ( TaskNode *taskNode = runTimeCast<TaskNode>( sourceNode ) )
 				{
 					taskNodes.push_back( taskNode );

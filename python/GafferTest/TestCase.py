@@ -34,9 +34,11 @@
 #
 ##########################################################################
 
+import os
 import sys
 import unittest
 import inspect
+import subprocess
 import types
 import shutil
 import tempfile
@@ -285,10 +287,20 @@ class TestCase( unittest.TestCase ) :
 
 			for plug in node.children( Gaffer.Plug ) :
 
-				if plug.direction() != plug.Direction.In or not isinstance( plug, Gaffer.ValuePlug ) :
+				if plug.source().direction() != plug.Direction.In or not isinstance( plug, Gaffer.ValuePlug ) :
 					continue
 
 				if not plug.getFlags( plug.Flags.Serialisable ) :
 					continue
 
 				self.assertTrue( plug.isSetToDefault(), plug.fullName() + " not at default value following construction" )
+
+	def assertModuleDoesNotImportUI( self, moduleName ) :
+
+		script = os.path.join( self.temporaryDirectory(), "test.py" )
+		with open( script, "w" ) as f :
+			f.write( "import {}\n".format( moduleName ) )
+			f.write( "import sys\n" )
+			f.write( "assert( 'GafferUI' not in sys.modules )\n" )
+
+		subprocess.check_call( [ "gaffer", "python", script ] )

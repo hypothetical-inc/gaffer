@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_SPACERGADGET_H
 #define GAFFERUI_SPACERGADGET_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Gadget.h"
 
 namespace GafferUI
@@ -50,7 +51,7 @@ class GAFFERUI_API SpacerGadget : public Gadget
 		SpacerGadget( const Imath::Box3f &size );
 		~SpacerGadget() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::SpacerGadget, SpacerGadgetTypeId, Gadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::SpacerGadget, SpacerGadgetTypeId, Gadget );
 
 		Imath::Box3f bound() const override;
 

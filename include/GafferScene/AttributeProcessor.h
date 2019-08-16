@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 #define GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
@@ -59,7 +60,7 @@ class GAFFERSCENE_API AttributeProcessor : public SceneElementProcessor
 		AttributeProcessor( const std::string &name=defaultName<AttributeProcessor>() );
 		~AttributeProcessor() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::AttributeProcessor, AttributeProcessorTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::AttributeProcessor, AttributeProcessorTypeId, SceneElementProcessor );
 
 		Gaffer::StringPlug *namesPlug();
 		const Gaffer::StringPlug *namesPlug() const;

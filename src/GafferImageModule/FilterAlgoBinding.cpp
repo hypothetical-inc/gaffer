@@ -55,9 +55,9 @@ namespace
 		return GafferImage::FilterAlgo::sampleParallelogram( sampler, p, dpdx, dpdy, f );
 	}
 
-	list filterNamesWrapper()
+	boost::python::list filterNamesWrapper()
 	{
-		list result;
+		boost::python::list result;
 		const std::vector<std::string> &filters = GafferImage::FilterAlgo::filterNames();
 		for ( unsigned i=0; i < filters.size(); i++ )
 		{

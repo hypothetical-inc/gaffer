@@ -52,7 +52,7 @@ class GAFFER_API Reference : public SubGraph
 		Reference( const std::string &name=defaultName<Reference>() );
 		~Reference() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( Gaffer::Reference, ReferenceTypeId, SubGraph );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( Gaffer::Reference, ReferenceTypeId, SubGraph );
 
 		/// Loads the specified script, which should have been exported
 		/// using Box::exportForReference().
@@ -65,15 +65,21 @@ class GAFFER_API Reference : public SubGraph
 		/// Emitted when a reference is loaded (or unloaded following an undo).
 		ReferenceLoadedSignal &referenceLoadedSignal();
 
+		bool hasMetadataEdit( const Plug *plug, const IECore::InternedString key ) const;
+
 	private :
 
 		void loadInternal( const std::string &fileName );
 		bool isReferencePlug( const Plug *plug ) const;
+		void transferEditedMetadata( const Plug *srcPlug, Plug *dstPlug ) const;
 
 		void convertPersistentMetadata( Plug *plug ) const;
 
 		std::string m_fileName;
 		ReferenceLoadedSignal m_referenceLoadedSignal;
+
+		class PlugEdits;
+		std::unique_ptr<PlugEdits> m_plugEdits;
 
 };
 

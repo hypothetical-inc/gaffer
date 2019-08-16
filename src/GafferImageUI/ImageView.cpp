@@ -203,7 +203,7 @@ class V2fContextVariable : public Gaffer::ComputeNode
 			addChild( new V2fPlug( "out", Plug::Out ) );
 		}
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( V2fContextVariable, V2fContextVariableTypeId, ComputeNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( V2fContextVariable, V2fContextVariableTypeId, ComputeNode );
 
 		StringPlug *namePlug()
 		{
@@ -270,7 +270,7 @@ class V2fContextVariable : public Gaffer::ComputeNode
 };
 
 size_t V2fContextVariable::g_firstPlugIndex = 0;
-IE_CORE_DEFINERUNTIMETYPED( V2fContextVariable )
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( V2fContextVariable )
 
 IE_CORE_DECLAREPTR( V2fContextVariable )
 
@@ -350,9 +350,9 @@ class ImageView::ColorInspector : public boost::signals::trackable
 /// Implementation of ImageView
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( ImageView );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ImageView );
 
-ImageView::ViewDescription<ImageView> ImageView::g_viewDescription( GafferImage::ImagePlug::staticTypeId() );
+GAFFERIMAGEUI_API ImageView::ViewDescription<ImageView> ImageView::g_viewDescription( GafferImage::ImagePlug::staticTypeId() );
 
 ImageView::ImageView( const std::string &name )
 	:	View( name, new GafferImage::ImagePlug() ),
@@ -610,12 +610,7 @@ void ImageView::insertDisplayTransform()
 	}
 	else
 	{
-		DisplayTransformCreatorMap &m = displayTransformCreators();
-		DisplayTransformCreatorMap::const_iterator it = m.find( displayTransformPlug()->getValue() );
-		if( it != m.end() )
-		{
-			displayTransform = it->second();
-		}
+		displayTransform = createDisplayTransform( name );
 		if( displayTransform )
 		{
 			m_displayTransforms[name] = displayTransform;
@@ -647,6 +642,17 @@ void ImageView::registeredDisplayTransforms( std::vector<std::string> &names )
 	{
 		names.push_back( it->first );
 	}
+}
+
+GafferImage::ImageProcessorPtr ImageView::createDisplayTransform( const std::string &name )
+{
+	const auto &m = displayTransformCreators();
+	auto it = m.find( name );
+	if( it != m.end() )
+	{
+		return it->second();
+	}
+	return nullptr;
 }
 
 ImageView::DisplayTransformCreatorMap &ImageView::displayTransformCreators()

@@ -133,6 +133,7 @@ enum TypeId
 	BoxInTypeId = 110086,
 	BoxOutTypeId = 110087,
 	DeleteContextVariablesTypeId = 110088,
+	FileSystemPathPlugTypeId = 110089,
 
 	LastTypeId = 110159,
 

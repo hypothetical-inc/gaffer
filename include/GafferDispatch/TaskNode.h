@@ -85,7 +85,7 @@ class GAFFERDISPATCH_API TaskNode : public Gaffer::DependencyNode
 		/// the context in which it should be executed. See TaskPlug
 		/// for the main public interface for the execution of
 		/// individual tasks.
-		class Task
+		class GAFFERDISPATCH_API Task
 		{
 			public :
 
@@ -113,7 +113,7 @@ class GAFFERDISPATCH_API TaskNode : public Gaffer::DependencyNode
 
 		typedef std::vector<Task> Tasks;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferDispatch::TaskNode, TaskNodeTypeId, Gaffer::DependencyNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferDispatch::TaskNode, TaskNodeTypeId, Gaffer::DependencyNode );
 
 		TaskNode( const std::string &name=defaultName<TaskNode>() );
 		~TaskNode() override;
@@ -121,12 +121,12 @@ class GAFFERDISPATCH_API TaskNode : public Gaffer::DependencyNode
 		/// Plug type used to represent tasks within the
 		/// node graph. This provides the primary public
 		/// interface for querying and executing tasks.
-		class TaskPlug : public Gaffer::Plug
+		class GAFFERDISPATCH_API TaskPlug : public Gaffer::Plug
 		{
 
 			public :
 
-				IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferDispatch::TaskNode::TaskPlug, TaskNodeTaskPlugTypeId, Gaffer::Plug );
+				GAFFER_PLUG_DECLARE_TYPE( GafferDispatch::TaskNode::TaskPlug, TaskNodeTaskPlugTypeId, Gaffer::Plug );
 
 				TaskPlug( const std::string &name=defaultName<TaskPlug>(), Direction direction=In, unsigned flags=Default );
 

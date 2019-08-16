@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_COPYIMAGEMETADATA_H
 #define GAFFERIMAGE_COPYIMAGEMETADATA_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/MetadataProcessor.h"
 
 namespace GafferImage
@@ -50,7 +51,7 @@ class GAFFERIMAGE_API CopyImageMetadata : public MetadataProcessor
 		CopyImageMetadata( const std::string &name=defaultName<CopyImageMetadata>() );
 		~CopyImageMetadata() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::CopyImageMetadata, CopyImageMetadataTypeId, MetadataProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::CopyImageMetadata, CopyImageMetadataTypeId, MetadataProcessor );
 
 		/// \todo: If ImageProcessor provides an ArrayPlug for "in" instead,
 		/// we can remove this secondary image plug.

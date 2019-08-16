@@ -702,7 +702,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 
 			for( int i = 0, e = inPlugPaths.size(); i < e; ++i )
 			{
-				string parameter = "_" + inPlugPaths[i];
+				string parameter = inPlugPaths[i];
+				if( parameter[0] != '_' )
+				{
+					parameter = "_" + parameter;
+				}
 				replace_all( parameter, ".", "_" );
 				replace_all( result, "parent." + inPlugPaths[i], parameter );
 				inParameters.push_back( ustring( parameter ) );
@@ -710,7 +714,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 
 			for( int i = 0, e = outPlugPaths.size(); i < e; ++i )
 			{
-				string parameter = "_" + outPlugPaths[i];
+				string parameter = outPlugPaths[i];
+				if( parameter[0] != '_' )
+				{
+					parameter = "_" + parameter;
+				}
 				replace_all( parameter, ".", "_" );
 				replace_all( result, "parent." + outPlugPaths[i], parameter );
 				outParameters.push_back( ustring( parameter ) );
@@ -720,7 +728,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			// prepend it to the source.
 
 			shaderName = "oslExpression" + MurmurHash().append( result ).toString();
- 			result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#ifdef _MSC_VER
+				result = "#include \"GafferOSL\\Expression.h\"\n\nshader " + shaderName + " " + result;
+			#else
+ 				result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#endif
 
 			return result;
 		}
@@ -748,7 +760,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			vector<string> options;
 			if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 			{
-				StringAlgo::tokenize( includePaths, ':', options );
+				#ifdef _MSC_VER
+					StringAlgo::tokenize( includePaths, ';', options );
+				#else
+	 				StringAlgo::tokenize( includePaths, ':', options );
+	 			#endif
 				for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
 				{
 					it->insert( 0, "-I" );

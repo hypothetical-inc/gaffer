@@ -46,6 +46,7 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( StringPlug )
+IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 
 } // namespace Gaffer
 
@@ -60,7 +61,7 @@ class GAFFERIMAGE_API OpenImageIOReader : public ImageNode
 		OpenImageIOReader( const std::string &name=defaultName<OpenImageIOReader>() );
 		~OpenImageIOReader() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::OpenImageIOReader, OpenImageIOReaderTypeId, ImageNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::OpenImageIOReader, OpenImageIOReaderTypeId, ImageNode );
 
 		enum MissingFrameMode
 		{
@@ -69,8 +70,8 @@ class GAFFERIMAGE_API OpenImageIOReader : public ImageNode
 			Hold,
 		};
 
-		Gaffer::StringPlug *fileNamePlug();
-		const Gaffer::StringPlug *fileNamePlug() const;
+		Gaffer::FileSystemPathPlug *fileNamePlug();
+		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 		/// Number of times the node has been refreshed.
 		Gaffer::IntPlug *refreshCountPlug();

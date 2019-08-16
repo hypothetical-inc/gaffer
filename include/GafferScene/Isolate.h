@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_ISOLATE_H
 #define GAFFERSCENE_ISOLATE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/FilteredSceneProcessor.h"
 
 namespace Gaffer
@@ -57,7 +58,7 @@ class GAFFERSCENE_API Isolate : public FilteredSceneProcessor
 		Isolate( const std::string &name=defaultName<Isolate>() );
 		~Isolate() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Isolate, IsolateTypeId, FilteredSceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Isolate, IsolateTypeId, FilteredSceneProcessor );
 
 		Gaffer::StringPlug *fromPlug();
 		const Gaffer::StringPlug *fromPlug() const;

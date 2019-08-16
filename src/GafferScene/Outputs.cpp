@@ -39,6 +39,7 @@
 
 #include "Gaffer/CompoundDataPlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "boost/multi_index/member.hpp"
 #include "boost/multi_index/ordered_index.hpp"
@@ -82,7 +83,7 @@ OutputMap &outputMap()
 // Outputs implementation
 //////////////////////////////////////////////////////////////////////////
 
-IE_CORE_DEFINERUNTIMETYPED( Outputs );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Outputs );
 
 size_t Outputs::g_firstPlugIndex = 0;
 
@@ -132,7 +133,7 @@ Gaffer::ValuePlug *Outputs::addOutput( const std::string &name, const IECoreScen
 	activePlug->setFlags( Plug::Dynamic, true );
 	outputPlug->addChild( activePlug );
 
-	StringPlugPtr fileNamePlug = new StringPlug( "fileName" );
+	FileSystemPathPlugPtr fileNamePlug = new FileSystemPathPlug( "fileName" );
 	fileNamePlug->setValue( output->getName() );
 	fileNamePlug->setFlags( Plug::Dynamic, true );
 	outputPlug->addChild( fileNamePlug );

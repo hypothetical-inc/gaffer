@@ -39,6 +39,7 @@
 #include "ContextAlgoBinding.h"
 #include "HierarchyViewBinding.h"
 #include "SceneGadgetBinding.h"
+#include "SourceSetBinding.h"
 #include "ToolBinding.h"
 #include "ViewBinding.h"
 #include "VisualiserBinding.h"
@@ -54,5 +55,6 @@ BOOST_PYTHON_MODULE( _GafferSceneUI )
 	bindHierarchyView();
 	bindSceneGadget();
 	bindContextAlgo();
+	bindSourceSet();
 
 }

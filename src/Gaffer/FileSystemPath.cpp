@@ -50,9 +50,19 @@
 #include "boost/date_time/posix_time/conversion.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "boost/regex.hpp"
 
-#include <grp.h>
-#include <pwd.h>
+#ifndef _MSC_VER
+	#include <grp.h>
+	#include <pwd.h>
+#else
+#include <stdio.h>
+#include <Windows.h>
+#include <tchar.h>
+#include "accctrl.h"
+#include "aclapi.h"
+#endif
+
 #include <sys/stat.h>
 
 using namespace std;
@@ -70,6 +80,10 @@ static InternedString g_modificationTimePropertyName( "fileSystem:modificationTi
 static InternedString g_sizePropertyName( "fileSystem:size" );
 static InternedString g_frameRangePropertyName( "fileSystem:frameRange" );
 
+static InternedString g_windowsSeparator( "\\" );
+static InternedString g_genericSeparator( "/" );
+static InternedString g_uncPrefix( "\\\\" );
+
 FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 	:	Path( filter ), m_includeSequences( includeSequences )
 {
@@ -78,6 +92,7 @@ FileSystemPath::FileSystemPath( PathFilterPtr filter, bool includeSequences )
 FileSystemPath::FileSystemPath( const std::string &path, PathFilterPtr filter, bool includeSequences )
 	:	Path( path, filter ), m_includeSequences( includeSequences )
 {
+	setFromString( path );
 }
 
 FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString &root, PathFilterPtr filter, bool includeSequences )
@@ -87,6 +102,57 @@ FileSystemPath::FileSystemPath( const Names &names, const IECore::InternedString
 
 FileSystemPath::~FileSystemPath()
 {
+}
+
+// Create a path that is aware of differences in OS naming schemes
+// Windows separates path elements with a backlash and Linux / Mac with forward slash
+// Windows also starts drive letter paths with not leading \, which looks like a relative
+// path but should be treated as though the drive letter is the root of the path
+// If we don't treat the drive letter as the root, there will be errors when repeatedly
+// popping the last path entry and getting to the drive letter path at the start of what
+// FileSystemPath thinks is a relative path
+
+void FileSystemPath::setFromString(const std::string &string)
+{
+	Names newNames;
+	std::string sanitizedString;
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
+	boost::smatch result;
+
+	sanitizedString = string.c_str();
+	if (boost::starts_with(sanitizedString, g_uncPrefix.c_str()))
+	{
+		boost::replace_first(sanitizedString, g_uncPrefix.c_str(), g_genericSeparator.c_str());
+	}
+	boost::replace_all( sanitizedString, g_windowsSeparator.c_str(), g_genericSeparator.c_str() );
+
+	StringAlgo::tokenize<InternedString>(sanitizedString, '/', back_inserter(newNames));
+
+	InternedString newRoot;
+	if (sanitizedString.size() && sanitizedString[0] == '/')
+	{
+		newRoot = "/";
+	}
+	else if ( newNames.size() && boost::regex_search( newNames[0].string(), result, driveLetterPattern ) )
+	{
+		newRoot = newNames[0];
+		newNames.erase( newNames.begin() );
+	}
+	else if (newNames.size() > 1 && boost::regex_search(newNames[1].string(), result, driveLetterPattern))
+	{
+		newRoot = newNames[1];
+		newNames.erase(newNames.begin(), newNames.begin()+1);
+	}
+
+	if (newRoot == this->root() && newNames == this->names() )
+	{
+		return;
+	}
+
+	set( 0, this->names().size(), newNames );
+	setRoot( newRoot );
+
+	emitPathChanged();
 }
 
 bool FileSystemPath::isValid() const
@@ -101,7 +167,11 @@ bool FileSystemPath::isValid() const
 		return true;
 	}
 
+#ifndef _MSC_VER
 	const file_type t = symlink_status( path( this->string() ) ).type();
+#else
+	const file_type t = status( path( this->string() ) ).type();
+#endif
 	return t != status_error && t != file_not_found;
 }
 
@@ -146,7 +216,7 @@ FileSequencePtr FileSystemPath::fileSequence() const
 	}
 
 	FileSequencePtr sequence = nullptr;
-	IECore::ls( this->string(), sequence, /* minSequenceSize = */ 1 );
+	IECore::ls( this->nativeString(), sequence, /* minSequenceSize = */ 1 );
 	return sequence;
 }
 
@@ -182,10 +252,7 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				std::map<std::string,size_t> ownerCounter;
 				for( std::vector<std::string>::iterator it = files.begin(); it != files.end(); ++it )
 				{
-					struct stat s;
-					stat( it->c_str(), &s );
-					struct passwd *pw = getpwuid( s.st_uid );
-					std::string value = pw ? pw->pw_name : "";
+					std::string value = getOwner( it->c_str() );
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -199,10 +266,15 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		}
 
 		std::string n = this->string();
+
+		#ifndef _MSC_VER
 		struct stat s;
-		stat( n.c_str(), &s );
+		stat(n.c_str(), &s);
 		struct passwd *pw = getpwuid( s.st_uid );
 		return new StringData( pw ? pw->pw_name : "" );
+		#else
+		return new StringData( getOwner( n.c_str() ) );
+		#endif
 	}
 	else if( name == g_groupPropertyName )
 	{
@@ -221,8 +293,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 				{
 					struct stat s;
 					stat( it->c_str(), &s );
+					#ifndef _MSC_VER
 					struct group *gr = getgrgid( s.st_gid );
 					std::string value = gr ? gr->gr_name : "";
+					#else
+					std::string value = "";
+					#endif
 					std::pair<std::map<std::string,size_t>::iterator,bool> oIt = ownerCounter.insert( std::pair<std::string,size_t>( value, 0 ) );
 					oIt.first->second++;
 					if( oIt.first->second > maxCount )
@@ -238,8 +314,12 @@ IECore::ConstRunTimeTypedPtr FileSystemPath::property( const IECore::InternedStr
 		std::string n = this->string();
 		struct stat s;
 		stat( n.c_str(), &s );
+		#ifndef _MSC_VER
 		struct group *gr = getgrgid( s.st_gid );
 		return new StringData( gr ? gr->gr_name : "" );
+		#else
+		return new StringData( "" );
+		#endif
 	}
 	else if( name == g_modificationTimePropertyName )
 	{
@@ -415,4 +495,133 @@ PathFilterPtr FileSystemPath::createStandardFilter( const std::vector<std::strin
 	result->addFilter( searchFilter );
 
 	return result;
+}
+
+std::string FileSystemPath::string() const
+{
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
+	boost::smatch regex_result;
+
+	std::string result = this->root();
+	if (boost::regex_match(result, regex_result, driveLetterPattern))
+	{
+		result += "/";
+	}
+	for (size_t i = 0, s = this->names().size(); i < s; ++i)
+	{
+		if (i != 0)
+		{
+			result += "/";
+		}
+		result += this->names()[i].string();
+	}
+	return result;
+}
+
+std::string FileSystemPath::nativeString() const
+{
+	#ifdef _MSC_VER
+		std::string separator = g_windowsSeparator;
+	#else
+		std::string separator = g_genericSeparator;
+	#endif
+	
+	boost::regex driveLetterPattern{ "^([A-Za-z]{1}:)" };
+	boost::smatch regex_result;
+
+	std::string result = this->root();
+
+#ifdef _MSC_VER
+	if( this->root() == "/" )
+	{
+		result = g_uncPrefix;
+	}
+#endif
+
+	if( boost::regex_match( result, regex_result, driveLetterPattern ) )
+	{
+		result += separator;
+	}
+	Path::Names names = this->names();
+	for( size_t i = 0, s = names.size(); i < s; ++i )
+	{
+		if( i != 0 )
+		{
+			result += separator;
+		}
+		result += names[i].string();
+	}
+	return result;
+}
+
+// Windows code to get file / directory owner from https://docs.microsoft.com/en-us/windows/desktop/SecAuthZ/finding-the-owner-of-a-file-object-in-c--
+std::string FileSystemPath::getOwner( const std::string &pathString ) const
+{
+	std::string value;
+#ifndef _MSC_VER
+	struct stat s;
+	stat(pathString.c_str(), &s);
+	struct passwd *pw = getpwuid(s.st_uid);
+	value = pw ? pw->pw_name : "";
+#else
+	DWORD dwRtnCode = 0;
+	PSID pSidOwner = NULL;
+	BOOL bRtnBool = TRUE;
+	LPTSTR AcctName = NULL;
+	LPTSTR DomainName = NULL;
+	DWORD dwAcctName = 1, dwDomainName = 1;
+	SID_NAME_USE eUse = SidTypeUnknown;
+	HANDLE hFile;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+
+
+	// Get the handle of the file object.
+	hFile = CreateFile( pathString.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	// Check GetLastError for CreateFile error code.
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return "";
+	}
+
+	// Get the owner SID of the file.
+	dwRtnCode = GetSecurityInfo(hFile, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, &pSidOwner, NULL, NULL, NULL, &pSD);
+
+	CloseHandle( hFile );
+
+	// Check GetLastError for GetSecurityInfo error condition.
+	if (dwRtnCode != ERROR_SUCCESS) {
+		return "";
+	}
+
+	// First call to LookupAccountSid to get the buffer sizes.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	// Reallocate memory for the buffers.
+	AcctName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwAcctName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (AcctName == NULL) {
+		return "";
+	}
+
+	DomainName = (LPTSTR)GlobalAlloc(GMEM_FIXED, dwDomainName);
+
+	// Check GetLastError for GlobalAlloc error condition.
+	if (DomainName == NULL) {
+		return "";
+	}
+
+	// Second call to LookupAccountSid to get the account name.
+	bRtnBool = LookupAccountSid(NULL, pSidOwner, AcctName, (LPDWORD)&dwAcctName, DomainName, (LPDWORD)&dwDomainName, &eUse);
+
+	if (bRtnBool == FALSE) {
+		return "";
+	}
+	else if (bRtnBool == TRUE)
+	{
+		value = AcctName;	//let's ignore unicode considerations for now
+	}
+		
+#endif
+	return value;
 }

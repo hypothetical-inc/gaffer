@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETEGLOBALS_H
 #define GAFFERSCENE_DELETEGLOBALS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/GlobalsProcessor.h"
 
 namespace Gaffer
@@ -64,7 +65,7 @@ class GAFFERSCENE_API DeleteGlobals : public GlobalsProcessor
 		DeleteGlobals( const std::string &name=defaultName<DeleteGlobals>() );
 		~DeleteGlobals() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::DeleteGlobals, DeleteGlobalsTypeId, GlobalsProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::DeleteGlobals, DeleteGlobalsTypeId, GlobalsProcessor );
 
 		Gaffer::StringPlug *namesPlug();
 		const Gaffer::StringPlug *namesPlug() const;

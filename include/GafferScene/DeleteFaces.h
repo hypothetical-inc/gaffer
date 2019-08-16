@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_DELETEFACES_H
 #define GAFFERSCENE_DELETEFACES_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
@@ -64,7 +65,7 @@ class GAFFERSCENE_API DeleteFaces : public SceneElementProcessor
 		Gaffer::BoolPlug *invertPlug();
 		const Gaffer::BoolPlug *invertPlug() const;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::DeleteFaces, DeleteFacesTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::DeleteFaces, DeleteFacesTypeId, SceneElementProcessor );
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :

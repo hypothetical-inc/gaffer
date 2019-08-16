@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_OBJECTTOIMAGE_H
 #define GAFFERIMAGE_OBJECTTOIMAGE_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/ImagePrimitiveSource.h"
 
 namespace GafferImage
@@ -47,7 +48,7 @@ class GAFFERIMAGE_API ObjectToImage : public ImagePrimitiveNode
 
 	public :
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImage::ObjectToImage, ObjectToImageTypeId, ImagePrimitiveNode );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::ObjectToImage, ObjectToImageTypeId, ImagePrimitiveNode );
 
 		ObjectToImage( const std::string &name = defaultName<ObjectToImage>() );
 		~ObjectToImage() override;

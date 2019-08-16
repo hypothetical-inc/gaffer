@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_NAMEGADGET_H
 #define GAFFERUI_NAMEGADGET_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/TextGadget.h"
 
 #include "IECoreScene/Font.h"
@@ -52,7 +53,7 @@ class GAFFERUI_API NameGadget : public TextGadget
 		NameGadget( Gaffer::GraphComponentPtr object );
 		~NameGadget() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::NameGadget, NameGadgetTypeId, TextGadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::NameGadget, NameGadgetTypeId, TextGadget );
 
 	private :
 

@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_MESHTANGENTS_H
 #define GAFFERSCENE_MESHTANGENTS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 #include "Gaffer/StringPlug.h"
@@ -92,7 +93,7 @@ class GAFFERSCENE_API MeshTangents : public SceneElementProcessor
 		Gaffer::StringPlug *biTangentPlug();
 		const Gaffer::StringPlug *biTangentPlug() const;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::MeshTangents, MeshTangentsTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MeshTangents, MeshTangentsTypeId, SceneElementProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

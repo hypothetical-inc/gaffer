@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_PARENT_H
 #define GAFFERSCENE_PARENT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/BranchCreator.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API Parent : public BranchCreator
 		Parent( const std::string &name=defaultName<Parent>() );
 		~Parent() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::Parent, ParentTypeId, BranchCreator );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Parent, ParentTypeId, BranchCreator );
 
 		ScenePlug *childPlug();
 		const ScenePlug *childPlug() const;

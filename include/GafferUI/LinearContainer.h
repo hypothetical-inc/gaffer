@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_LINEARCONTAINER_H
 #define GAFFERUI_LINEARCONTAINER_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/ContainerGadget.h"
 
 namespace GafferUI
@@ -76,7 +77,7 @@ class GAFFERUI_API LinearContainer : public ContainerGadget
 
 		~LinearContainer() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferUI::LinearContainer, LinearContainerTypeId, ContainerGadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferUI::LinearContainer, LinearContainerTypeId, ContainerGadget );
 
 		void setOrientation( Orientation orientation );
 		Orientation getOrientation() const;

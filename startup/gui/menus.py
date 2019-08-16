@@ -235,22 +235,7 @@ if "APPLESEED" in os.environ :
 		import GafferOSL
 		import GafferOSLUI
 
-		def __shaderNodeCreator( nodeName, shaderName ) :
-
-			node = GafferOSL.OSLShader( nodeName )
-			node.loadShader( shaderName )
-
-			return node
-
-		GafferSceneUI.ShaderUI.appendShaders(
-			nodeMenu.definition(), "/Appleseed/Shader",
-			os.environ["APPLESEED_SEARCHPATH"].split( ":" ),
-			[ "oso" ],
-			__shaderNodeCreator,
-			# Show only the OSL shaders from the Appleseed shader
-			# library.
-			matchExpression = re.compile( "(^|.*/)as_[^/]*$")
-		)
+		GafferAppleseedUI.ShaderMenu.appendShaders( nodeMenu.definition() )
 
 		GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
 
@@ -292,6 +277,7 @@ nodeMenu.append( "/Scene/Object/Primitive Variables", GafferScene.PrimitiveVaria
 nodeMenu.append( "/Scene/Object/Delete Primitive Variables", GafferScene.DeletePrimitiveVariables, searchText = "DeletePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Resample Primitive Variables", GafferScene.ResamplePrimitiveVariables, searchText = "ResamplePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Collect Primitive Variables", GafferScene.CollectPrimitiveVariables, searchText = "CollectPrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Orientation", GafferScene.Orientation )
 nodeMenu.append( "/Scene/Object/Mesh Type", GafferScene.MeshType, searchText = "MeshType" )
 nodeMenu.append( "/Scene/Object/Points Type", GafferScene.PointsType, searchText = "PointsType" )
 nodeMenu.append( "/Scene/Object/Mesh To Points", GafferScene.MeshToPoints, searchText = "MeshToPoints" )
@@ -405,9 +391,11 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
+	shader_regex = "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$" if os.name != "nt" else r"(^|.*\\)(?<!maya\\osl\\)(?<!3DelightForKatana\\osl\\)(?!as_|oslCode)[^\\]*$"
+
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
-		os.environ["OSL_SHADER_PATHS"].split( ":" ),
+		os.environ["OSL_SHADER_PATHS"].split( os.path.pathsep ),
 		[ "oso" ],
 		__shaderNodeCreator,
 		# Appleseed comes with a library of OSL shaders which we put
@@ -442,7 +430,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 		#   shaders.
 		# - [^/]*$ matches the rest of the shader name, ensuring it
 		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		matchExpression = re.compile( shader_regex ),
 		searchTextPrefix = "osl",
 	)
 
@@ -450,7 +438,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 	nodeMenu.append( "/OSL/Image", GafferOSL.OSLImage, searchText = "OSLImage" )
 	nodeMenu.append( "/OSL/Object", GafferOSL.OSLObject, searchText = "OSLObject" )
 
-	oslDocs = os.path.expandvars( "$GAFFER_ROOT/doc/osl-languagespec.pdf" )
+	oslDocs = os.path.expandvars( os.path.join( os.environ["GAFFER_ROOT"], "doc", "osl-languagespec.pdf" ) )
 	scriptWindowMenu.append(
 		"/Help/Open Shading Language/Language Reference",
 		{

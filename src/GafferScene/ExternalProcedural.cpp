@@ -36,7 +36,7 @@
 
 #include "GafferScene/ExternalProcedural.h"
 
-#include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/ExternalProcedural.h"
 
@@ -44,7 +44,7 @@ using namespace Imath;
 using namespace Gaffer;
 using namespace GafferScene;
 
-IE_CORE_DEFINERUNTIMETYPED( ExternalProcedural );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ExternalProcedural );
 
 size_t ExternalProcedural::g_firstPlugIndex = 0;
 
@@ -52,7 +52,7 @@ ExternalProcedural::ExternalProcedural( const std::string &name )
 	:	ObjectSource( name, "procedural" )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new Box3fPlug( "bound", Plug::In, Box3f( V3f( -0.5 ), V3f( 0.5 ) ) ) );
 	addChild( new CompoundDataPlug( "parameters" ) );
 }
@@ -61,14 +61,14 @@ ExternalProcedural::~ExternalProcedural()
 {
 }
 
-Gaffer::StringPlug *ExternalProcedural::fileNamePlug()
+Gaffer::FileSystemPathPlug *ExternalProcedural::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::StringPlug *ExternalProcedural::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *ExternalProcedural::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
 Gaffer::Box3fPlug *ExternalProcedural::boundPlug()

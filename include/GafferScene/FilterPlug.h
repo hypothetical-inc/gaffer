@@ -76,7 +76,7 @@ class GAFFERSCENE_API FilterPlug : public Gaffer::IntPlug
 
 		~FilterPlug() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::FilterPlug, FilterPlugTypeId, Gaffer::IntPlug );
+		GAFFER_PLUG_DECLARE_TYPE( GafferScene::FilterPlug, FilterPlugTypeId, Gaffer::IntPlug );
 
 		bool acceptsInput( const Gaffer::Plug *input ) const override;
 		Gaffer::PlugPtr createCounterpart( const std::string &name, Direction direction ) const override;
@@ -88,7 +88,7 @@ class GAFFERSCENE_API FilterPlug : public Gaffer::IntPlug
 		static const IECore::InternedString inputSceneContextName;
 
 		/// Provides the input scene for a filter evaluation
-		struct SceneScope : public Gaffer::Context::EditableScope
+		struct GAFFERSCENE_API SceneScope : public Gaffer::Context::EditableScope
 		{
 			SceneScope( const Gaffer::Context *context, const ScenePlug *scenePlug );
 		};

@@ -90,7 +90,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 		ImageGadget();
 		~ImageGadget() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferImageUI::ImageGadget, ImageGadgetTypeId, Gadget );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImageUI::ImageGadget, ImageGadgetTypeId, Gadget );
 
 		Imath::Box3f bound() const override;
 
@@ -117,6 +117,9 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 		/// -1 to show a colour image as usual.
 		void setSoloChannel( int index );
 		int getSoloChannel() const;
+
+		void setLabelsVisible( bool visible );
+		bool getLabelsVisible() const;
 
 		void setPaused( bool paused );
 		bool getPaused() const;
@@ -157,6 +160,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 		Channels m_rgbaChannels;
 		int m_soloChannel;
 		ImageGadgetSignal m_channelsChangedSignal;
+		bool m_labelsVisible;
 		bool m_paused;
 		ImageGadgetSignal m_stateChangedSignal;
 
@@ -197,6 +201,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 		// be inserted/updated in parallel in a multithreaded
 		// update step.
 
+	public:
 		struct TileIndex
 		{
 			TileIndex( const Imath::V2i &tileOrigin, IECore::InternedString channelName )
@@ -213,6 +218,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 			IECore::InternedString channelName;
 		};
 
+	private:
 		struct Tile
 		{
 

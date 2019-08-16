@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_GLOBALSPROCESSOR_H
 #define GAFFERSCENE_GLOBALSPROCESSOR_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace GafferScene
@@ -53,7 +54,7 @@ class GAFFERSCENE_API GlobalsProcessor : public SceneProcessor
 		GlobalsProcessor( const std::string &name=defaultName<GlobalsProcessor>() );
 		~GlobalsProcessor() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::GlobalsProcessor, GlobalsProcessorTypeId, SceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::GlobalsProcessor, GlobalsProcessorTypeId, SceneProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

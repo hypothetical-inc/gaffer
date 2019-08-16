@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_DELETESETS_H
 #define GAFFERSCENE_DELETESETS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer
@@ -57,7 +58,7 @@ class GAFFERSCENE_API DeleteSets : public SceneProcessor
 		DeleteSets( const std::string &name=defaultName<DeleteSets>() );
 		~DeleteSets() override;
 
-		IE_CORE_DECLARERUNTIMETYPEDEXTENSION( GafferScene::DeleteSets, DeleteSetsTypeId, SceneProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::DeleteSets, DeleteSetsTypeId, SceneProcessor );
 
 		Gaffer::StringPlug *namesPlug();
 		const Gaffer::StringPlug *namesPlug() const;

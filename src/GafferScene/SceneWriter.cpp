@@ -39,7 +39,7 @@
 #include "GafferScene/SceneAlgo.h"
 
 #include "Gaffer/Context.h"
-#include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/SceneInterface.h"
 
@@ -151,7 +151,7 @@ struct LocationWriter
 
 }
 
-IE_CORE_DEFINERUNTIMETYPED( SceneWriter );
+GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SceneWriter );
 
 size_t SceneWriter::g_firstPlugIndex = 0;
 
@@ -160,7 +160,7 @@ SceneWriter::SceneWriter( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new ScenePlug( "in", Plug::In ) );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new ScenePlug( "out", Plug::Out, Plug::Default & ~Plug::Serialisable ) );
 	outPlug()->setInput( inPlug() );
 }
@@ -179,14 +179,14 @@ const ScenePlug *SceneWriter::inPlug() const
 	return getChild<ScenePlug>( g_firstPlugIndex );
 }
 
-StringPlug *SceneWriter::fileNamePlug()
+FileSystemPathPlug *SceneWriter::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
-const StringPlug *SceneWriter::fileNamePlug() const
+const FileSystemPathPlug *SceneWriter::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
 ScenePlug *SceneWriter::outPlug()
