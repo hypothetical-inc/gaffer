@@ -79,7 +79,7 @@ void NameSwitch::setup( const Plug *plug )
 		Plug::In,
 		element,
 		2,
-		Imath::limits<size_t>::max(),
+		std::numeric_limits<size_t>::max(),
 		Plug::Default,
 		/* resizeWhenInputsChange = */ false
 	);
