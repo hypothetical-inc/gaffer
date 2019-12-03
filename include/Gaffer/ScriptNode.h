@@ -65,7 +65,7 @@ IE_CORE_FORWARDDECLARE( ApplicationRoot );
 IE_CORE_FORWARDDECLARE( Context );
 IE_CORE_FORWARDDECLARE( StandardSet );
 IE_CORE_FORWARDDECLARE( CompoundDataPlug );
-IE_CORE_FORWARDDECLARE( StringPlug );
+IE_CORE_FORWARDDECLARE( FileSystemPathPlug );
 
 typedef Container<GraphComponent, ScriptNode> ScriptContainer;
 IE_CORE_DECLAREPTR( ScriptContainer );
@@ -193,8 +193,8 @@ class GAFFER_API ScriptNode : public Node
 		////////////////////////////////////////////////////////////////////
 		/// Returns the plug which specifies the file used in all load and save
 		/// operations.
-		StringPlug *fileNamePlug();
-		const StringPlug *fileNamePlug() const;
+		FileSystemPathPlug *fileNamePlug();
+		const FileSystemPathPlug *fileNamePlug() const;
 		/// Returns a plug which is used to flag when the script has had changes
 		/// made since the last call to save().
 		BoolPlug *unsavedChangesPlug();

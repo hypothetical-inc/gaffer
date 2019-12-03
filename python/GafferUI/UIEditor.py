@@ -99,7 +99,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 					_Label( "Color" )
 
 					self.__nodeMetadataWidgets.append(
-						MetadataWidget.ColorSwatchMetadataWidget( key = "nodeGadget:color" )
+						MetadataWidget.ColorSwatchMetadataWidget( key = "nodeGadget:color", defaultValue = imath.Color3f( 0.4 ) )
 					)
 
 				with _Row() as self.__iconRow :
@@ -109,6 +109,17 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 					self.__nodeMetadataWidgets.append(
 						MetadataWidget.FileSystemPathMetadataWidget( key = "icon" )
 					)
+
+				with _Row() as self.__plugAddButtons :
+
+					_Label( "Plug Creators" )
+
+					for side in ( "Top", "Bottom", "Left", "Right" ) :
+						_Label( side )._qtWidget().setFixedWidth( 40 )
+						self.__nodeMetadataWidgets.append( MetadataWidget.BoolMetadataWidget(
+							key = "noduleLayout:customGadget:addButton%s:visible" % side,
+							defaultValue = True
+						) )
 
 			# Plugs tab
 			with GafferUI.SplitContainer( orientation=GafferUI.SplitContainer.Orientation.Horizontal, borderWidth = 8, parenting = { "label" : "Plugs" } ) as self.__plugTab :
@@ -251,6 +262,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 		self.__node = node
 		self.__nodeNameWidget.setGraphComponent( self.__node )
 		self.__nodeTab.setEnabled( self.__node is not None )
+		self.__plugAddButtons.setVisible( False )
 
 		if self.__node is None :
 			self.__plugListing.setPlugParent( None )
@@ -264,6 +276,7 @@ class UIEditor( GafferUI.NodeSetEditor ) :
 				# is available for use by the user on Reference nodes once a Box has
 				# been exported and referenced.
 				plugParent = self.__node
+				self.__plugAddButtons.setVisible( True )
 			self.__plugListing.setPlugParent( plugParent )
 			self.__sectionEditor.setPlugParent( plugParent )
 
@@ -538,6 +551,10 @@ class _PlugListing( GafferUI.Widget ) :
 		column = GafferUI.ListContainer( spacing = 4 )
 		GafferUI.Widget.__init__( self, column, **kw )
 
+		# We don't have a way to do this with Widget directly at present, this
+		# stops the preset name/value fields being off-screen.
+		column._qtWidget().setMinimumWidth( 650 )
+
 		with column :
 
 			self.__pathListing = GafferUI.PathListingWidget(
@@ -579,7 +596,7 @@ class _PlugListing( GafferUI.Widget ) :
 
 	def setPlugParent( self, parent ) :
 
-		assert( isinstance( parent, ( Gaffer.Plug, Gaffer.Node, types.NoneType ) ) )
+		assert( isinstance( parent, ( Gaffer.Plug, Gaffer.Node, type( None ) ) ) )
 
 		self.__parent = parent
 
@@ -1348,12 +1365,12 @@ class _PlugEditor( GafferUI.Widget ) :
 					with _Row() :
 
 						_Label( "Color" )
-						self.__metadataWidgets["nodule:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "nodule:color" )
+						self.__metadataWidgets["nodule:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "nodule:color", defaultValue = imath.Color3f( 0.4 ) )
 
 					with _Row() :
 
 						_Label( "Connection Color" )
-						self.__metadataWidgets["connectionGadget:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "connectionGadget:color" )
+						self.__metadataWidgets["connectionGadget:color"] = MetadataWidget.ColorSwatchMetadataWidget( key = "connectionGadget:color", defaultValue = imath.Color3f( 0.125 ) )
 
 			GafferUI.Spacer( imath.V2i( 0 ), parenting = { "expand" : True } )
 

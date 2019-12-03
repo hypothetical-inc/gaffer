@@ -120,6 +120,8 @@ def appendNodeSetMenuDefinitions( editor, menuDefinition ) :
 
 	weakEditor = weakref.ref( editor )
 
+	# Follow bookmarks
+
 	def followBookmark( number, weakEditor, _ ) :
 		editor = weakEditor()
 		if editor is not None :
@@ -130,26 +132,25 @@ def appendNodeSetMenuDefinitions( editor, menuDefinition ) :
 
 	for i in range( 1, 10 ) :
 		isCurrent = isinstance( n, Gaffer.NumericBookmarkSet ) and n.getBookmark() == i
-		menuDefinition.append( "/Follow/Bookmark/%d" % i, {
+		menuDefinition.insertBefore( "/Numeric Bookmark/%d" % i, {
 			"command" : functools.partial( followBookmark, i, weakEditor ),
-			"active" : not isCurrent,
 			"checkBox" : isCurrent
-		} )
+		}, "/Pin Divider" )
+
+
+	# Pin bookmarks
 
 	for i in range( 1, 10 ) :
-	  menuDefinition.append(
-		  "/Pin/Bookmark/%s" % i,
-		  {
-			  "command" : functools.partial( __findNumericBookmark, editor, i ),
-			  "active" : Gaffer.MetadataAlgo.getNumericBookmark( editor.scriptNode(), i ) is not None,
-		  }
-	  )
+		menuDefinition.append( "/Bookmark/%s" % i, {
+				"command" : functools.partial( __findNumericBookmark, editor, i ),
+				"active" : Gaffer.MetadataAlgo.getNumericBookmark( editor.scriptNode(), i ) is not None,
+		} )
 
-	menuDefinition.append( "/Pin/Bookmark/Divider", { "divider" : True } )
+	menuDefinition.append( "/Bookmark/Divider", { "divider" : True } )
 
 	bookmarks = __findableBookmarks( editor )
 	menuDefinition.append(
-		"/Pin/Bookmark/Other...",
+		"/Bookmark/Other...",
 		{
 			"command" : functools.partial( __findBookmark, editor, bookmarks ),
 			"active" : len( bookmarks ),
@@ -157,23 +158,6 @@ def appendNodeSetMenuDefinitions( editor, menuDefinition ) :
 		}
 	)
 
-	menuDefinition.append( "/BookmarkNodeDivider", { "divider" : True } )
-
-	if len( editor.getNodeSet() ) :
-		primaryNode = editor.getNodeSet()[-1]
-		title = "Bookmark %s" % primaryNode.getName()
-		canBookmark = not Gaffer.MetadataAlgo.getBookmarked( primaryNode ) and not Gaffer.MetadataAlgo.readOnly( primaryNode )
-	else :
-		primaryNode = None
-		title = "Bookmark Current Node"
-		canBookmark = False
-
-	menuDefinition.append( title,
-		{
-			"command" : functools.partial( __setBookmarked, primaryNode, True ),
-			"active" : canBookmark
-		}
-	)
 
 def connectToEditor( editor ) :
 
@@ -322,7 +306,8 @@ def __findNumericBookmark( editor, numericBookmark ) :
 		editor.graphGadget().setRoot( node.parent() )
 		editor.frame( [ node ] )
 	else :
-		editor.setNodeSet( Gaffer.StandardSet( [ node ] ) )
+		s = Gaffer.StandardSet( [ node ] )
+		editor.setNodeSet( s )
 
 	return True
 
@@ -359,6 +344,9 @@ def __editorKeyPress( editor, event ) :
 		elif not event.modifiers :
 
 			# Find
+
+			# For linked editors, its more intuitive for the user if we update
+			# the driving editor, rather than breaking the link.
 
 			if numericBookmark != 0 :
 				__findNumericBookmark( editor, numericBookmark )

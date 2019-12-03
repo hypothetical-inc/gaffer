@@ -226,11 +226,11 @@ class SceneInspector( GafferUI.NodeSetEditor ) :
 		self.__plugDirtiedConnections = []
 		self.__parentChangedConnections = []
 		for node in self.getNodeSet()[-2:] :
-			outputScenePlugs = [ p for p in node.children( GafferScene.ScenePlug ) if p.direction() == Gaffer.Plug.Direction.Out ]
-			if len( outputScenePlugs ) :
-				self.__scenePlugs.append( outputScenePlugs[0] )
+			outputScenePlug = next( GafferScene.ScenePlug.RecursiveOutputRange( node ), None )
+			if outputScenePlug :
+				self.__scenePlugs.append( outputScenePlug )
 				self.__plugDirtiedConnections.append( node.plugDirtiedSignal().connect( Gaffer.WeakMethod( self.__plugDirtied ) ) )
-				self.__parentChangedConnections.append( outputScenePlugs[0].parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
+				self.__parentChangedConnections.append( outputScenePlug.parentChangedSignal().connect( Gaffer.WeakMethod( self.__plugParentChanged ) ) )
 
 		self.__updateLazily()
 
@@ -1871,14 +1871,21 @@ class _PrimitiveVariableTextDiff( TextDiff ) :
 
 		result = []
 		for value in values :
-			s = str( value["interpolation"] )
-			s += " " + value["data"].typeName()
-			if hasattr( value["data"], "getInterpretation" ) :
-				s += " (" + str( value["data"].getInterpretation() ) + ")"
 
-			if value["indices"] :
-				numElements = len( value["data"] )
-				s += " ( Indexed : {0} element{1} )".format( numElements, '' if numElements == 1 else 's' )
+			if value is not None :
+
+				s = str( value["interpolation"] )
+				s += " " + value["data"].typeName()
+				if hasattr( value["data"], "getInterpretation" ) :
+					s += " (" + str( value["data"].getInterpretation() ) + ")"
+
+				if value["indices"] :
+					numElements = len( value["data"] )
+					s += " ( Indexed : {0} element{1} )".format( numElements, '' if numElements == 1 else 's' )
+
+			else :
+
+				s = ""
 
 			result.append( s )
 

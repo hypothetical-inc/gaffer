@@ -97,7 +97,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( instancer["out"].bound( "/" ), imath.Box3f( imath.V3f( -1, -2, -2 ), imath.V3f( 4, 3, 2 ) ) )
 		self.assertEqual( instancer["out"].childNames( "/" ), IECore.InternedStringVectorData( [ "seeds" ] ) )
 
-		self.assertEqual( instancer["out"].object( "/seeds" ), seeds )
+		self.assertEqual( instancer["out"].object( "/seeds" ), IECore.NullObject() )
 		self.assertEqual( instancer["out"].transform( "/seeds" ), imath.M44f().translate( imath.V3f( 1, 0, 0 ) ) )
 		self.assertEqual( instancer["out"].bound( "/seeds" ), imath.Box3f( imath.V3f( -2, -2, -2 ), imath.V3f( 3, 3, 2 ) ) )
 		self.assertEqual( instancer["out"].childNames( "/seeds" ), IECore.InternedStringVectorData( [ "instances" ] ) )
@@ -202,7 +202,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		instancer["parent"].setValue( "/plane" )
 		instancer["name"].setValue( "" )
 
-		self.assertScenesEqual( instancer["out"], plane["out"] )
+		self.assertScenesEqual( instancer["out"], plane["out"], pathsToIgnore = ( "/plane", ) )
 
 	def testEmptyParent( self ) :
 
@@ -622,7 +622,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		cube = GafferScene.Cube()
 		instances = GafferScene.Parent()
 		instances["in"].setInput( sphere["out"] )
-		instances["child"].setInput( cube["out"] )
+		instances["children"][0].setInput( cube["out"] )
 		instances["parent"].setValue( "/" )
 
 		instancer = GafferScene.Instancer()
@@ -671,7 +671,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 
 		instances = GafferScene.Parent()
 		instances["in"].setInput( sphere["out"] )
-		instances["child"].setInput( cubeGroup["out"] )
+		instances["children"][0].setInput( cubeGroup["out"] )
 		instances["parent"].setValue( "/" )
 
 		instancer = GafferScene.Instancer()
@@ -720,7 +720,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		cube = GafferScene.Cube()
 		instances = GafferScene.Parent()
 		instances["in"].setInput( sphere["out"] )
-		instances["child"].setInput( cube["out"] )
+		instances["children"][0].setInput( cube["out"] )
 		instances["parent"].setValue( "/" )
 
 		instancer = GafferScene.Instancer()
@@ -775,7 +775,7 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		cube = GafferScene.Cube()
 		instances = GafferScene.Parent()
 		instances["in"].setInput( sphere["out"] )
-		instances["child"].setInput( cube["out"] )
+		instances["children"][0].setInput( cube["out"] )
 		instances["parent"].setValue( "/" )
 
 		instancer = GafferScene.Instancer()
@@ -891,6 +891,58 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 				"testFloat" : IECore.FloatData( 1.0 ),
 				"testColor" : IECore.Color3fData( imath.Color3f( 0, 1, 0 ) ),
 				"testPoint" : IECore.V3fData(
+					imath.V3f( 1 ),
+					IECore.GeometricData.Interpretation.Point
+				)
+			} )
+		)
+
+		instancer["attributePrefix"].setValue( "user:" )
+
+		self.assertEqual(
+			instancer["out"].attributes( "/object/instances/sphere/0" ),
+			IECore.CompoundObject( {
+				"user:testFloat" : IECore.FloatData( 0.0 ),
+				"user:testColor" : IECore.Color3fData( imath.Color3f( 1, 0, 0 ) ),
+				"user:testPoint" : IECore.V3fData(
+					imath.V3f( 0 ),
+					IECore.GeometricData.Interpretation.Point
+				)
+			} )
+		)
+
+		self.assertEqual(
+			instancer["out"].attributes( "/object/instances/sphere/1" ),
+			IECore.CompoundObject( {
+				"user:testFloat" : IECore.FloatData( 1.0 ),
+				"user:testColor" : IECore.Color3fData( imath.Color3f( 0, 1, 0 ) ),
+				"user:testPoint" : IECore.V3fData(
+					imath.V3f( 1 ),
+					IECore.GeometricData.Interpretation.Point
+				)
+			} )
+		)
+
+		instancer["attributePrefix"].setValue( "foo:" )
+
+		self.assertEqual(
+			instancer["out"].attributes( "/object/instances/sphere/0" ),
+			IECore.CompoundObject( {
+				"foo:testFloat" : IECore.FloatData( 0.0 ),
+				"foo:testColor" : IECore.Color3fData( imath.Color3f( 1, 0, 0 ) ),
+				"foo:testPoint" : IECore.V3fData(
+					imath.V3f( 0 ),
+					IECore.GeometricData.Interpretation.Point
+				)
+			} )
+		)
+
+		self.assertEqual(
+			instancer["out"].attributes( "/object/instances/sphere/1" ),
+			IECore.CompoundObject( {
+				"foo:testFloat" : IECore.FloatData( 1.0 ),
+				"foo:testColor" : IECore.Color3fData( imath.Color3f( 0, 1, 0 ) ),
+				"foo:testPoint" : IECore.V3fData(
 					imath.V3f( 1 ),
 					IECore.GeometricData.Interpretation.Point
 				)

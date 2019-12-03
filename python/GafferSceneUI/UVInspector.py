@@ -87,10 +87,7 @@ class UVInspector( GafferUI.NodeSetEditor ) :
 
 		scene = None
 		if len( self.getNodeSet() ) :
-			for p in self.getNodeSet()[-1].children( GafferScene.ScenePlug ) :
-				if p.direction() == Gaffer.Plug.Direction.Out :
-					scene = p
-					break
+			scene = next( GafferScene.ScenePlug.RecursiveOutputRange( self.getNodeSet()[-1] ), None )
 
 		self.__uvView["in"].setInput( scene )
 
@@ -187,7 +184,7 @@ class _StateWidget( GafferUI.Widget ) :
 	def __update( self ) :
 
 		paused = self.__uvView.getPaused()
-		self.__button.setImage( "timelinePause.png" if not paused else "timelinePlay.png" )
+		self.__button.setImage( "viewPause.png" if not paused else "viewPaused.png" )
 		self.__busyWidget.setBusy( self.__uvView.state() == self.__uvView.State.Running )
 
 UVInspector._StateWidget = _StateWidget

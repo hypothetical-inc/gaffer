@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_LIGHT_H
 #define GAFFERSCENE_LIGHT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
 
 #include "IECoreScene/ShaderNetwork.h"

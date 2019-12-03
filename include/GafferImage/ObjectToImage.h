@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_OBJECTTOIMAGE_H
 #define GAFFERIMAGE_OBJECTTOIMAGE_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/ImagePrimitiveSource.h"
 
 namespace GafferImage

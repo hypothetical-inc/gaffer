@@ -35,7 +35,11 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 
 import GafferSceneTest
 
@@ -47,7 +51,7 @@ class OSLTestCase( GafferSceneTest.SceneTestCase ) :
 
 		subprocess.check_call(
 			[ "oslc", "-q" ] +
-			[ "-I" + p for p in os.environ.get( "OSL_SHADER_PATHS", "" ).split( ":" ) ] +
+			[ "-I" + p for p in os.environ.get( "OSL_SHADER_PATHS", "" ).split( os.pathsep ) ] +
 			[ "-o", outputFileName, sourceFileName ]
 		)
 

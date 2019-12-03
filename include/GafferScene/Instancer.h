@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_INSTANCER_H
 #define GAFFERSCENE_INSTANCER_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/BranchCreator.h"
 
 namespace GafferScene
@@ -77,6 +78,9 @@ class GAFFERSCENE_API Instancer : public BranchCreator
 		Gaffer::StringPlug *attributesPlug();
 		const Gaffer::StringPlug *attributesPlug() const;
 
+		Gaffer::StringPlug *attributePrefixPlug();
+		const Gaffer::StringPlug *attributePrefixPlug() const;
+
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 
 	protected :
@@ -97,6 +101,8 @@ class GAFFERSCENE_API Instancer : public BranchCreator
 		IECore::ConstCompoundObjectPtr computeBranchAttributes( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context ) const override;
 
 		bool affectsBranchObject( const Gaffer::Plug *input ) const override;
+		// Implemented to remove the parent object, because we "convert" the points into a hierarchy
+		bool processesRootObject() const override;
 		void hashBranchObject( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstObjectPtr computeBranchObject( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context ) const override;
 

@@ -122,7 +122,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -252,6 +252,15 @@ _styleSheet = string.Template(
 		font-weight: bold;
 		padding: 5px 25px 5px 20px;
 		margin-bottom: 6px;
+	}
+
+	QLabel#gafferMenuLabeledDivider {
+		background-color: $backgroundLightLowlight;
+		font-weight: bold;
+		padding: 3px 25px 3px 20px;
+		margin-bottom: 4px;
+		margin-top: 0;
+		color: $foreground;
 	}
 
 	QLabel#gafferMenuTitle:disabled {
@@ -979,6 +988,10 @@ _styleSheet = string.Template(
 		margin-right: 10px;
 	}
 
+	QFrame[gafferClass="GafferUI.Divider"][gafferHighlighted="true"] {
+		color: $brightColor;
+	}
+
 	QToolTip {
 		background-clip: border;
 		color: $backgroundDarkest;
@@ -1221,6 +1234,42 @@ _styleSheet = string.Template(
 		border-radius: 0;
 		border-bottom-left-radius: $widgetCornerRadius;
 		border-bottom-right-radius: $widgetCornerRadius;
+	}
+
+	/* PinningWidget */
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="0"] {
+		/* border-color: rgb( 181, 110, 120 ); */
+		background: rgba( 181, 110, 120, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="1"] {
+		/* border-color: rgb( 217, 204, 122 ); */
+		background: rgba( 217, 204, 122, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="2"] {
+		/* border-color: rgb( 89, 140, 71 ); */
+		background: rgba( 89, 140, 71, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="3"] {
+		/* border-color: rgb( 145, 110, 181 ); */
+		background: rgba( 145, 110, 181, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] #menuDownArrow {
+		margin-top: 1px;
+		margin-left: 2px;
+		margin-right: 1px;
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] {
+		padding: 1px;
+		padding-left: 4px;
+		border-radius: 2px;
+		border: none;
+		background: $background;
 	}
 
 	"""

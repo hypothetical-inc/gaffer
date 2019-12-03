@@ -306,6 +306,7 @@ const AtString g_subdivAdaptiveSpaceArnoldString( "subdiv_adaptive_space" );
 const AtString g_subdivSmoothDerivsArnoldString( "subdiv_smooth_derivs" );
 const AtString g_subdivTypeArnoldString( "subdiv_type" );
 const AtString g_subdivUVSmoothingArnoldString( "subdiv_uv_smoothing" );
+const AtString g_toonIdArnoldString( "toon_id" );
 const AtString g_traceSetsArnoldString( "trace_sets" );
 const AtString g_transformTypeArnoldString( "transform_type" );
 const AtString g_thickArnoldString( "thick" );
@@ -777,6 +778,7 @@ IECore::InternedString g_dispAutoBumpAttributeName( "ai:disp_autobump" );
 IECore::InternedString g_curvesMinPixelWidthAttributeName( "ai:curves:min_pixel_width" );
 IECore::InternedString g_curvesModeAttributeName( "ai:curves:mode" );
 IECore::InternedString g_sssSetNameName( "ai:sss_setname" );
+IECore::InternedString g_toonIdName( "ai:toon_id" );
 
 IECore::InternedString g_lightFilterPrefix( "ai:lightFilter:" );
 
@@ -842,6 +844,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 			m_volumePadding = attributeValue<float>( g_shapeVolumePaddingAttributeName, attributes, 0.0f );
 
 			m_sssSetName = attribute<IECore::StringData>( g_sssSetNameName, attributes );
+			m_toonId = attribute<IECore::StringData>( g_toonIdName, attributes );
 
 			for( IECore::CompoundObject::ObjectMap::const_iterator it = attributes->members().begin(), eIt = attributes->members().end(); it != eIt; ++it )
 			{
@@ -853,7 +856,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 					}
 				}
 
-				if( it->first.string() == g_arnoldLightFilterShaderAttributeName )
+				if( it->first.string() == g_arnoldLightFilterShaderAttributeName.string() )
 				{
 					continue;
 				}
@@ -957,6 +960,11 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 					// for the master mesh might be totally inappropriate for the position of the ginstances in frame.
 					return m_polyMesh.subdivAdaptiveError == 0.0f || m_polyMesh.subdivAdaptiveSpace == g_objectArnoldString;
 				}
+			}
+			else if( IECore::runTimeCast<const IECoreScene::CurvesPrimitive>( object ) )
+			{
+				// Min pixel width is a screen-space metric, and hence not compatible with instancing.
+				return m_curves.minPixelWidth == 0.0f;
 			}
 			else if( const IECoreScene::ExternalProcedural *procedural = IECore::runTimeCast<const IECoreScene::ExternalProcedural>( object ) )
 			{
@@ -1115,6 +1123,15 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 				else
 				{
 					AiNodeResetParameter( node, g_sssSetNameArnoldString );
+				}
+
+				if( m_toonId )
+				{
+					ParameterAlgo::setParameter( node, g_toonIdArnoldString, m_toonId.get() );
+				}
+				else
+				{
+					AiNodeResetParameter( node, g_toonIdArnoldString );
 				}
 			}
 
@@ -1569,6 +1586,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 		Displacement m_displacement;
 		Curves m_curves;
 		Volume m_volume;
+		IECore::ConstStringDataPtr m_toonId;
 
 		typedef boost::container::flat_map<IECore::InternedString, IECore::ConstDataPtr> UserAttributes;
 		UserAttributes m_user;
@@ -1886,6 +1904,14 @@ class ArnoldObjectBase : public IECoreScenePreview::Renderer::ObjectInterface
 
 		void applyTransform( AtNode *node, const std::vector<Imath::M44f> &samples, const std::vector<float> &times, const AtString matrixParameterName = g_matrixArnoldString )
 		{
+			const AtParamEntry *parameter = AiNodeEntryLookUpParameter( AiNodeGetNodeEntry( node ), matrixParameterName );
+			if( AiParamGetType( parameter ) != AI_TYPE_ARRAY )
+			{
+				// Parameter doesn't support motion blur
+				applyTransform( node, samples[0], matrixParameterName );
+				return;
+			}
+
 			const size_t numSamples = samples.size();
 			AtArray *matricesArray = AiArrayAllocate( 1, numSamples, AI_TYPE_MATRIX );
 			for( size_t i = 0; i < numSamples; ++i )
@@ -2599,6 +2625,7 @@ IECore::InternedString g_cameraOptionName( "camera" );
 IECore::InternedString g_logFileNameOptionName( "ai:log:filename" );
 IECore::InternedString g_logMaxWarningsOptionName( "ai:log:max_warnings" );
 IECore::InternedString g_statisticsFileNameOptionName( "ai:statisticsFileName" );
+IECore::InternedString g_profileFileNameOptionName( "ai:profileFileName" );
 IECore::InternedString g_pluginSearchPathOptionName( "ai:plugin_searchpath" );
 IECore::InternedString g_aaSeedOptionName( "ai:AA_seed" );
 IECore::InternedString g_sampleMotionOptionName( "sampleMotion" );
@@ -2709,6 +2736,32 @@ class ArnoldGlobals
 					}
 					AiStatsSetFileName( d->readable().c_str() );
 
+				}
+				return;
+			}
+			else if( name == g_profileFileNameOptionName )
+			{
+				if( value == nullptr )
+				{
+					AiProfileSetFileName( "" );
+				}
+				else if( const IECore::StringData *d = reportedCast<const IECore::StringData>( value, "option", name ) )
+				{
+					if( !d->readable().empty() )
+					{
+						try
+						{
+							boost::filesystem::path path( d->readable() );
+							path.remove_filename();
+							boost::filesystem::create_directories( path );
+						}
+						catch( const std::exception &e )
+						{
+							IECore::msg( IECore::Msg::Error, "ArnoldRenderer::option()", e.what() );
+						}
+					}
+
+					AiProfileSetFileName( d->readable().c_str() );
 				}
 				return;
 			}

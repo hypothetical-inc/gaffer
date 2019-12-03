@@ -1834,8 +1834,8 @@ class RendererTest( GafferTest.TestCase ) :
 			numInstances = len( [ s for s in shapes if arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( s ) ) == "ginstance" ] )
 			numCurves = len( [ s for s in shapes if arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( s ) ) == "curves" ] )
 
-			self.assertEqual( numInstances, 7 )
-			self.assertEqual( numCurves, 4 )
+			self.assertEqual( numInstances, 4 ) # Can't instance when min_pixel_width != 0
+			self.assertEqual( numCurves, 5 )
 
 			self.__assertInstanced(
 				"default",
@@ -1843,12 +1843,13 @@ class RendererTest( GafferTest.TestCase ) :
 				"pixelWidth0ModeRibbon",
 			)
 
-			self.__assertInstanced(
+			self.__assertNotInstanced(
 				"pixelWidth1",
 				"pixelWidth1Duplicate",
+				"pixelWidth2",
 			)
 
-			for name in ( "pixelWidth2", "modeRibbon", "modeThick" ) :
+			for name in ( "modeRibbon", "modeThick" ) :
 				self.__assertInstanced( name )
 
 			for name, minPixelWidth, mode in (
@@ -1861,10 +1862,12 @@ class RendererTest( GafferTest.TestCase ) :
 				( "pixelWidth0ModeRibbon", 0, "ribbon" ),
 			) :
 
-				instance = arnold.AiNodeLookUpByName( name )
-				self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( instance ) ), "ginstance" )
+				node = arnold.AiNodeLookUpByName( name )
+				if arnold.AiNodeIs( node, "ginstance" ) :
+					shape = self.arnoldCompat( arnold.AiNodeGetPtr( node, "node" ) )
+				else :
+					shape = node
 
-				shape = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
 				self.assertEqual( arnold.AiNodeGetFlt( shape, "min_pixel_width" ), minPixelWidth )
 				self.assertEqual( arnold.AiNodeGetStr( shape, "mode" ), mode )
 
@@ -2281,6 +2284,8 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.option( "ai:log:filename", IECore.StringData( self.temporaryDirectory() + "/test/test_log.txt" ) )
 		r.option( "ai:statisticsFileName", IECore.StringData( self.temporaryDirectory() + "/test/test_stats.json" ) )
+		r.option( "ai:profileFileName", IECore.StringData( self.temporaryDirectory() + "/test/test_profile.json" ) )
+
 		c = r.camera(
 			"testCamera",
 			IECoreScene.Camera(
@@ -2304,6 +2309,9 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.render()
 
+		# required to flush the profile json
+		del r
+
 		with open( self.temporaryDirectory() + "/test/test_log.txt", "r" ) as logHandle:
 			self.assertNotEqual( logHandle.read().find( "rendering image at 640 x 480" ), -1 )
 
@@ -2319,6 +2327,11 @@ class RendererTest( GafferTest.TestCase ) :
 				self.assertTrue( "memory consumed MB" in stats )
 
 			self.assertTrue( "ray counts" in stats )
+
+		with open( self.temporaryDirectory() + "/test/test_profile.json", "r" ) as profileHandle :
+			stats = json.load( profileHandle )["traceEvents"]
+			driverEvents = [ x for x in stats if x["name"] == "ieCoreArnold:display:testBeauty" ]
+			self.assertEqual( driverEvents[0]["cat"], "driver_exr" )
 
 	def testProcedural( self ) :
 
@@ -2475,6 +2488,51 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.option( "ai:background", None )
 		self.assertEqual( arnold.AiNodeGetPtr( options, "background" ), None )
+
+	def testBlockerMotionBlur( self ) :
+
+		r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+			"Arnold",
+			GafferScene.Private.IECoreScenePreview.Renderer.RenderType.SceneDescription,
+			self.temporaryDirectory() + "/test.ass"
+		)
+
+		o = r.lightFilter(
+			"/lightFilter", IECore.NullObject(),
+			r.attributes( IECore.CompoundObject( {
+				"ai:lightFilter:filter" : IECoreScene.ShaderNetwork(
+					shaders = {
+						"filter" : IECoreScene.Shader( "light_blocker", "ai:lightFilter" ),
+					},
+					output = "filter"
+				)
+			} ) )
+		)
+
+		# Ask for transform motion blur
+
+		o.transform(
+			[ imath.M44f().translate( imath.V3f( 1, 0, 0 ) ), imath.M44f().translate( imath.V3f( 2, 0, 0 ) ) ],
+			[ 0, 1 ]
+		)
+
+		r.render()
+
+		del o
+		del r
+
+		with IECoreArnold.UniverseBlock( writable = True ) :
+
+			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
+
+			# Since Arnold's `light_blocker` node doesn't support transform blur,
+			# we just expect a single matrix with the first transform sample.
+
+			node = arnold.AiNodeLookUpByName( "lightFilter:/lightFilter" )
+			self.assertEqual(
+				self.__m44f( arnold.AiNodeGetMatrix( node, "geometry_matrix" ) ),
+				imath.M44f().translate( imath.V3f( 1, 0, 0 ) )
+			)
 
 	def __testVDB( self, stepSize = None, stepScale = 1.0, expectedSize = 0.0, expectedScale = 1.0 ) :
 

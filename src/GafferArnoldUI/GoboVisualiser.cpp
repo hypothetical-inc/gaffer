@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "Export.h"
+
 #include "GafferOSL/ShadingEngine.h"
 
 #include "GafferSceneUI/LightFilterVisualiser.h"
@@ -63,16 +65,16 @@ using namespace IECoreScene;
 using namespace IECoreGL;
 using namespace GafferSceneUI;
 
-namespace
+namespace GoboVisualiserUtils
 {
 
 /// \todo We have similar methods in several places. Can we consolidate them all somewhere? Perhaps a new
 /// method of CompoundData?
 template<typename T>
-T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue )
+T parameterOrDefault(const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue)
 {
 	typedef IECore::TypedData<T> DataType;
-	if( const DataType *d = parameters->member<DataType>( name ) )
+	if (const DataType *d = parameters->member<DataType>(name))
 	{
 		return d->readable();
 	}
@@ -81,6 +83,12 @@ T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::Inte
 		return defaultValue;
 	}
 }
+
+}	// namespace GoboVisualiserUtils
+
+
+namespace GafferArnoldUI
+{
 
 CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution );
 
@@ -220,7 +228,7 @@ CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork,
 	return result;
 }
 
-class GoboVisualiser final : public LightFilterVisualiser
+class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
 {
 
 	public :
@@ -284,7 +292,7 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 
 	if( imageData->readable().empty() )
 	{
-		const Color3f goboColor = parameterOrDefault( filterParameters, "slidemap", Color3f( 1 ) );
+		const Color3f goboColor = GoboVisualiserUtils::parameterOrDefault( filterParameters, "slidemap", Color3f( 1 ) );
 
 		Box2iDataPtr singlePixelWindow = new Box2iData( { V2i( 0.0f ), V2i( 0.0f ) } );
 		imageData->writable()["dataWindow"] = singlePixelWindow;
@@ -325,10 +333,10 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 	const float baseRadius = sin( halfAngle ) + lensRadius;
 	const float baseDistance = cos( halfAngle );
 
-	float rotate = parameterOrDefault( filterParameters, "rotate", 0.0f );
-	float scaleS = parameterOrDefault( filterParameters, "scale_s", 1.0f );
-	float scaleT = parameterOrDefault( filterParameters, "scale_t", 1.0f );
-	V2f offset = parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
+	float rotate = GoboVisualiserUtils::parameterOrDefault( filterParameters, "rotate", 0.0f );
+	float scaleS = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_s", 1.0f );
+	float scaleT = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_t", 1.0f );
+	V2f offset = GoboVisualiserUtils::parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
 
 	Imath::M44f goboTrans;
 
@@ -344,4 +352,4 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 	return result;
 }
 
-} // namespace
+} // namespace GafferArnoldUI
