@@ -67,7 +67,7 @@ class GAFFER_API Spreadsheet : public ComputeNode
 		/// Top level plug that has a child for each row in the spreadsheet.
 		/// This also provides methods for adding and removing rows and columns.
 		/// Accessed via `Spreadsheet::rowsPlug()`.
-		class RowsPlug : public ValuePlug
+		class GAFFER_API RowsPlug : public ValuePlug
 		{
 
 			public :
@@ -112,7 +112,7 @@ class GAFFER_API Spreadsheet : public ComputeNode
 
 		/// Defines a single row of the spreadsheet. Access using
 		/// `RowPlug::Range( *rowsPlug() )` or via `rowsPlug()->getChild<RowPlug>()`.
-		class RowPlug : public ValuePlug
+		class GAFFER_API RowPlug : public ValuePlug
 		{
 
 			public :
@@ -140,7 +140,7 @@ class GAFFER_API Spreadsheet : public ComputeNode
 		/// Defines a single cell in the spreadsheet. Access using
 		/// `CellPlug::Range( *rowPlug->cellsPlug() )` or via
 		/// `rowPlug->cellsPlug()->getChild<CellPlug>()`.
-		class CellPlug : public ValuePlug
+		class GAFFER_API CellPlug : public ValuePlug
 		{
 
 			public :
