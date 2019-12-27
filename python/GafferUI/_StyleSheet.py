@@ -122,7 +122,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -237,7 +237,8 @@ _styleSheet = string.Template(
 		background-color: $backgroundLight;
 	}
 
-	QMenu[gafferHasTitle="true"] {
+	QMenu[gafferHasTitle="true"],
+	QMenu[gafferHasLeadingLabelledDivider="true"] {
 		/* make sure the title widget sits at the very top.
 		   infuriatingly, qt uses padding-top for the bottom
 		   as well, and is ignoring padding-bottom. that makes
@@ -252,6 +253,22 @@ _styleSheet = string.Template(
 		font-weight: bold;
 		padding: 5px 25px 5px 20px;
 		margin-bottom: 6px;
+	}
+
+	QMenu[gafferHasLeadingLabelledDivider="true"] QLabel#gafferMenuTitle {
+		/* If the first item is a labeled section, we don't want any
+		   space under the title. */
+		margin-bottom: 0;
+	}
+
+
+	QLabel#gafferMenuLabeledDivider {
+		background-color: $backgroundLightLowlight;
+		font-weight: bold;
+		padding: 3px 25px 3px 20px;
+		margin-bottom: 4px;
+		margin-top: 0;
+		color: $foreground;
 	}
 
 	QLabel#gafferMenuTitle:disabled {
@@ -691,28 +708,28 @@ _styleSheet = string.Template(
 		background-color: $tintLighter;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:first {
+	_TableView QHeaderView::section:vertical:first {
 		border-top-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:last {
+	_TableView QHeaderView::section:vertical:last {
 		border-bottom-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:only-one {
+	_TableView QHeaderView::section:vertical:only-one {
 		border-top-left-radius: $widgetCornerRadius;
 		border-bottom-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:first {
+	_TableView QHeaderView::section:horizontal:first {
 		border-top-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:last {
+	_TableView QHeaderView::section:horizontal:last {
 		border-top-right-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:only-one {
+	_TableView QHeaderView::section:horizontal:only-one {
 		border-top-left-radius: $widgetCornerRadius;
 		border-top-right-radius: $widgetCornerRadius;
 	}
@@ -979,6 +996,10 @@ _styleSheet = string.Template(
 		margin-right: 10px;
 	}
 
+	QFrame[gafferClass="GafferUI.Divider"][gafferHighlighted="true"] {
+		color: $brightColor;
+	}
+
 	QToolTip {
 		background-clip: border;
 		color: $backgroundDarkest;
@@ -1020,26 +1041,26 @@ _styleSheet = string.Template(
 		border: none;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView {
+	_TableView {
 		gridline-color: $backgroundLowlight;
 		padding: 0px;
 		background-color: $backgroundRaised;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"] {
+	_TableView[gafferEditable="true"] {
 		padding: 0px;
 		gridline-color: $backgroundLowlight;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"]::item {
+	_TableView[gafferEditable="true"]::item {
 		background-color: $backgroundLight;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"]::item:selected {
+	_TableView::item:selected {
 		background-color: $brightColor;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical {
+	_TableView QHeaderView::section:vertical {
 		padding: 2px;
 	}
 
@@ -1069,14 +1090,30 @@ _styleSheet = string.Template(
 		background-color: $brightColor;
 	}
 
+	QTableView[gafferToggleIndicator="true"]::indicator:unchecked {
+		image: url($GAFFER_ROOT/graphics/toggleOff.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:unchecked:hover {
+		image: url($GAFFER_ROOT/graphics/toggleOffHover.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:checked {
+		image: url($GAFFER_ROOT/graphics/toggleOn.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:checked:hover {
+		image: url($GAFFER_ROOT/graphics/toggleOnHover.png);
+	}
+
 	/* highlighted state for VectorDataWidget and tree views */
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferHighlighted="true"] {
+	_TableView[gafferHighlighted="true"] {
 		gridline-color: $brightColor;
 	}
 
 	QTreeView[gafferHighlighted="true"],
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferHighlighted="true"] QHeaderView::section {
+	_TableView[gafferHighlighted="true"] QHeaderView::section {
 		border-color: $brightColor;
 	}
 
@@ -1221,6 +1258,42 @@ _styleSheet = string.Template(
 		border-radius: 0;
 		border-bottom-left-radius: $widgetCornerRadius;
 		border-bottom-right-radius: $widgetCornerRadius;
+	}
+
+	/* PinningWidget */
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="0"] {
+		/* border-color: rgb( 181, 110, 120 ); */
+		background: rgba( 181, 110, 120, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="1"] {
+		/* border-color: rgb( 217, 204, 122 ); */
+		background: rgba( 217, 204, 122, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="2"] {
+		/* border-color: rgb( 89, 140, 71 ); */
+		background: rgba( 89, 140, 71, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="3"] {
+		/* border-color: rgb( 145, 110, 181 ); */
+		background: rgba( 145, 110, 181, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] #menuDownArrow {
+		margin-top: 1px;
+		margin-left: 2px;
+		margin-right: 1px;
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] {
+		padding: 1px;
+		padding-left: 4px;
+		border-radius: 2px;
+		border: none;
+		background: $background;
 	}
 
 	"""

@@ -43,6 +43,8 @@
 
 #include "boost/signals.hpp"
 
+#include "GafferUI/Export.h"
+
 namespace GafferUI
 {
 

@@ -46,6 +46,10 @@
 
 #include <functional>
 
+#include "GafferCortex/Export.h"
+
+#include "GafferCortex/Export.h"
+
 namespace GafferCortex
 {
 

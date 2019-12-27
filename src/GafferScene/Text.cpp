@@ -37,11 +37,12 @@
 #include "GafferScene/Text.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/Font.h"
 #include "IECoreScene/MeshPrimitive.h"
 
-#include "IECore/LRUCache.h"
 #include "IECore/SearchPath.h"
 
 using namespace Gaffer;
@@ -75,7 +76,7 @@ FontPtr fontGetter( const std::string &fileName, size_t &cost )
 	return new Font( resolvedFileName );
 }
 
-typedef LRUCache<std::string, FontPtr> FontCache;
+typedef IECorePreview::LRUCache<std::string, FontPtr> FontCache;
 
 FontCache *fontCache()
 {
@@ -100,7 +101,7 @@ Text::Text( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "text", Plug::In, "Hello World" ) );
-	addChild( new StringPlug( "font", Plug::In, "Vera.ttf" ) );
+	addChild( new FileSystemPathPlug( "font", Plug::In, "Vera.ttf" ) );
 }
 
 Text::~Text()
@@ -117,14 +118,14 @@ const Gaffer::StringPlug *Text::textPlug() const
 	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-Gaffer::StringPlug *Text::fontPlug()
+Gaffer::FileSystemPathPlug *Text::fontPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
-const Gaffer::StringPlug *Text::fontPlug() const
+const Gaffer::FileSystemPathPlug *Text::fontPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
 void Text::affects( const Plug *input, AffectedPlugsContainer &outputs ) const

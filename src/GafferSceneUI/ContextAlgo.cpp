@@ -42,6 +42,10 @@
 
 #include "IECore/VectorTypedData.h"
 
+#include "GafferSceneUI/ContextAlgo.h"
+
+#include "GafferSceneUI/ContextAlgo.h"
+
 using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;

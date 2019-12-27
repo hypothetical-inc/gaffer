@@ -50,7 +50,7 @@ namespace IECoreScenePreview
 /// A "Renderer" which just captures the scene passed to it, and
 /// keeps a history of any interactive edits made. Useful for testing
 /// renderer output code.
-class IECORESCENE_API CapturingRenderer : public Renderer
+class GAFFERSCENE_API CapturingRenderer : public Renderer
 {
 
 	public :
@@ -62,7 +62,7 @@ class IECORESCENE_API CapturingRenderer : public Renderer
 		/// Introspection
 		/// =============
 
-		class CapturedAttributes : public AttributesInterface
+		class GAFFERSCENE_API CapturedAttributes : public AttributesInterface
 		{
 
 			public :
@@ -83,7 +83,7 @@ class IECORESCENE_API CapturingRenderer : public Renderer
 
 		IE_CORE_DECLAREPTR( CapturedAttributes );
 
-		class CapturedObject : public ObjectInterface
+		class GAFFERSCENE_API CapturedObject : public ObjectInterface
 		{
 
 			public :

@@ -36,8 +36,11 @@
 
 import os
 import unittest
-import subprocess32 as subprocess
-import re
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 
 import IECore
 import IECoreScene
@@ -289,9 +292,8 @@ class AppleseedRenderTest( GafferTest.TestCase ) :
 
 		parent = GafferScene.Parent()
 		parent["in"].setInput( planeAttrs["out"] )
-		parent["child"].setInput( cubeAttrs["out"] )
+		parent["children"][0].setInput( cubeAttrs["out"] )
 		parent["parent"].setValue( "/plane" )
-
 
 		shader = GafferOSL.OSLShader()
 		shader.loadShader( "as_texture" )

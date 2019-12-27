@@ -330,7 +330,7 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 		parent = GafferScene.Parent()
 		parent["in"].setInput( group1["out"] )
-		parent["child"].setInput( cube["out"] )
+		parent["children"][0].setInput( cube["out"] )
 		parent["parent"].setValue( "/" )
 
 		self.assertEqual( GafferScene.SceneAlgo.source( parent["out"], "/group1" ), group1["out"] )
@@ -427,7 +427,7 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 
 		parent = GafferScene.Parent()
 		parent["in"].setInput( tweaks["out"] )
-		parent["child"].setInput( sphere["out"] )
+		parent["children"][0].setInput( sphere["out"] )
 		parent["parent"].setValue( "/" )
 
 		self.assertEqual( GafferScene.SceneAlgo.shaderTweaks( parent["out"], "/group/plane", "test:surface" ), tweaks )
@@ -492,6 +492,42 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 			m.plugStatistics( filter["out"] ).computeCount,
 			len( instancer["out"].childNames( "/plane/instances/sphere" ) ) + 4,
 		)
+
+	def testObjectTweaksWithSetFilter( self ) :
+
+		camera = GafferScene.Camera()
+		camera["sets"].setValue( "A" )
+
+		setFilter = GafferScene.SetFilter()
+		setFilter["set"].setValue( "A" )
+
+		cameraTweaks = GafferScene.CameraTweaks()
+		cameraTweaks["in"].setInput( camera["out"] )
+		cameraTweaks["filter"].setInput( setFilter["out"] )
+
+		self.assertEqual( GafferScene.SceneAlgo.objectTweaks( cameraTweaks["out"], "/camera" ), cameraTweaks )
+
+	def testShaderTweaksWithSetFilter( self ) :
+
+		shader = GafferSceneTest.TestShader()
+		shader["type"].setValue( "test:surface" )
+
+		plane = GafferScene.Plane()
+		plane["sets"].setValue( "A" )
+
+		planeShaderAssignment = GafferScene.ShaderAssignment()
+		planeShaderAssignment["in"].setInput( plane["out"] )
+		planeShaderAssignment["shader"].setInput( shader["out"] )
+
+		setFilter = GafferScene.SetFilter()
+		setFilter["set"].setValue( "A" )
+
+		planeTweaks = GafferScene.ShaderTweaks()
+		planeTweaks["in"].setInput( planeShaderAssignment["out"] )
+		planeTweaks["filter"].setInput( setFilter["out"] )
+		planeTweaks["shader"].setValue( "test:surface" )
+
+		self.assertEqual( GafferScene.SceneAlgo.shaderTweaks( planeTweaks["out"], "/plane", "test:surface" ), planeTweaks )
 
 if __name__ == "__main__":
 	unittest.main()

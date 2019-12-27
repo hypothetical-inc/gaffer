@@ -47,15 +47,15 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 	__defaultPreferencesFile = os.path.expanduser( "~/gaffer/startup/testApp/preferences.py" )
 	__preferencesFile = "/tmp/testPreferences.py"
 
+	class testApp( Gaffer.Application ) :
+
+		def __init__( self ) :
+
+			Gaffer.Application.__init__( self )
+
 	def testPreferences( self ) :
 
-		class testApp( Gaffer.Application ) :
-
-			def __init__( self ) :
-
-				Gaffer.Application.__init__( self )
-
-		application = testApp()
+		application = ApplicationRootTest.testApp()
 		applicationRoot = application.root()
 
 		p = applicationRoot["preferences"]
@@ -85,7 +85,10 @@ class ApplicationRootTest( GafferTest.TestCase ) :
 		p["category2"]["v"].setValue( imath.V3f( -10 ) )
 
 		executionContext = { "application" : application }
-		execfile( self.__preferencesFile, executionContext, executionContext )
+		exec(
+			compile( open( self.__preferencesFile ).read(), self.__preferencesFile, "exec" ),
+			executionContext, executionContext
+		)
 
 		self.assertEqual( p["category1"]["i"].getValue(), 10 )
 		self.assertEqual( p["category2"]["s"].getValue(), "oranges" )
