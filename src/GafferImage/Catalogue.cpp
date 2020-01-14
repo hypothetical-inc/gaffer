@@ -830,10 +830,13 @@ std::string Catalogue::generateFileName( const Image *image ) const
 
 std::string Catalogue::generateFileName( const ImagePlug *image ) const
 {
+	// Force substitutions because Process::current() is false
+	// and FileSystemPathPlug won't do substitutions by default
 	string directory = directoryPlug()->getValue();
+
 	if( const ScriptNode *script = ancestor<ScriptNode>() )
 	{
-		directory = script->context()->substitute( directory );
+		directory = directoryPlug()->getValue(nullptr, script->context(), true);
 	}
 	else if( Context::hasSubstitutions( directory ) )
 	{
