@@ -30,6 +30,21 @@ Hide tabs of current panel            :kbd:`Ctrl` + :kbd:`T`
 ===================================== =============================================
 ```
 
+### Pinnable Editors and Inspectors ###
+
+When editors are following another editor (linked), keybaord shortcuts will
+affect the master editor.
+
+```eval_rst
+===================================== =============================================
+Action                                Control or shortcut
+===================================== =============================================
+Pin the node selection                Hover cursor over editor, :kbd:`p`
+Pin numeric bookmark 1-9              Hover cursor over editor, :kbd:`1` - :kbd:`9`
+Follow to the node selection          Hover cursor over editor, :kbd:`u`
+===================================== =============================================
+```
+
 ## _Graph Editor_ ##
 
 > Note :
@@ -165,13 +180,13 @@ Jump to bookmarked node               Hover cursor over editor, :kbd:`Ctrl` +
                                       
                                       or
                                       
-                                      Right-click |pin|, select bookmarked node
+                                      Click |focusMenu|, select *Bookmark* > ...
 Assign numeric bookmark               :kbd:`Ctrl` + :kbd:`1` … :kbd:`9`
 Remove numeric bookmark               :kbd:`Ctrl` + :kbd:`0`
 ===================================== =============================================
 
-.. |pin| image:: images/nodeSetStandardSet.png
-    :alt: Pin
+.. |focusMenu| image:: images/editorFocusMenuNodeSelection.png
+    :alt: Editor focus menu
 ```
 
 
@@ -289,6 +304,7 @@ Decrease manipulator size                            :kbd:`-`
 Add animation key to transform of selected object(s) :kbd:`S`
 Adjust, high precision                               :kbd:`Shift` + click and drag
 Adjust, snapping to rounded increments               :kbd:`Ctrl` + click and drag
+Target mode (Translate and Rotate only)              Hold :kbd:`v`
 ==================================================== =============================================
 ```
 
@@ -304,6 +320,8 @@ Isolate green channel                 :kbd:`G`
 Isolate blue channel                  :kbd:`B`
 Isolate alpha channel                 :kbd:`A`
 Center image at 1:1 scale             :kbd:`Home`
+Next Catalogue image                  :kbd:`↓`
+Previous Catalogue image              :kbd:`↑`
 ===================================== =============================================
 ```
 

@@ -36,6 +36,7 @@
 ##########################################################################
 
 __import__( "GafferImageUI" )
+__import__( "GafferScene" )
 
 from _GafferSceneUI import *
 
@@ -151,6 +152,8 @@ import WireframeUI
 import SetVisualiserUI
 import LightFilterUI
 import OrientationUI
+import DeformerUI
+import CopyPrimitiveVariablesUI
 
 # then all the PathPreviewWidgets. note that the order
 # of import controls the order of display.

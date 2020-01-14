@@ -52,6 +52,16 @@ from Qt import QtWidgets
 
 class Menu( GafferUI.Widget ) :
 
+	## A dynamic menu constructed from the supplied IECore.MenuDefinition.
+	#
+	# Along with the standard IECore.MenuItemDefinition fields, the Gaffer Menu
+	# implementation also supports:
+	#
+	#  - 'enter' and 'leave', to optionally provide callables to be invoked
+	#    when the mouse enters and leaves an item's on-screen representation.
+	#
+	# - 'label' in conjunction with 'divider' = True, displays a textual
+	#   divider as opposed to a simple line.
 	def __init__( self, definition, _qtParent=None, searchable=False, title=None, **kw ) :
 
 		GafferUI.Widget.__init__( self, _Menu( _qtParent ), **kw )
@@ -59,14 +69,17 @@ class Menu( GafferUI.Widget ) :
 		self.__searchable = searchable
 
 		self.__title = title
-		# this property is used by the stylesheet
+		# this property is used by the stylesheet to fix up menu padding bugs
 		self._qtWidget().setProperty( "gafferHasTitle", GafferUI._Variant.toVariant( title is not None ) )
 
 		self._qtWidget().__definition = definition
 		self._qtWidget().aboutToShow.connect( Gaffer.WeakMethod( self.__show ) )
+		self._qtWidget().aboutToHide.connect( Gaffer.WeakMethod( self.__hide ) )
+		self._qtWidget().hovered.connect( Gaffer.WeakMethod( self.__actionHovered ) )
+
+		self.__lastHoverAction = None
 
 		if searchable :
-			self._qtWidget().aboutToHide.connect( Gaffer.WeakMethod( self.__hide ) )
 			self.__lastAction = None
 
 		self._setStyleSheet()
@@ -76,6 +89,7 @@ class Menu( GafferUI.Widget ) :
 
 		self.__previousSearchText = ''
 		self.__cachedSearchStructureKeys = []
+
 
 	## Displays the menu at the specified position, and attached to
 	# an optional parent. If position is not specified then it
@@ -142,7 +156,7 @@ class Menu( GafferUI.Widget ) :
 		if isinstance( function, types.FunctionType ) :
 			return inspect.getargspec( function )[0]
 		elif isinstance( function, types.MethodType ) :
-			return self.__argNames( function.im_func )[1:]
+			return self.__argNames( function.__func__ )[1:]
 		elif isinstance( function, Gaffer.WeakMethod ) :
 			return self.__argNames( function.method() )[1:]
 		elif isinstance( function, functools.partial ) :
@@ -153,7 +167,7 @@ class Menu( GafferUI.Widget ) :
 	def __actionTriggered( self, qtActionWeakRef, toggled ) :
 
 		qtAction = qtActionWeakRef()
-		item = qtAction.__item
+		item = qtAction.item
 
 		if not self.__evaluateItemValue( item.active ) :
 			# Because an item's active status can change
@@ -231,6 +245,9 @@ class Menu( GafferUI.Widget ) :
 			self.__searchLine.clearFocus()
 			self.__searchMenu.hide()
 
+		self.__doActionUnhover()
+		self.__lastHoverAction = None
+
 	# May be called to fully build the menu /now/, rather than only do it lazily
 	# when it's shown. This is used by the MenuBar.
 	def _buildFully( self ) :
@@ -250,6 +267,8 @@ class Menu( GafferUI.Widget ) :
 				definition = definition()
 
 		qtMenu.clear()
+
+		needsBottomSpacer = False
 
 		done = set()
 		for path, item in definition.items() :
@@ -287,7 +306,17 @@ class Menu( GafferUI.Widget ) :
 					else :
 
 						# it's not a submenu
-						qtMenu.addAction( self.__buildAction( item, name, qtMenu ) )
+						action = self.__buildAction( item, name, qtMenu )
+
+						# Wrangle some divider/menu spacing issues
+						if isinstance( action, _DividerAction ) :
+							if len( qtMenu.actions() ) :
+								qtMenu.addAction( _SpacerAction( qtMenu ) )
+							elif action.hasText :
+								qtMenu.setProperty( "gafferHasLeadingLabelledDivider", GafferUI._Variant.toVariant( True ) )
+								needsBottomSpacer = True
+
+						qtMenu.addAction( action )
 
 				done.add( name )
 
@@ -301,16 +330,12 @@ class Menu( GafferUI.Widget ) :
 			titleWidgetAction.setDefaultWidget( titleWidget )
 			titleWidgetAction.setEnabled( False )
 			qtMenu.insertAction( qtMenu.actions()[0], titleWidgetAction )
+			needsBottomSpacer = True
 
-			# qt stylesheets ignore the padding-bottom for menus and
-			# use padding-top instead. we need padding-top to be 0 when
-			# we have a title, so we have to fake the bottom padding like so.
-			spacerWidget = QtWidgets.QWidget()
-			spacerWidget.setFixedSize( 5, 5 )
-			spacerWidgetAction = QtWidgets.QWidgetAction( qtMenu )
-			spacerWidgetAction.setDefaultWidget( spacerWidget )
-			spacerWidgetAction.setEnabled( False )
-			qtMenu.addAction( spacerWidgetAction )
+		if needsBottomSpacer :
+			qtMenu.addAction( _SpacerAction( qtMenu ) )
+
+		self._repolish()
 
 	def __buildAction( self, item, name, parent ) :
 
@@ -318,16 +343,15 @@ class Menu( GafferUI.Widget ) :
 		with IECore.IgnoredExceptions( AttributeError ) :
 			label = item.label
 
-		qtAction = QtWidgets.QAction( label, parent )
-		qtAction.__item = item
+		if item.divider :
+			qtAction = _DividerAction( item, parent )
+		else :
+			qtAction = _Action( item, label, parent )
 
 		if item.checkBox is not None :
 			qtAction.setCheckable( True )
 			checked = self.__evaluateItemValue( item.checkBox )
 			qtAction.setChecked( checked )
-
-		if item.divider :
-			qtAction.setSeparator( True )
 
 		if item.command :
 
@@ -560,7 +584,6 @@ class Menu( GafferUI.Widget ) :
 
 		self.__previousSearchText = searchText
 
-
 		return results
 
 	def __disambiguate( self, name, path, remove=False ) :
@@ -587,6 +610,73 @@ class Menu( GafferUI.Widget ) :
 			self.__searchMenu.addAction( self.__lastAction )
 
 		self._qtWidget().hide()
+
+	def __actionHovered( self, action ) :
+
+		# Hovered is called every time the mouse moves
+		if action == self.__lastHoverAction :
+			return
+
+		self.__doActionUnhover()
+
+		self.__lastHoverAction = action
+
+		# Sub-menus are normal QActions
+		if isinstance( action, _Action ) and hasattr( action.item, "enter" ) :
+			action.item.enter()
+
+	def __doActionUnhover( self ) :
+
+		if self.__lastHoverAction is None :
+			return
+
+		# Sub-menus are normal QActions
+		if isinstance( self.__lastHoverAction, _Action ) and hasattr( self.__lastHoverAction.item, "leave" ) :
+			self.__lastHoverAction.item.leave()
+
+		self.__lastHoverAction = None
+
+# When we stuck arbitrary attributes on QAction (eg. __item) these would get
+# lost when the action was returned by Qt via a signal (eg: menu.hovered).
+# Creating a subclass seemed to resolve this. Never got to the bottom of why,
+# as the addresses of the python objects _seemed_ to be the same.
+class _Action( QtWidgets.QAction ) :
+
+	def __init__( self, item, *args, **kwarg ) :
+		self.item = item
+		QtWidgets.QAction.__init__( self, *args, **kwarg )
+
+class _DividerAction( QtWidgets.QWidgetAction ) :
+
+	def __init__( self, item, *args, **kwarg ) :
+
+		self.item = item
+
+		QtWidgets.QWidgetAction.__init__( self, *args, **kwarg )
+
+		if hasattr( item, 'label' ) and item.label :
+			titleWidget = QtWidgets.QLabel( item.label )
+			titleWidget.setIndent( 0 )
+			titleWidget.setObjectName( "gafferMenuLabeledDivider" )
+			titleWidget.setEnabled( False )
+			self.setDefaultWidget( titleWidget )
+			self.hasText = True
+		else :
+			self.setSeparator( True )
+			self.hasText = False
+
+class _SpacerAction( QtWidgets.QWidgetAction ) :
+
+	def __init__( self, *args, **kwarg ) :
+
+		QtWidgets.QWidgetAction.__init__( self, *args, **kwarg )
+		# qt stylesheets ignore the padding-bottom for menus and
+		# use padding-top instead. we need padding-top to be 0 when
+		# we have a title, so we have to fake the bottom padding like so.
+		spacerWidget = QtWidgets.QWidget()
+		spacerWidget.setFixedSize( 5, 5 )
+		self.setDefaultWidget( spacerWidget )
+		self.setEnabled( False )
 
 class _Menu( QtWidgets.QMenu ) :
 
@@ -636,3 +726,4 @@ class _Menu( QtWidgets.QMenu ) :
 					return
 
 		QtWidgets.QMenu.keyPressEvent( self, qEvent )
+

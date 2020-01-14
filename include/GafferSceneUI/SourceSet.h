@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENEUI_SOURCESET_H
 #define GAFFERSCENEUI_SOURCESET_H
 
+#include "GafferSceneUI/Export.h"
 #include "GafferSceneUI/TypeIds.h"
 
 #include "GafferScene/ScenePlug.h"
@@ -63,7 +64,7 @@ namespace GafferSceneUI
 ///
 /// The SourceSet requires a valid context and node set in order to determine source nodes
 /// other than the direct selection of non-SceneNodes.
-class GAFFER_API SourceSet : public Gaffer::Set
+class GAFFERSCENEUI_API SourceSet : public Gaffer::Set
 {
 
 	public :

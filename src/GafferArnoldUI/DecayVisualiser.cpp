@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "Export.h"
+
 #include "GafferSceneUI/LightFilterVisualiser.h"
 
 #include "IECoreGL/Group.h"
@@ -54,7 +56,34 @@ using namespace IECoreScene;
 using namespace IECoreGL;
 using namespace GafferSceneUI;
 
-namespace
+namespace DecayVisualiserUtils
+{
+
+// \todo These should be consolidated with the function in BarndoorVisualiser into a templatized version
+//       Where should that live?
+float parameterOrDefault(const IECore::CompoundData *data, const char *key, const float def)
+{
+	ConstFloatDataPtr member = data->member<const FloatData>(key);
+	if (member)
+	{
+		return member->readable();
+	}
+	return def;
+}
+
+bool parameterOrDefault(const IECore::CompoundData *data, const char *key, const bool def)
+{
+	ConstBoolDataPtr member = data->member<const BoolData>(key);
+	if (member)
+	{
+		return member->readable();
+	}
+	return def;
+}
+
+} // namespace DecayVisualiserUtils
+
+namespace GafferArnoldUI
 {
 typedef std::pair<float, V3f> Knot;
 typedef std::vector<Knot> KnotVector;
@@ -97,39 +126,17 @@ const char *knotFragSource()
 		;
 }
 
-// \todo These should be consolidated with the function in BarndoorVisualiser into a templatized version
-//       Where should that live?
-float parameterOrDefault( const IECore::CompoundData *data, const char *key, const float def )
-{
-	ConstFloatDataPtr member = data->member<const FloatData>( key );
-	if( member )
-	{
-		return member->readable();
-	}
-	return def;
-}
-
-bool parameterOrDefault( const IECore::CompoundData *data, const char *key, const bool def )
-{
-	ConstBoolDataPtr member = data->member<const BoolData>( key );
-	if( member )
-	{
-		return member->readable();
-	}
-	return def;
-}
-
 void getKnotsToVisualize( const IECoreScene::ShaderNetwork *shaderNetwork, KnotVector &knots )
 {
 	const IECore::CompoundData *filterShaderParameters = shaderNetwork->outputShader()->parametersData();
 
-	bool nearEnabled = parameterOrDefault( filterShaderParameters, "use_near_atten", false );
-	bool farEnabled = parameterOrDefault( filterShaderParameters, "use_far_atten", false );
+	bool nearEnabled = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "use_near_atten", false );
+	bool farEnabled = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "use_far_atten", false );
 
 	if( nearEnabled )
 	{
-		float nearStart = parameterOrDefault( filterShaderParameters, "near_start", 0.0f );
-		float nearEnd = parameterOrDefault( filterShaderParameters, "near_end", 0.0f );
+		float nearStart = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "near_start", 0.0f );
+		float nearEnd = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "near_end", 0.0f );
 
 		knots.push_back( Knot( nearStart, V3f( 0.0f ) ) );
 		knots.push_back( Knot( nearEnd, V3f( 1.0f ) ) );
@@ -137,8 +144,8 @@ void getKnotsToVisualize( const IECoreScene::ShaderNetwork *shaderNetwork, KnotV
 
 	if( farEnabled )
 	{
-		float farStart = parameterOrDefault( filterShaderParameters, "far_start", 0.0f );
-		float farEnd = parameterOrDefault( filterShaderParameters, "far_end", 0.0f );
+		float farStart = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "far_start", 0.0f );
+		float farEnd = DecayVisualiserUtils::parameterOrDefault( filterShaderParameters, "far_end", 0.0f );
 
 		knots.push_back( Knot( farStart, V3f( 1.0f ) ) );
 		knots.push_back( Knot( farEnd, V3f( 0.0f ) ) );
@@ -190,7 +197,7 @@ void addKnot( IECoreGL::GroupPtr group, const Knot &knot )
 	group->addChild( markerGroup );
 }
 
-class DecayVisualiser final : public LightFilterVisualiser
+class GAFFERARNOLDUI_API DecayVisualiser final : public LightFilterVisualiser
 {
 
 	public :
@@ -242,4 +249,4 @@ IECoreGL::ConstRenderablePtr DecayVisualiser::visualise( const IECore::InternedS
 	return result;
 }
 
-} // namespace
+} // namespace GafferArnoldUI

@@ -92,6 +92,17 @@ class stats( Gaffer.Application ) :
 				),
 
 				IECore.FileNameParameter(
+					name = "postLoadScript",
+					description = "A python script to run after loading `script`. This "
+						"can be used to modify the node graph before stats are gathered. "
+						"The root ScriptNode is accessible via a variable named `root`.",
+					defaultValue = "",
+					allowEmptyString = True,
+					extensions = "py",
+					check = IECore.FileNameParameter.CheckType.MustExist,
+				),
+
+				IECore.FileNameParameter(
 					name = "outputFile",
 					description = "Output the results to this file on disk rather than stdout",
 					defaultValue = "",
@@ -257,6 +268,14 @@ class stats( Gaffer.Application ) :
 
 		self.__memory["Script"] = _Memory.maxRSS() - self.__memory["Application"]
 
+		if args["postLoadScript"].value :
+			postLoadScriptExecutionContext = { "root" : script }
+			with Gaffer.DirtyPropagationScope() :
+				exec(
+					compile( open( args["postLoadScript"].value ).read(), args["postLoadScript"].value, "exec" ),
+					postLoadScriptExecutionContext, postLoadScriptExecutionContext
+				)
+
 		if args["performanceMonitor"].value :
 			self.__performanceMonitor = Gaffer.PerformanceMonitor()
 		else :
@@ -337,6 +356,7 @@ class stats( Gaffer.Application ) :
 			if self.__performanceMonitor is not None :
 				Gaffer.MonitorAlgo.annotate( script, self.__performanceMonitor, Gaffer.MonitorAlgo.PerformanceMetric.TotalDuration )
 				Gaffer.MonitorAlgo.annotate( script, self.__performanceMonitor, Gaffer.MonitorAlgo.PerformanceMetric.HashCount )
+				Gaffer.MonitorAlgo.annotate( script, self.__performanceMonitor, Gaffer.MonitorAlgo.PerformanceMetric.ComputeCount )
 			if self.__contextMonitor is not None :
 				Gaffer.MonitorAlgo.annotate( script, self.__contextMonitor )
 

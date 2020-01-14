@@ -37,6 +37,12 @@
 #ifndef GAFFERUIMODULE_PATHLISTINGWIDGETBINDING_H
 #define GAFFERUIMODULE_PATHLISTINGWIDGETBINDING_H
 
+#ifdef _WIN32
+	#define ENVSEP ";"
+#else
+	#define ENVSEP ":"
+#endif
+
 namespace GafferUIModule
 {
 

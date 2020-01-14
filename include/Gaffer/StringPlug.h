@@ -110,7 +110,7 @@ class GAFFER_API StringPlug : public ValuePlug
 		/// Returns the value. See comments in TypedObjectPlug::getValue()
 		/// for details of the optional precomputedHash argument - and use
 		/// with care!
-		std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
+		virtual std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
 
 		void setFrom( const ValuePlug *other ) override;
 

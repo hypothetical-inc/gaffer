@@ -35,7 +35,11 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 import unittest
 
 import Gaffer
@@ -177,7 +181,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
 
 	def testScriptLoadErrors( self ) :
@@ -212,7 +216,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		self.assertTrue( "KeyError: \"'badPlug'" in error )
 		self.assertFalse( "Traceback" in error )
 		self.assertEqual( p.returncode, 0 )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
 
 	def testNodesWithoutScript( self ) :
@@ -227,7 +231,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "command line test" ] )
 
 	def testApplyUserDefaults( self ) :
@@ -243,7 +247,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
 		jobDir = self.temporaryDirectory() + "/dispatcher/local/000000"
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "userDefault test {jobDir}".format( jobDir = jobDir ) ] )
 
 	def testDispatcherOverrides( self ) :
@@ -266,7 +270,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ str(x)+"\n" for x in range( 1, 101 ) ] )
 
 	def testContextVariables( self ) :
@@ -281,7 +285,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "context 1.25 test" ] )
 
 	def testBox( self ) :
@@ -302,7 +306,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "test inside a box" ] )
 
 	def testMultipleNodes( self ) :
@@ -323,9 +327,9 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
 		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
-		with file( self.__outputTextFile + ".2", "r" ) as f :
+		with open( self.__outputTextFile + ".2", "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a 2nd test" ] )
 
 if __name__ == "__main__":

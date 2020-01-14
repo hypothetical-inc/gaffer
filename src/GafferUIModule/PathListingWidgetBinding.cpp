@@ -40,13 +40,13 @@
 
 #include "Gaffer/FileSystemPath.h"
 #include "Gaffer/Path.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
 
 #include "IECorePython/RefCountedBinding.h"
 #include "IECorePython/ScopedGILLock.h"
 #include "IECorePython/ScopedGILRelease.h"
 
 #include "IECore/DateTimeData.h"
-#include "IECore/LRUCache.h"
 #include "IECore/MessageHandler.h"
 #include "IECore/PathMatcher.h"
 #include "IECore/SearchPath.h"
@@ -257,7 +257,7 @@ class IconColumn : public Column
 		static QVariant iconGetter( const std::string &fileName, size_t &cost )
 		{
 			const char *s = getenv( "GAFFERUI_IMAGE_PATHS" );
-			IECore::SearchPath sp( s ? s : "" );
+			IECore::SearchPath sp( s ? s : "", ENVSEP );
 
 			boost::filesystem::path path = sp.find( fileName );
 			if( path.empty() )
@@ -270,7 +270,7 @@ class IconColumn : public Column
 			return QPixmap( QString( path.string().c_str() ) );
 		}
 
-		typedef IECore::LRUCache<std::string, QVariant> IconCache;
+		typedef IECorePreview::LRUCache<std::string, QVariant> IconCache;
 		static IconCache g_iconCache;
 
 };
@@ -508,7 +508,7 @@ class PathModel : public QAbstractItemModel
 		QModelIndex index( int row, int column, const QModelIndex &parentIndex = QModelIndex() ) const override
 		{
 			Item *item = parentIndex.isValid() ? static_cast<Item *>( parentIndex.internalPointer() ) : m_rootItem;
-			if( row >=0 and row < (int)item->childItems( this ).size() and column >=0 and column < (int)m_columns.size() )
+			if( row >=0 && row < (int)item->childItems( this ).size() && column >=0 && column < (int)m_columns.size() )
 			{
 				return createIndex( row, column, item->childItems( this )[row] );
 			}

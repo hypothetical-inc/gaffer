@@ -68,7 +68,7 @@ std::string repr( const ArrayPlug *plug )
 		result += boost::str( boost::format( "minSize = %d, " ) % plug->minSize() );
 	}
 
-	if( plug->maxSize() != Imath::limits<size_t>::max() )
+	if( plug->maxSize() != std::numeric_limits<size_t>::max() )
 	{
 		result += boost::str( boost::format( "maxSize = %d, " ) % plug->maxSize() );
 	}
@@ -77,6 +77,11 @@ std::string repr( const ArrayPlug *plug )
 	if( flags != Plug::Default )
 	{
 		result += "flags = " + PlugSerialiser::flagsRepr( flags ) + ", ";
+	}
+
+	if( !plug->resizeWhenInputsChange() )
+	{
+		result += "resizeWhenInputsChange = False,";
 	}
 
 	result += ")";
@@ -115,25 +120,41 @@ class ArrayPlugSerialiser : public PlugSerialiser
 
 };
 
+void resize( ArrayPlug &p, size_t size )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	p.resize( size );
+}
+
+PlugPtr next( ArrayPlug &p )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	return p.next();
+}
+
 } // namespace
 
 void GafferModule::bindArrayPlug()
 {
 	PlugClass<ArrayPlug>()
-		.def(	init< const std::string &, Plug::Direction, PlugPtr, size_t, size_t, unsigned >
+		.def(	init< const std::string &, Plug::Direction, PlugPtr, size_t, size_t, unsigned, bool >
 				(
 					(
 						arg( "name" ) = GraphComponent::defaultName<ArrayPlug>(),
 						arg( "direction" ) = Plug::In,
 						arg( "element" ) = PlugPtr(),
 						arg( "minSize" ) = 1,
-						arg( "maxSize" ) = Imath::limits<size_t>::max(),
-						arg( "flags" ) = Plug::Default
+						arg( "maxSize" ) = std::numeric_limits<size_t>::max(),
+						arg( "flags" ) = Plug::Default,
+						arg( "resizeWhenInputsChange" ) = true
 					)
 				)
 		)
 		.def( "minSize", &ArrayPlug::minSize )
 		.def( "maxSize", &ArrayPlug::maxSize )
+		.def( "resize", &resize )
+		.def( "resizeWhenInputsChange", &ArrayPlug::resizeWhenInputsChange )
+		.def( "next", &next )
 		.def( "__repr__", &repr )
 	;
 
