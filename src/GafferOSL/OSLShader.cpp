@@ -200,15 +200,15 @@ bool OSLShader::acceptsInput( const Plug *plug, const Plug *inputPlug ) const
 		if( sourceShaderOutPlug && ( sourceShaderOutPlug == inputPlug || sourceShaderOutPlug->isAncestorOf( inputPlug ) ) )
 		{
 			// Source is the output of a shader node, so it needs to
-			// be coming from another OSL shader. Although because Arnold allows
-			// mixing and matching Arnold native shaders and OSL shaders,
+			// be coming from another OSL shader. Although because Arnold and VRay allow
+			// mixing and matching Arnold / VRay native shaders and OSL shaders,
 			// we must also accept connections from ArnoldShaders.
-			if( !sourceShader->isInstanceOf( staticTypeId() ) && !sourceShader->isInstanceOf( "GafferArnold::ArnoldShader" ) )
+			if( !sourceShader->isInstanceOf( staticTypeId() ) && !sourceShader->isInstanceOf( "GafferArnold::ArnoldShader" ) && !sourceShader->isInstanceOf( "GafferVRay::VRayShader" ) )
 			{
 				return false;
 			}
 			const std::string sourceShaderType = sourceShader->typePlug()->getValue();
-			if( sourceShaderType != "osl:shader" && sourceShaderType != "ai:surface" )
+			if( sourceShaderType != "osl:shader" && sourceShaderType != "ai:surface" && sourceShaderType != "vray:surface" )
 			{
 				return false;
 			}
