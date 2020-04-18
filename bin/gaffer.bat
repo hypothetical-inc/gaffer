@@ -1,3 +1,5 @@
+@echo off
+
 setlocal EnableDelayedExpansion
 
 set GAFFER_ROOT=%~dp0%..
@@ -81,11 +83,10 @@ for %%A in (%GAFFER_EXTENSION_PATHS%) do (
 	call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
 )
 
-@echo on
 %GAFFER_ROOT%\bin\python.exe %GAFFER_ROOT%/bin/gaffer.py %*
 if %ERRORLEVEL% NEQ 0 (
 	echo "Error(s) running Gaffer"
-	exit /b %ERRORLEVEL%
+	exit /B %ERRORLEVEL%
 )
 
 ENDLOCAL
@@ -93,7 +94,6 @@ exit /B 0
 
 :prependToPath
 	set "%~2=%~1;!%~2!"
-	echo !%~2!
 	exit /B 0
 
 :appendToPath
