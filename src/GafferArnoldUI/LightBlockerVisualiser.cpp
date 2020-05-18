@@ -34,9 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "Export.h"
+#include "GafferArnoldUI/Export.h"
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 
@@ -175,11 +175,7 @@ void setFalloffGroupSettings( IECoreGL::Group *group, const IECore::CompoundData
 // LightBlockerVisualiser implementation.
 //////////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-class LightBlockerVisualiser : public LightFilterVisualiser
-=======
 class GAFFERARNOLDUI_API LightBlockerVisualiser : public LightFilterVisualiser
->>>>>>> GafferArnoldUI : add symbol exports
 {
 
 	public :
