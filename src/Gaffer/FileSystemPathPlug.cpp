@@ -130,7 +130,7 @@ std::string FileSystemPathPlug::getValue( const IECore::MurmurHash *precomputedH
 		(substitutions() &&
 			direction() == In &&
 			Process::current() &&
-			Context::hasSubstitutions(s->readable()));
+			IECore::StringAlgo::hasSubstitutions(s->readable()));
 	const std::string substituted_path = performSubstitutions ? context->substitute(s->readable(), substitutions()) : s->readable();
 	return Gaffer::FileSystemPath(substituted_path).nativeString();
 }
@@ -175,7 +175,7 @@ IECore::MurmurHash FileSystemPathPlug::hash() const
 			throw IECore::Exception("StringPlug::getObjectValue() didn't return StringData - is the hash being computed correctly?");
 		}
 
-		if (Context::hasSubstitutions(s->readable()))
+		if (IECore::StringAlgo::hasSubstitutions(s->readable()))
 		{
 			IECore::MurmurHash result;
 			result.append(Context::current()->substitute(s->readable(), substitutions()));
