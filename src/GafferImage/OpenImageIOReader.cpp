@@ -701,7 +701,7 @@ FilePtr retrieveFile( std::string &fileName, OpenImageIOReader::MissingFrameMode
 	}
 
 	// All other substitutions are handled in the FileSystemPathPlug
-	const std::string resolvedFileName = context->substitute( fileName, Gaffer::Context::Substitutions::FrameSubstitutions );
+	const std::string resolvedFileName = context->substitute( fileName, IECore::StringAlgo::Substitutions::FrameSubstitutions );
 
 	FileHandleCache *cache = fileCache();
 	CacheEntry cacheEntry = cache->get( resolvedFileName );
