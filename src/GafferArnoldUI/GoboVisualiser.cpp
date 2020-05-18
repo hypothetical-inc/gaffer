@@ -34,9 +34,11 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "Export.h"
+#include "GafferArnoldUI/Export.h"
 
-#include "GafferOSL/ShadingEngine.h"
+#include "GafferArnoldUI/Private/VisualiserAlgo.h"
+
+#include "GafferOSL/ShadingEngineAlgo.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
 
@@ -177,6 +179,7 @@ const char *texturedFragSource()
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const char *constantFragSource()
 {
 	return
@@ -193,6 +196,8 @@ const char *constantFragSource()
 >>>>>>> abc85190d... GafferArnoldUI : add symbol exports
 class GoboVisualiser final : public LightFilterVisualiser
 =======
+=======
+>>>>>>> a5d93d68e... GafferArnoldUI : fix broken rebase
 // OSLTextureEvaluation
 
 CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution )
@@ -277,7 +282,6 @@ CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork,
 }
 
 class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
->>>>>>> GafferArnoldUI : add symbol exports
 {
 
 	public :

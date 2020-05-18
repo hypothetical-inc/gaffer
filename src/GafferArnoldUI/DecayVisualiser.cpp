@@ -34,9 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "Export.h"
+#include "GafferArnoldUI/Export.h"
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "IECoreGL/Group.h"
 #include "IECoreGL/Primitive.h"
