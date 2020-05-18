@@ -34,9 +34,11 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "Export.h"
+#include "GafferArnoldUI/Export.h"
 
-#include "GafferOSL/ShadingEngine.h"
+#include "GafferArnoldUI/Private/VisualiserAlgo.h"
+
+#include "GafferOSL/ShadingEngineAlgo.h"
 
 #include "GafferSceneUI/StandardLightVisualiser.h"
 
@@ -87,8 +89,6 @@ T parameterOrDefault(const IECore::CompoundData *parameters, const IECore::Inter
 	}
 }
 
-<<<<<<< HEAD
-=======
 }	// namespace GoboVisualiserUtils
 
 
@@ -97,7 +97,6 @@ namespace GafferArnoldUI
 
 CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution );
 
->>>>>>> GafferArnoldUI : add symbol exports
 struct OSLTextureCacheGetterKey
 {
 
@@ -163,9 +162,6 @@ const char *goboFragSource()
 	;
 }
 
-<<<<<<< HEAD
-class GoboVisualiser final : public LightFilterVisualiser
-=======
 // OSLTextureEvaluation
 
 CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution )
@@ -250,7 +246,6 @@ CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork,
 }
 
 class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
->>>>>>> GafferArnoldUI : add symbol exports
 {
 
 	public :
