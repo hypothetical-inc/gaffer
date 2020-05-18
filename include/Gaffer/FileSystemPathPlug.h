@@ -41,6 +41,8 @@
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
 
+#include "IECore/StringAlgo.h"
+
 
 namespace Gaffer
 {
@@ -72,7 +74,7 @@ class GAFFER_API FileSystemPathPlug : public StringPlug
 			Direction direction=In,
 			const std::string &defaultValue = "",
 			unsigned flags = Default,
-			unsigned substitutions = Context::AllSubstitutions
+			unsigned substitutions = IECore::StringAlgo::AllSubstitutions
 		);
 		~FileSystemPathPlug() override;
 
