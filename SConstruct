@@ -759,7 +759,7 @@ basePythonEnv.Append(
 	],
 
 	LIBS = [
-		"boost_python$BOOST_LIB_SUFFIX",
+		"boost_python27$BOOST_LIB_SUFFIX",
 		"IECorePython$CORTEX_PYTHON_LIB_SUFFIX",
 		"Gaffer",
 	],
