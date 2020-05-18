@@ -1008,7 +1008,7 @@ libraries = {
 	"GafferArnoldUI" : {
 		"envAppends" : {
 			"CPPPATH" : [ "$ARNOLD_ROOT/include" ],
-			"LIBPATH" : [ "$ARNOLD_ROOT/bin" ],
+			"LIBPATH" : [ "$ARNOLD_ROOT/bin", "$ARNOLD_ROOT/lib" ],
 			"LIBS" : [ "IECoreScene$CORTEX_LIB_SUFFIX", "IECoreGL$CORTEX_LIB_SUFFIX", "OpenImageIO$OIIO_LIB_SUFFIX", "oslquery$OSL_LIB_SUFFIX", "Gaffer", "GafferScene", "GafferOSL", "GafferSceneUI", "ai" ],
 			},
 		"pythonEnvAppends" : {
