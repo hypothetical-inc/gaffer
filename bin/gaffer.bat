@@ -45,7 +45,7 @@ call :prependToPath "%GAFFER_ROOT%\bin" PATH
 
 rem Appleseed
 if "%APPLESEED%" == "" (
-	if EXIST %GAFFER_ROOT%\appleseed (
+	if EXIST "%GAFFER_ROOT%"\appleseed (
 		set APPLESEED=%GAFFER_ROOT%\appleseed
 	)
 )
@@ -83,7 +83,7 @@ for %%A in (%GAFFER_EXTENSION_PATHS%) do (
 	call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
 )
 
-"%GAFFER_ROOT%\bin\python.exe %GAFFER_ROOT%/bin/__gaffer.py %*"
+"%GAFFER_ROOT%"\bin\python.exe "%GAFFER_ROOT%"/bin/__gaffer.py %*
 if %ERRORLEVEL% NEQ 0 (
 	echo "Error(s) running Gaffer"
 	exit /B %ERRORLEVEL%
