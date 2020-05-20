@@ -236,6 +236,12 @@ options.Add(
 )
 
 options.Add(
+	"BOOST_PYTHON_SUFFIX",
+	"The suffix used when locating the boost libraries.",
+	"",
+)
+
+options.Add(
 	"GLEW_LIB_SUFFIX",
 	"The suffix used when locating the glew libraries.",
 	"",
