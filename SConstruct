@@ -236,6 +236,12 @@ options.Add(
 )
 
 options.Add(
+	"BOOST_PYTHON_SUFFIX",
+	"The suffix used when locating the boost libraries.",
+	"",
+)
+
+options.Add(
 	"GLEW_LIB_SUFFIX",
 	"The suffix used when locating the glew libraries.",
 	"",
@@ -759,7 +765,7 @@ basePythonEnv.Append(
 	],
 
 	LIBS = [
-		"boost_python27$BOOST_LIB_SUFFIX",
+		"boost_python$BOOST_PYTHON_SUFFIX$BOOST_LIB_SUFFIX",
 		"IECorePython$CORTEX_PYTHON_LIB_SUFFIX",
 		"Gaffer",
 	],
