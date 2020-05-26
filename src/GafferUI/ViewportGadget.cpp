@@ -453,12 +453,12 @@ class ViewportGadget::CameraController : public boost::noncopyable
 		/// "stealing" any events it wanted before they were processed by the
 		/// ViewportGadget. There are a few complications regarding drag
 		/// tracking and unmodified MMB drags, though.
-		MotionType cameraMotionType( const ButtonEvent &event, bool variableAspectZoom )
+		MotionType cameraMotionType( const ButtonEvent &event, bool variableAspectZoom, bool preciseMotionAllowed )
 		{
 			if(
-				( event.modifiers == ModifiableEvent::Alt ) ||
-				( event.buttons == ButtonEvent::Middle && event.modifiers == ModifiableEvent::None ) ||
-				( variableAspectZoom && event.modifiers & ModifiableEvent::Shift && event.modifiers & ModifiableEvent::Alt && event.buttons == ButtonEvent::Right )
+				( ( event.modifiers == ModifiableEvent::Alt ) || ( preciseMotionAllowed && ( event.modifiers == ModifiableEvent::ShiftAlt ) ) ) ||
+				( event.buttons == ButtonEvent::Middle && ( event.modifiers == ModifiableEvent::None || ( preciseMotionAllowed && ( event.modifiers == ModifiableEvent::Shift ) ) ) ) ||
+				( variableAspectZoom && event.modifiers & ModifiableEvent::Alt && event.modifiers & ModifiableEvent::Control && event.buttons == ButtonEvent::Right )
 			)
 			{
 				switch( event.buttons )
@@ -620,9 +620,12 @@ ViewportGadget::ViewportGadget( GadgetPtr primaryChild )
 	  m_cameraController( new CameraController() ),
 	  m_cameraInMotion( false ),
 	  m_cameraEditable( true ),
+	  m_preciseMotionAllowed( true ),
+	  m_preciseMotionEnabled( false ),
 	  m_dragTracking( DragTracking::NoDragTracking ),
 	  m_variableAspectZoom( false )
 {
+
 	// Viewport visibility is managed by GadgetWidgets,
 	setVisible( false );
 
@@ -742,6 +745,17 @@ void ViewportGadget::setPlanarMovement( bool planarMovement )
 	m_cameraController->setPlanarMovement( planarMovement );
 }
 
+void ViewportGadget::setPreciseMotionAllowed( bool allowed )
+{
+	m_preciseMotionAllowed = allowed;
+}
+
+bool ViewportGadget::getPreciseMotionAllowed() const
+{
+	return m_preciseMotionAllowed;
+}
+
+
 IECoreScene::ConstCameraPtr ViewportGadget::getCamera() const
 {
 	return m_cameraController->getCamera();
@@ -844,24 +858,11 @@ void ViewportGadget::fitClippingPlanes( const Imath::Box3f &box )
 	// bit of padding and a neatish number.
 	far = ceilSignificantDigits( far, 2 );
 
-	// Now choose a near plane. We don't want this to get
-	// too small, to avoid losing precision.
-	const float nearMin = far / 10000.0f;
-	float near = b.center().z + bRadius;
-	if( near >= 0.0f )
-	{
-		// Behind camera.
-		near = nearMin;
-	}
-	else
-	{
-		// Neaten
-		near = floorSignificantDigits( -1 * near, 2 );
-		// Provide room for dollying in.
-		near /= 100.0f;
-		// But don't allow precision to be lost.
-		near = std::max( near, nearMin );
-	}
+	// We try to keep near close to the camera, regardless of what we do for
+	// far as otherwise, if you dolly in, everything disappears.
+	float near = far / 100000.0f;
+	near = floorSignificantDigits( near, 2 );
+	near = std::max( 0.01f, near );
 
 	m_cameraController->setClippingPlanes( V2f( near, far ) );
 	m_cameraChangedSignal( this );
@@ -1002,7 +1003,7 @@ bool ViewportGadget::buttonPress( GadgetPtr gadget, const ButtonEvent &event )
 	// A child's interaction with an unmodifier MMB drag takes precedence over camera moves
 	bool unmodifiedMiddleDrag = event.buttons == ButtonEvent::Middle && event.modifiers == ModifiableEvent::None;
 
-	if( !unmodifiedMiddleDrag && m_cameraController->cameraMotionType( event, m_variableAspectZoom ) )
+	if( !unmodifiedMiddleDrag && m_cameraController->cameraMotionType( event, m_variableAspectZoom, m_preciseMotionAllowed ) )
 	{
 		// accept press so we get a dragBegin opportunity for camera movement
 		return true;
@@ -1153,7 +1154,7 @@ IECore::RunTimeTypedPtr ViewportGadget::dragBegin( GadgetPtr gadget, const DragD
 {
 	m_dragTrackingThreshold = limits<float>::max();
 
-	CameraController::MotionType cameraMotionType = m_cameraController->cameraMotionType( event, m_variableAspectZoom );
+	CameraController::MotionType cameraMotionType = m_cameraController->cameraMotionType( event, m_variableAspectZoom, m_preciseMotionAllowed );
 	bool unmodifiedMiddleDrag = event.buttons == ButtonEvent::Middle && event.modifiers == ModifiableEvent::None;
 
 	if( ( !cameraMotionType || unmodifiedMiddleDrag ) && m_lastButtonPressGadget )
@@ -1185,7 +1186,8 @@ IECore::RunTimeTypedPtr ViewportGadget::dragBegin( GadgetPtr gadget, const DragD
 		// their gestures fell through and affected the viewport contents.
 		if( getCameraEditable() )
 		{
-			m_cameraController->motionStart( cameraMotionType, V2i( (int)event.line.p1.x, (int)event.line.p1.y ) );
+			updateMotionState( event, true );
+			m_cameraController->motionStart( cameraMotionType, motionPositionFromEvent( event ) );
 		}
 
 		// we have to return something to start the drag, but we return something that
@@ -1228,7 +1230,8 @@ bool ViewportGadget::dragMove( GadgetPtr gadget, const DragDropEvent &event )
 	{
 		if( getCameraEditable() )
 		{
-			m_cameraController->motionUpdate( V2i( (int)event.line.p1.x, (int)event.line.p1.y ), m_variableAspectZoom && ( event.modifiers & ModifiableEvent::Shift ) != 0 );
+			updateMotionState( event );
+			m_cameraController->motionUpdate( motionPositionFromEvent( event ), m_variableAspectZoom && ( event.modifiers & ModifiableEvent::Control ) != 0 );
 			m_cameraChangedSignal( this );
 			requestRender();
 		}
@@ -1369,6 +1372,52 @@ void ViewportGadget::trackDragIdle()
 	requestRender();
 }
 
+void ViewportGadget::updateMotionState( const DragDropEvent &event, bool initialEvent )
+{
+	if( !m_preciseMotionAllowed )
+	{
+		m_preciseMotionEnabled = false;
+		return;
+	}
+
+	// Every time we transition from coarse to fine motion (or the reverse) we
+	// begin a new 'motion segment', we then adjust the actual movement
+	// relative to the beginning of the segment, either 1:1 or 10:1. This means
+	// that toggling between precise/normal motion doesn't cause jumps in
+	// position.  We have to track the absolute event origin (m_motionSegmentEventOrigin)
+	// and the relative position (m_motionSegmentOrigin) at the start of the
+	// segment to calculate this.
+
+	const bool shiftHeld = event.modifiers & ModifiableEvent::Shift;
+
+	if( initialEvent )
+	{
+		m_motionSegmentEventOrigin = V2f( event.line.p1.x, event.line.p1.y );
+		m_motionSegmentOrigin = m_motionSegmentEventOrigin;
+	}
+	else if( m_preciseMotionEnabled != shiftHeld )
+	{
+		m_motionSegmentOrigin = motionPositionFromEvent( event );
+		m_motionSegmentEventOrigin = V2f( event.line.p1.x, event.line.p1.y );
+	}
+
+	m_preciseMotionEnabled = shiftHeld;
+}
+
+V2f ViewportGadget::motionPositionFromEvent( const DragDropEvent &event ) const
+{
+	V2f eventPosition( event.line.p1.x, event.line.p1.y );
+	if( m_preciseMotionAllowed )
+	{
+		const float scaleFactor = m_preciseMotionEnabled ? 0.1f : 1.0f;
+		return m_motionSegmentOrigin + ( ( eventPosition - m_motionSegmentEventOrigin ) * scaleFactor );
+	}
+	else
+	{
+		return eventPosition;
+	}
+}
+
 GadgetPtr ViewportGadget::updatedDragDestination( std::vector<GadgetPtr> &gadgets, const DragDropEvent &event )
 {
 	for( std::vector<GadgetPtr>::const_iterator it = gadgets.begin(), eIt = gadgets.end(); it != eIt; it++ )
@@ -1457,8 +1506,10 @@ bool ViewportGadget::dragEnd( GadgetPtr gadget, const DragDropEvent &event )
 		m_cameraInMotion = false;
 		if( getCameraEditable() )
 		{
-			m_cameraController->motionEnd( V2i( (int)event.line.p1.x, (int)event.line.p1.y ), m_variableAspectZoom && ( event.modifiers & ModifiableEvent::Shift ) != 0 );
+			updateMotionState( event );
+			m_cameraController->motionEnd( motionPositionFromEvent( event ), m_variableAspectZoom && ( event.modifiers & ModifiableEvent::Control ) != 0 );
 			m_cameraChangedSignal( this );
+			m_preciseMotionEnabled = false;
 			requestRender();
 		}
 		return true;
@@ -1492,7 +1543,8 @@ bool ViewportGadget::wheel( GadgetPtr gadget, const ButtonEvent &event )
 	V2f position( event.line.p0.x, event.line.p0.y );
 
 	m_cameraController->motionStart( CameraController::Dolly, position );
-	position.x += event.wheelRotation * getViewport().x / 140.0f;
+	const float scaleFactor = event.modifiers & ModifiableEvent::Modifiers::Shift ? 1400.0f : 140.0f;
+	position.x += event.wheelRotation * getViewport().x / scaleFactor ;
 	m_cameraController->motionUpdate( position );
 	m_cameraController->motionEnd( position );
 

@@ -44,7 +44,7 @@ from Qt import QtWidgets
 #
 # Supported plug metadata :
 #
-#  - "labelPlugValueWidget:renameable"
+#  - "renameable"
 class LabelPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 	def __init__( self, plug, horizontalAlignment=GafferUI.Label.HorizontalAlignment.Left, verticalAlignment=GafferUI.Label.VerticalAlignment.Center, **kw ) :
@@ -60,6 +60,7 @@ class LabelPlugValueWidget( GafferUI.PlugValueWidget ) :
 			plug,
 			horizontalAlignment = horizontalAlignment,
 			verticalAlignment = verticalAlignment,
+			formatter = self.__formatter,
 		)
 		self.__label._qtWidget().setObjectName( "gafferPlugLabel" )
 		layout.addWidget( self.__label._qtWidget() )
@@ -89,7 +90,6 @@ class LabelPlugValueWidget( GafferUI.PlugValueWidget ) :
 		if self.__editableLabel is not None :
 			self.__editableLabel.setGraphComponent( plug )
 
-		self.__updateFormatter()
 		self.__updateDoubleClickConnection()
 
 	def setHighlighted( self, highlighted ) :
@@ -173,20 +173,19 @@ class LabelPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 		GafferUI.Pointer.setCurrent( None )
 
-	def __updateFormatter( self ) :
-
-		plug = self.getPlug()
-		label = Gaffer.Metadata.value( plug, "label" ) if plug is not None else None
-		if label is not None :
-			self.__label.setFormatter( lambda graphComponents : label )
-		else :
-			self.__label.setFormatter( self.__label.defaultFormatter )
-
 	def __updateDoubleClickConnection( self ) :
 
 		self.__labelDoubleClickConnection = None
+		if self.getPlug() is None :
+			return
 
-		if self.getPlug() is None or not Gaffer.Metadata.value( self.getPlug(), "labelPlugValueWidget:renameable" ) :
+		# First try the official metadata.
+		renameable = Gaffer.Metadata.value( self.getPlug(), "renameable" )
+		if renameable is None :
+			# Then try the old metadata that we are phasing out.
+			renameable = Gaffer.Metadata.value( self.getPlug(), "labelPlugValueWidget:renameable" )
+
+		if renameable != True :
 			return
 
 		self.__labelDoubleClickConnection = self.__label.buttonDoubleClickSignal().connect( Gaffer.WeakMethod( self.__labelDoubleClicked ) )
@@ -235,4 +234,16 @@ class LabelPlugValueWidget( GafferUI.PlugValueWidget ) :
 			return
 
 		if key=="label" and Gaffer.MetadataAlgo.affectedByChange( self.getPlug(), nodeTypeId, plugPath, plug ) :
-			self.__updateFormatter()
+			# The NameLabel doesn't know that our formatter is sensitive
+			# to the metadata, so give it a little kick.
+			self.__label.setFormatter( self.__formatter )
+
+	@staticmethod
+	def __formatter( graphComponents ) :
+
+		if graphComponents :
+			label = Gaffer.Metadata.value( graphComponents[-1], "label" )
+			if label is not None :
+				return label
+
+		return GafferUI.NameLabel.defaultFormatter( graphComponents )

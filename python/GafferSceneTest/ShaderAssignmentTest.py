@@ -35,7 +35,6 @@
 #
 ##########################################################################
 
-import inspect
 import os
 import subprocess
 import unittest
@@ -445,7 +444,7 @@ class ShaderAssignmentTest( GafferSceneTest.SceneTestCase ) :
 				"shader2"
 			)
 
-	def testContextCompatibility( self ) :
+	def testGlobalContext( self ) :
 
 		script = Gaffer.ScriptNode()
 
@@ -453,62 +452,21 @@ class ShaderAssignmentTest( GafferSceneTest.SceneTestCase ) :
 		script["shader"]["type"].setValue( "shader" )
 
 		script["expression"] = Gaffer.Expression()
-		script["expression"].setExpression( 'parent["shader"]["parameters"]["i"] = len( context.get( "scene:path", [] ) )' )
+		script["expression"].setExpression( 'parent["shader"]["parameters"]["i"] = 1 if context.get( "scene:path", None ) else 0' )
 
 		script["sphere"] = GafferScene.Sphere()
 
-		script["group"] = GafferScene.Group()
-		script["group"]["in"][0].setInput( script["sphere"]["out"] )
-
 		script["filter"] = GafferScene.PathFilter()
-		script["filter"]["paths"].setValue( IECore.StringVectorData( [ "/group", "/group/sphere" ] ) )
+		script["filter"]["paths"].setValue( IECore.StringVectorData( [ "/sphere" ] ) )
 
 		script["assignment"] = GafferScene.ShaderAssignment()
-		script["assignment"]["in"].setInput( script["group"]["out"] )
+		script["assignment"]["in"].setInput( script["sphere"]["out"] )
 		script["assignment"]["filter"].setInput( script["filter"]["out"] )
 		script["assignment"]["shader"].setInput( script["shader"]["out"] )
 
-		script["writer"] = GafferScene.SceneWriter()
-		script["writer"]["in"].setInput( script["assignment"]["out"] )
-		script["writer"]["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.scc" ) )
-
-		script["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.gfr" ) )
-		script.save()
-
-		def assertContextCompatibility( expected, envVar ) :
-
-			env = os.environ.copy()
-			if envVar is not None :
-				env["GAFFERSCENE_SHADERASSIGNMENT_CONTEXTCOMPATIBILITY"] = envVar
-
-			subprocess.check_call(
-				[ "gaffer", "execute", script["fileName"].getValue(), "-nodes", "writer" ],
-				env = env
-			)
-
-			scene = IECoreScene.SceneCache( script["writer"]["fileName"].getValue(), IECore.IndexedIO.OpenMode.Read )
-			group = scene.child( "group" )
-			sphere = group.child( "sphere" )
-
-			if expected :
-				self.assertEqual( group.readAttribute( "shader", 0 ).outputShader().parameters["i"].value, 1 )
-				self.assertEqual( sphere.readAttribute( "shader", 0 ).outputShader().parameters["i"].value, 2 )
-			else :
-				self.assertEqual( group.readAttribute( "shader", 0 ).outputShader().parameters["i"].value, 0 )
-				self.assertEqual( sphere.readAttribute( "shader", 0 ).outputShader().parameters["i"].value, 0 )
-
-		assertContextCompatibility( False, envVar = None )
-		assertContextCompatibility( False, envVar = "0" )
-		assertContextCompatibility( False, envVar = "?" )
-		assertContextCompatibility( True, envVar = "1" )
-
-		Gaffer.NodeAlgo.applyUserDefaults( script["assignment"] )
-		script.save()
-
-		assertContextCompatibility( False, envVar = None )
-		assertContextCompatibility( False, envVar = "0" )
-		assertContextCompatibility( False, envVar = "?" )
-		assertContextCompatibility( False, envVar = "1" )
+		self.assertEqual(
+			script["assignment"]["out"].attributes( "/sphere" )["shader"].outputShader().parameters["i"].value, 0
+		)
 
 	def testInputRejectsNonShaderSwitch( self ) :
 
@@ -591,7 +549,58 @@ class ShaderAssignmentTest( GafferSceneTest.SceneTestCase ) :
 		assertAssignment( "osl:surface", envVar = None )
 		assertAssignment( "foo:surface", envVar = "foo" )
 
-		
+	def testAssignThroughNameSwitch( self ) :
+
+		Gaffer.ScriptNode()
+
+		shader1 = GafferSceneTest.TestShader()
+		shader1["type"].setValue( "test:surface" )
+		shader1["name"].setValue( "shader1" )
+
+		shader2 = GafferSceneTest.TestShader()
+		shader2["type"].setValue( "test:surface" )
+		shader2["name"].setValue( "shader2" )
+
+		switch = Gaffer.NameSwitch()
+		switch["selector"].setValue( "${shader}" )
+		switch.setup( shader1["out"] )
+		switch["in"].resize( 3 )
+		switch["in"][1]["name"].setValue( "uno one un" )
+		switch["in"][1]["value"].setInput( shader1["out"] )
+		switch["in"][2]["name"].setValue( "dos two deux" )
+		switch["in"][2]["value"].setInput( shader2["out"] )
+
+		plane = GafferScene.Plane()
+
+		planeFilter = GafferScene.PathFilter()
+		planeFilter["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
+
+		assignment = GafferScene.ShaderAssignment()
+		assignment["in"].setInput( plane["out"] )
+		assignment["filter"].setInput( planeFilter["out"] )
+		assignment["shader"].setInput( switch["out"]["value"] )
+
+		with Gaffer.Context() as context :
+
+			context["shader"] = "uno"
+			self.assertEqual(
+				assignment["out"].attributes( "/plane" )["test:surface"].outputShader().name,
+				"shader1"
+			)
+
+			context["shader"] = "two"
+			self.assertEqual(
+				assignment["out"].attributes( "/plane" )["test:surface"].outputShader().name,
+				"shader2"
+			)
+
+	def testLoadFrom0_55( self ) :
+
+		script = Gaffer.ScriptNode()
+		script["fileName"].setValue( os.path.join( os.path.dirname( __file__ ), "scripts", "shaderAssignment-0.55.0.0.gfr" ) )
+		script.load()
+
+		self.assertNotIn( "__contextCompatibility", script["ShaderAssignment"] )
 
 if __name__ == "__main__":
 	unittest.main()

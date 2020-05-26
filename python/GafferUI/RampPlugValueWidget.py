@@ -79,7 +79,6 @@ class RampPlugValueWidget( GafferUI.PlugValueWidget ) :
 			self.__splineWidget._qtWidget().setMinimumHeight( 50 )
 
 			self.__slider = GafferUI.Slider()
-			self.__slider.setSizeEditable( True )
 			self.__slider.setMinimumSize( 2 )
 			self.__positionsChangedConnection = self.__slider.positionChangedSignal().connect( Gaffer.WeakMethod( self.__positionsChanged ), scoped = False )
 			self.__slider.indexRemovedSignal().connect( Gaffer.WeakMethod( self.__indexRemoved ), scoped = False )
@@ -129,6 +128,9 @@ class RampPlugValueWidget( GafferUI.PlugValueWidget ) :
 	def _updateFromPlug( self ) :
 
 		plug = self.getPlug()
+		self.__slider.setSizeEditable( not ( plug.getInput() or
+			plug.direction() == Gaffer.Plug.Direction.Out or Gaffer.MetadataAlgo.readOnly( plug )
+		) )
 		with self.getContext() :
 
 			self.__splineWidget.setSpline( plug.getValue().spline() )
@@ -153,9 +155,18 @@ class RampPlugValueWidget( GafferUI.PlugValueWidget ) :
 		) :
 
 			if len( slider.getPositions() ) == plug.numPoints() :
+				rejected = False
 				# the user has moved an existing point on the slider
 				for index, position in enumerate( slider.getPositions() ) :
-					plug.pointXPlug( index ).setValue( position )
+					if plug.pointXPlug( index ).getValue() != position :
+						curPlug = plug.pointXPlug( index )
+						if curPlug.settable() and not Gaffer.MetadataAlgo.readOnly( curPlug ):
+							curPlug.setValue( position )
+						else:
+							rejected = True
+
+				if rejected:
+					self._updateFromPlug()
 			else :
 				# a new position was added on the end by the user clicking
 				# on an empty area of the slider.

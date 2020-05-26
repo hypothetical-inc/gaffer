@@ -154,10 +154,11 @@ class EventLoop( object ) :
 	if QtWidgets.QApplication.instance() :
 		__qtApplication = QtWidgets.QApplication.instance()
 	else :
-		# set the style explicitly so we don't inherit one from the desktop
-		# environment, which could mess with our own style (on gnome for instance,
+		# Set the style explicitly so we don't inherit one from the desktop
+		# environment, which could mess with our own style (on GNOME for instance,
 		# our icons can come out the wrong size).
-		QtWidgets.QApplication.setStyle( "plastique" )
+		style = QtWidgets.QApplication.setStyle( "Fusion" )
+		assert( style is not None )
 		__qtApplication = QtWidgets.QApplication( [ "gaffer" ] )
 
 	__mainEventLoop = None
@@ -274,7 +275,7 @@ class EventLoop( object ) :
 			try :
 				if not c() :
 					EventLoop.__idleCallbacks.remove( c )
-			except Exception, e :
+			except Exception as e :
 				# if the callback throws then we remove it anyway, because
 				# we don't want to keep invoking the same error over and over.
 				EventLoop.__idleCallbacks.remove( c )

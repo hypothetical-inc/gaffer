@@ -45,6 +45,7 @@
 #include "GafferScene/ResamplePrimitiveVariables.h"
 #include "GafferScene/CollectPrimitiveVariables.h"
 #include "GafferScene/PrimitiveVariableExists.h"
+#include "GafferScene/ShufflePrimitiveVariables.h"
 
 #include "GafferBindings/DependencyNodeBinding.h"
 
@@ -61,5 +62,6 @@ void GafferSceneModule::bindPrimitiveVariables()
 	GafferBindings::DependencyNodeClass<MapOffset>();
 	GafferBindings::DependencyNodeClass<CollectPrimitiveVariables>();
 	GafferBindings::DependencyNodeClass<PrimitiveVariableExists>();
+	GafferBindings::DependencyNodeClass<ShufflePrimitiveVariables>();
 
 }

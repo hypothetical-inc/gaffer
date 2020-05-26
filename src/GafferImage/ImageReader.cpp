@@ -40,6 +40,7 @@
 #include "GafferImage/OpenImageIOReader.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "OpenEXR/ImathFun.h"
 
@@ -118,10 +119,10 @@ ImageReader::ImageReader( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstChildIndex );
 	addChild(
-		new StringPlug(
+		new FileSystemPathPlug(
 			"fileName", Plug::In, "",
 			/* flags */ Plug::Default,
-			/* substitutions */ Context::AllSubstitutions & ~Context::FrameSubstitutions
+			/* substitutions */ IECore::StringAlgo::AllSubstitutions & ~IECore::StringAlgo::FrameSubstitutions
 		)
 	);
 	addChild( new IntPlug( "refreshCount" ) );
@@ -159,6 +160,7 @@ ImageReader::ImageReader( const std::string &name )
 	colorSpace->inputSpacePlug()->setInput( intermediateColorSpacePlug() );
 	OpenColorIO::ConstConfigRcPtr config = OpenColorIO::GetCurrentConfig();
 	colorSpace->outputSpacePlug()->setValue( config->getColorSpace( OpenColorIO::ROLE_SCENE_LINEAR )->getName() );
+	colorSpace->processUnpremultipliedPlug()->setValue( true );
 	intermediateImagePlug()->setInput( colorSpace->outPlug() );
 }
 
@@ -166,14 +168,14 @@ ImageReader::~ImageReader()
 {
 }
 
-StringPlug *ImageReader::fileNamePlug()
+FileSystemPathPlug *ImageReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
-const StringPlug *ImageReader::fileNamePlug() const
+const FileSystemPathPlug *ImageReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
 IntPlug *ImageReader::refreshCountPlug()
@@ -435,6 +437,60 @@ IECore::ConstCompoundDataPtr ImageReader::computeMetadata( const Gaffer::Context
 		return intermediateImagePlug()->metadataPlug()->getValue();
 	}
 }
+
+void ImageReader::hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	FrameMaskScope scope( context, this );
+	if( scope.mode() == BlackOutside )
+	{
+		ImageNode::hashDeep( parent, context, h );
+	}
+	else
+	{
+		h = intermediateImagePlug()->deepPlug()->hash();
+	}
+}
+
+bool ImageReader::computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const
+{
+	FrameMaskScope scope( context, this );
+	if( scope.mode() == BlackOutside )
+	{
+		return intermediateImagePlug()->deepPlug()->defaultValue();
+	}
+	else
+	{
+		return intermediateImagePlug()->deepPlug()->getValue();
+	}
+}
+
+void ImageReader::hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	FrameMaskScope scope( context, this );
+	if( scope.mode() == BlackOutside )
+	{
+		h = intermediateImagePlug()->sampleOffsetsPlug()->defaultValue()->Object::hash();
+	}
+	else
+	{
+		h = intermediateImagePlug()->sampleOffsetsPlug()->hash();
+	}
+}
+
+IECore::ConstIntVectorDataPtr ImageReader::computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const
+{
+	FrameMaskScope scope( context, this );
+	if( scope.mode() == BlackOutside )
+	{
+		return intermediateImagePlug()->sampleOffsetsPlug()->defaultValue();
+	}
+	else
+	{
+		return intermediateImagePlug()->sampleOffsetsPlug()->getValue();
+	}
+}
+
+
 
 void ImageReader::hashChannelNames( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
 {

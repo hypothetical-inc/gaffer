@@ -47,6 +47,7 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( StringPlug )
+IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 
 } // namespace Gaffer
 
@@ -87,8 +88,8 @@ class GAFFERIMAGE_API ImageReader : public ImageNode
 			ClampToFrame,
 		};
 
-		Gaffer::StringPlug *fileNamePlug();
-		const Gaffer::StringPlug *fileNamePlug() const;
+		Gaffer::FileSystemPathPlug *fileNamePlug();
+		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 		/// Number of times the node has been refreshed.
 		Gaffer::IntPlug *refreshCountPlug();
@@ -136,6 +137,12 @@ class GAFFERIMAGE_API ImageReader : public ImageNode
 
 		void hashMetadata( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstCompoundDataPtr computeMetadata( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
+		void hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		bool computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
+		void hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		IECore::ConstIntVectorDataPtr computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
 		void hashChannelNames( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstStringVectorDataPtr computeChannelNames( const Gaffer::Context *context, const ImagePlug *parent ) const override;

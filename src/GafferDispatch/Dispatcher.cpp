@@ -41,6 +41,7 @@
 #include "Gaffer/Process.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/SubGraph.h"
 #include "Gaffer/Switch.h"
 
@@ -83,7 +84,7 @@ Dispatcher::Dispatcher( const std::string &name )
 	addChild( new IntPlug( "framesMode", Plug::In, CurrentFrame, CurrentFrame ) );
 	addChild( new StringPlug( "frameRange", Plug::In, "1-100x10" ) );
 	addChild( new StringPlug( "jobName", Plug::In, "" ) );
-	addChild( new StringPlug( "jobsDirectory", Plug::In, "" ) );
+	addChild( new FileSystemPathPlug( "jobsDirectory", Plug::In, "" ) );
 }
 
 Dispatcher::~Dispatcher()
@@ -120,14 +121,14 @@ const StringPlug *Dispatcher::jobNamePlug() const
 	return getChild<StringPlug>( g_firstPlugIndex + 2 );
 }
 
-StringPlug *Dispatcher::jobsDirectoryPlug()
+FileSystemPathPlug *Dispatcher::jobsDirectoryPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
-const StringPlug *Dispatcher::jobsDirectoryPlug() const
+const FileSystemPathPlug *Dispatcher::jobsDirectoryPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
 const std::string Dispatcher::jobDirectory() const
@@ -137,7 +138,7 @@ const std::string Dispatcher::jobDirectory() const
 
 void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::Context *context ) const
 {
-	boost::filesystem::path jobDirectory( context->substitute( jobsDirectoryPlug()->getValue() ) );
+	boost::filesystem::path jobDirectory( jobsDirectoryPlug()->getValue(nullptr, context, true) );
 	jobDirectory /= context->substitute( jobNamePlug()->getValue() );
 
 	if( jobDirectory == "" )
@@ -179,7 +180,7 @@ void Dispatcher::createJobDirectory( const Gaffer::ScriptNode *script, Gaffer::C
 	long i = -1;
 	for( const auto &d : boost::filesystem::directory_iterator( jobDirectory ) )
 	{
-		i = std::max( i, strtol( d.path().filename().c_str(), nullptr, 10 ) );
+		i = std::max( i, strtol( d.path().filename().string().c_str(), nullptr, 10 ) );
 	}
 
 	// Now create the next directory. We do this in a loop until we
@@ -404,10 +405,10 @@ class Dispatcher::Batcher
 			// because they only know how to deal with ValuePlugs, and we use TaskPlugs.
 			if( auto sw = runTimeCast<const Switch>( task.plug()->node() ) )
 			{
-				if( task.plug() == sw->outPlug() )
+				Context::Scope scopedTaskContext( task.context() );
+				if( auto activeInPlug = sw->activeInPlug( task.plug() ) )
 				{
-					Context::Scope scopedTaskContext( task.context() );
-					task = TaskNode::Task( sw->activeInPlug()->source<TaskNode::TaskPlug>(), task.context() );
+					task = TaskNode::Task( activeInPlug->source<TaskNode::TaskPlug>(), task.context() );
 				}
 			}
 			else if( auto contextProcessor = runTimeCast<const ContextProcessor>( task.plug()->node() ) )

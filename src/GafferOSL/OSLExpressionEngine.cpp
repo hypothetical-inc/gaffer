@@ -135,6 +135,17 @@ class RendererServices : public OSL::RendererServices
 			IECoreImage::OpenImageIOAlgo::DataView dataView( data, /* createUStrings = */ true );
 			if( !dataView.data )
 			{
+				if( auto b = runTimeCast<const BoolData>( data ) )
+				{
+					// BoolData isn't supported by `DataView` because `OIIO::TypeDesc` doesn't
+					// have a boolean type. We could work around this in `DataView` by casting to
+					// `TypeDesc::UCHAR` (along with a `static_assert( sizeof( bool ) == 1`). But that
+					// wouldn't be round-trippable via `OpenImageIOAlgo::data()`, so it's not clear
+					// that it would be a good thing in general. Here we don't care about round
+					// tripping, so we simply perform a conversion ourselves.
+					const unsigned char c = b->readable();
+					return ShadingSystem::convert_value( value, type, &c, TypeDesc::UCHAR );
+				}
 				return false;
 			}
 			return ShadingSystem::convert_value( value, type, dataView.data, dataView.type );
@@ -733,7 +744,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			// prepend it to the source.
 
 			shaderName = "oslExpression" + MurmurHash().append( result ).toString();
- 			result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#ifdef _MSC_VER
+				result = "#include \"GafferOSL\\Expression.h\"\n\nshader " + shaderName + " " + result;
+			#else
+ 				result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+ 			#endif
 
 			return result;
 		}
@@ -761,7 +776,11 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			vector<string> options;
 			if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 			{
-				StringAlgo::tokenize( includePaths, ':', options );
+				#ifdef _MSC_VER
+					StringAlgo::tokenize( includePaths, ';', options );
+				#else
+	 				StringAlgo::tokenize( includePaths, ':', options );
+	 			#endif
 				for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
 				{
 					it->insert( 0, "-I" );

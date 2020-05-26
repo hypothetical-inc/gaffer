@@ -242,6 +242,20 @@ void substituteShaderIfNecessary( IECoreScene::ConstShaderNetworkPtr &shaderNetw
 	}
 }
 
+void hashShaderOutputParameter( const IECoreScene::ShaderNetwork *network, const IECoreScene::ShaderNetwork::Parameter &parameter, IECore::MurmurHash &h )
+{
+
+	h.append( parameter.name );
+
+	network->getShader( parameter.shader )->hash( h );
+
+	for( const auto &i : network->inputConnections( parameter.shader ) )
+	{
+		h.append( i.destination.name );
+		hashShaderOutputParameter( network, i.source, h );
+	}
+}
+
 
 const AtString g_aaSamplesArnoldString( "AA_samples" );
 const AtString g_aaSeedArnoldString( "AA_seed" );
@@ -252,6 +266,7 @@ const AtString g_backgroundArnoldString( "background" );
 const AtString g_boxArnoldString("box");
 const AtString g_cameraArnoldString( "camera" );
 const AtString g_catclarkArnoldString("catclark");
+const AtString g_colorManagerArnoldString( "color_manager" );
 const AtString g_customAttributesArnoldString( "custom_attributes" );
 const AtString g_curvesArnoldString("curves");
 const AtString g_dispMapArnoldString( "disp_map" );
@@ -259,6 +274,7 @@ const AtString g_dispHeightArnoldString( "disp_height" );
 const AtString g_dispPaddingArnoldString( "disp_padding" );
 const AtString g_dispZeroValueArnoldString( "disp_zero_value" );
 const AtString g_dispAutoBumpArnoldString( "disp_autobump" );
+const AtString g_enableProgressiveRenderString( "enable_progressive_render" );
 const AtString g_fileNameArnoldString( "filename" );
 const AtString g_filtersArnoldString( "filters" );
 const AtString g_funcPtrArnoldString( "funcptr" );
@@ -299,6 +315,7 @@ const AtString g_sphereArnoldString("sphere");
 const AtString g_sssSetNameArnoldString( "sss_setname" );
 const AtString g_stepSizeArnoldString( "step_size" );
 const AtString g_stepScaleArnoldString( "step_scale" );
+const AtString g_subdivDicingCameraString( "subdiv_dicing_camera" );
 const AtString g_subdivIterationsArnoldString( "subdiv_iterations" );
 const AtString g_subdivAdaptiveErrorArnoldString( "subdiv_adaptive_error" );
 const AtString g_subdivAdaptiveMetricArnoldString( "subdiv_adaptive_metric" );
@@ -306,6 +323,7 @@ const AtString g_subdivAdaptiveSpaceArnoldString( "subdiv_adaptive_space" );
 const AtString g_subdivSmoothDerivsArnoldString( "subdiv_smooth_derivs" );
 const AtString g_subdivTypeArnoldString( "subdiv_type" );
 const AtString g_subdivUVSmoothingArnoldString( "subdiv_uv_smoothing" );
+const AtString g_toonIdArnoldString( "toon_id" );
 const AtString g_traceSetsArnoldString( "trace_sets" );
 const AtString g_transformTypeArnoldString( "transform_type" );
 const AtString g_thickArnoldString( "thick" );
@@ -777,6 +795,7 @@ IECore::InternedString g_dispAutoBumpAttributeName( "ai:disp_autobump" );
 IECore::InternedString g_curvesMinPixelWidthAttributeName( "ai:curves:min_pixel_width" );
 IECore::InternedString g_curvesModeAttributeName( "ai:curves:mode" );
 IECore::InternedString g_sssSetNameName( "ai:sss_setname" );
+IECore::InternedString g_toonIdName( "ai:toon_id" );
 
 IECore::InternedString g_lightFilterPrefix( "ai:lightFilter:" );
 
@@ -842,6 +861,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 			m_volumePadding = attributeValue<float>( g_shapeVolumePaddingAttributeName, attributes, 0.0f );
 
 			m_sssSetName = attribute<IECore::StringData>( g_sssSetNameName, attributes );
+			m_toonId = attribute<IECore::StringData>( g_toonIdName, attributes );
 
 			for( IECore::CompoundObject::ObjectMap::const_iterator it = attributes->members().begin(), eIt = attributes->members().end(); it != eIt; ++it )
 			{
@@ -853,7 +873,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 					}
 				}
 
-				if( it->first.string() == g_arnoldLightFilterShaderAttributeName )
+				if( it->first.string() == g_arnoldLightFilterShaderAttributeName.string() )
 				{
 					continue;
 				}
@@ -957,6 +977,11 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 					// for the master mesh might be totally inappropriate for the position of the ginstances in frame.
 					return m_polyMesh.subdivAdaptiveError == 0.0f || m_polyMesh.subdivAdaptiveSpace == g_objectArnoldString;
 				}
+			}
+			else if( IECore::runTimeCast<const IECoreScene::CurvesPrimitive>( object ) )
+			{
+				// Min pixel width is a screen-space metric, and hence not compatible with instancing.
+				return m_curves.minPixelWidth == 0.0f;
 			}
 			else if( const IECoreScene::ExternalProcedural *procedural = IECore::runTimeCast<const IECoreScene::ExternalProcedural>( object ) )
 			{
@@ -1115,6 +1140,15 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 				else
 				{
 					AiNodeResetParameter( node, g_sssSetNameArnoldString );
+				}
+
+				if( m_toonId )
+				{
+					ParameterAlgo::setParameter( node, g_toonIdArnoldString, m_toonId.get() );
+				}
+				else
+				{
+					AiNodeResetParameter( node, g_toonIdArnoldString );
 				}
 			}
 
@@ -1569,6 +1603,7 @@ class ArnoldAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 		Displacement m_displacement;
 		Curves m_curves;
 		Volume m_volume;
+		IECore::ConstStringDataPtr m_toonId;
 
 		typedef boost::container::flat_map<IECore::InternedString, IECore::ConstDataPtr> UserAttributes;
 		UserAttributes m_user;
@@ -1886,6 +1921,14 @@ class ArnoldObjectBase : public IECoreScenePreview::Renderer::ObjectInterface
 
 		void applyTransform( AtNode *node, const std::vector<Imath::M44f> &samples, const std::vector<float> &times, const AtString matrixParameterName = g_matrixArnoldString )
 		{
+			const AtParamEntry *parameter = AiNodeEntryLookUpParameter( AiNodeGetNodeEntry( node ), matrixParameterName );
+			if( AiParamGetType( parameter ) != AI_TYPE_ARRAY )
+			{
+				// Parameter doesn't support motion blur
+				applyTransform( node, samples[0], matrixParameterName );
+				return;
+			}
+
 			const size_t numSamples = samples.size();
 			AtArray *matricesArray = AiArrayAllocate( 1, numSamples, AI_TYPE_MATRIX );
 			for( size_t i = 0; i < numSamples; ++i )
@@ -2119,6 +2162,34 @@ class ArnoldLight : public ArnoldObjectBase
 				}
 				else
 				{
+					const IECoreScene::Shader* lightOutput = m_attributes->lightShader()->outputShader();
+					if( lightOutput && lightOutput->getName() == "quad_light" )
+					{
+						IECoreScene::ShaderNetwork::Parameter newColorParameter = m_attributes->lightShader()->getOutput();
+						newColorParameter.name = "color";
+						IECoreScene::ShaderNetwork::Parameter newColorInput = m_attributes->lightShader()->input( newColorParameter );
+
+						IECoreScene::ShaderNetwork::Parameter oldColorParameter = oldAttributes->lightShader()->getOutput();
+						oldColorParameter.name = "color";
+						IECoreScene::ShaderNetwork::Parameter oldColorInput = oldAttributes->lightShader()->input( oldColorParameter );
+
+						if( newColorInput && oldColorInput )
+						{
+							IECore::MurmurHash newColorHash, oldColorHash;
+							hashShaderOutputParameter( m_attributes->lightShader(), newColorInput, newColorHash );
+							hashShaderOutputParameter( oldAttributes->lightShader(), oldColorInput, oldColorHash );
+							if( newColorHash != oldColorHash )
+							{
+								// Arnold currently fails to update quad light shaders during interactive renders
+								// correctly.  ( At least when there is an edit to the color parameter, and it's
+								// driven by a network which contains a texture. )
+								// Until they fix this, we can just throw out and rebuild quad lights whenever
+								// there's a change to a network driving color
+								return false;
+							}
+						}
+					}
+
 					bool keptRootShader = m_lightShader->update( m_attributes->lightShader() );
 					if( !keptRootShader )
 					{
@@ -2501,90 +2572,6 @@ AtNode *convertProcedural( IECoreScenePreview::ConstProceduralPtr procedural, co
 } // namespace
 
 //////////////////////////////////////////////////////////////////////////
-// InteractiveRenderController
-//////////////////////////////////////////////////////////////////////////
-
-namespace
-{
-
-class InteractiveRenderController
-{
-
-	public :
-
-		InteractiveRenderController()
-		{
-			m_rendering = false;
-		}
-
-		void setRendering( bool rendering )
-		{
-			if( rendering == m_rendering )
-			{
-				return;
-			}
-
-			m_rendering = rendering;
-
-			if( rendering )
-			{
-				std::thread thread( boost::bind( &InteractiveRenderController::performInteractiveRender, this ) );
-				m_thread.swap( thread );
-			}
-			else
-			{
-				if( AiRendering() )
-				{
-					AiRenderInterrupt();
-				}
-				m_thread.join();
-			}
-		}
-
-		bool getRendering() const
-		{
-			return m_rendering;
-		}
-
-	private :
-
-		// Called in a background thread to control a
-		// progressive interactive render.
-		void performInteractiveRender()
-		{
-			AtNode *options = AiUniverseGetOptions();
-			const int finalAASamples = AiNodeGetInt( options, g_aaSamplesArnoldString );
-			const int startAASamples = min( -5, finalAASamples );
-
-			for( int aaSamples = startAASamples; aaSamples <= finalAASamples; ++aaSamples )
-			{
-				if( aaSamples == 0 || ( aaSamples > 1 && aaSamples != finalAASamples ) )
-				{
-					// 0 AA_samples is meaningless, and we want to jump straight
-					// from 1 AA_sample to the final sampling quality.
-					continue;
-				}
-
-				AiNodeSetInt( options, g_aaSamplesArnoldString, aaSamples );
-				if( !m_rendering || AiRender( AI_RENDER_MODE_CAMERA ) != AI_SUCCESS )
-				{
-					// Render cancelled on main thread.
-					break;
-				}
-			}
-
-			// Restore the setting we've been monkeying with.
-			AiNodeSetInt( options, g_aaSamplesArnoldString, finalAASamples );
-		}
-
-		std::thread m_thread;
-		tbb::atomic<bool> m_rendering;
-
-};
-
-} // namespace
-
-//////////////////////////////////////////////////////////////////////////
 // Globals
 //////////////////////////////////////////////////////////////////////////
 
@@ -2599,11 +2586,15 @@ IECore::InternedString g_cameraOptionName( "camera" );
 IECore::InternedString g_logFileNameOptionName( "ai:log:filename" );
 IECore::InternedString g_logMaxWarningsOptionName( "ai:log:max_warnings" );
 IECore::InternedString g_statisticsFileNameOptionName( "ai:statisticsFileName" );
+IECore::InternedString g_profileFileNameOptionName( "ai:profileFileName" );
 IECore::InternedString g_pluginSearchPathOptionName( "ai:plugin_searchpath" );
 IECore::InternedString g_aaSeedOptionName( "ai:AA_seed" );
+IECore::InternedString g_progressiveMinAASamplesOptionName( "ai:progressive_min_AA_samples" );
 IECore::InternedString g_sampleMotionOptionName( "sampleMotion" );
 IECore::InternedString g_atmosphereOptionName( "ai:atmosphere" );
 IECore::InternedString g_backgroundOptionName( "ai:background" );
+IECore::InternedString g_colorManagerOptionName( "ai:color_manager" );
+IECore::InternedString g_subdivDicingCameraOptionName( "ai:subdiv_dicing_camera" );
 
 std::string g_logFlagsOptionPrefix( "ai:log:" );
 std::string g_consoleFlagsOptionPrefix( "ai:console:" );
@@ -2622,12 +2613,22 @@ class ArnoldGlobals
 				m_logFileFlags( g_logFlagsDefault ),
 				m_consoleFlags( g_consoleFlagsDefault ),
 				m_shaderCache( shaderCache ),
+				m_renderBegun( false ),
 				m_assFileName( fileName )
 		{
 			AiMsgSetLogFileFlags( m_logFileFlags );
 			AiMsgSetConsoleFlags( m_consoleFlags );
 			// Get OSL shaders onto the shader searchpath.
 			option( g_pluginSearchPathOptionName, new IECore::StringData( "" ) );
+		}
+
+		~ArnoldGlobals()
+		{
+			if( m_renderBegun )
+			{
+				AiRenderInterrupt( AI_BLOCKING );
+				AiRenderEnd();
+			}
 		}
 
 		void option( const IECore::InternedString &name, const IECore::Object *value )
@@ -2654,6 +2655,19 @@ class ArnoldGlobals
 				else if( const IECore::StringData *d = reportedCast<const IECore::StringData>( value, "option", name ) )
 				{
 					m_cameraName = d->readable();
+
+				}
+				return;
+			}
+			else if( name == g_subdivDicingCameraOptionName )
+			{
+				if( value == nullptr )
+				{
+					m_subdivDicingCameraName = "";
+				}
+				else if( const IECore::StringData *d = reportedCast<const IECore::StringData>( value, "option", name ) )
+				{
+					m_subdivDicingCameraName = d->readable();
 
 				}
 				return;
@@ -2712,6 +2726,32 @@ class ArnoldGlobals
 				}
 				return;
 			}
+			else if( name == g_profileFileNameOptionName )
+			{
+				if( value == nullptr )
+				{
+					AiProfileSetFileName( "" );
+				}
+				else if( const IECore::StringData *d = reportedCast<const IECore::StringData>( value, "option", name ) )
+				{
+					if( !d->readable().empty() )
+					{
+						try
+						{
+							boost::filesystem::path path( d->readable() );
+							path.remove_filename();
+							boost::filesystem::create_directories( path );
+						}
+						catch( const std::exception &e )
+						{
+							IECore::msg( IECore::Msg::Error, "ArnoldRenderer::option()", e.what() );
+						}
+					}
+
+					AiProfileSetFileName( d->readable().c_str() );
+				}
+				return;
+			}
 			else if( name == g_logMaxWarningsOptionName )
 			{
 				if( value == nullptr )
@@ -2737,6 +2777,18 @@ class ArnoldGlobals
 				{
 					return;
 				}
+			}
+			else if( name == g_progressiveMinAASamplesOptionName )
+			{
+				if( value == nullptr )
+				{
+					m_progressiveMinAASamples = boost::none;
+				}
+				else if( const IECore::IntData *d = reportedCast<const IECore::IntData>( value, "option", name ) )
+				{
+					m_progressiveMinAASamples = d->readable();
+				}
+				return;
 			}
 			else if( name == g_aaSeedOptionName )
 			{
@@ -2776,6 +2828,19 @@ class ArnoldGlobals
 					}
 				}
 				AiNodeSetStr( options, g_pluginSearchPathArnoldString, AtString( s.c_str() ) );
+				return;
+			}
+			else if( name == g_colorManagerOptionName )
+			{
+				m_colorManager = nullptr;
+				if( value )
+				{
+					if( const IECoreScene::ShaderNetwork *d = reportedCast<const IECoreScene::ShaderNetwork>( value, "option", name ) )
+					{
+						m_colorManager = m_shaderCache->get( d, nullptr );
+					}
+				}
+				AiNodeSetPtr( options, g_colorManagerArnoldString, m_colorManager ? m_colorManager->root() : nullptr );
 				return;
 			}
 			else if( name == g_atmosphereOptionName )
@@ -2917,11 +2982,31 @@ class ArnoldGlobals
 		{
 			updateCameraMeshes();
 
+			AtNode *options = AiUniverseGetOptions();
+
 			AiNodeSetInt(
-				AiUniverseGetOptions(), g_aaSeedArnoldString,
+				options, g_aaSeedArnoldString,
 				m_aaSeed.get_value_or( m_frame.get_value_or( 1 ) )
 			);
 
+			AtNode *dicingCamera = nullptr;
+			if( m_subdivDicingCameraName.size() )
+			{
+				dicingCamera = AiNodeLookUpByName( AtString( m_subdivDicingCameraName.c_str() ) );
+				if( !dicingCamera )
+				{
+					IECore::msg( IECore::Msg::Warning, "IECoreArnold::Renderer", "Could not find dicing camera named: " + m_subdivDicingCameraName );
+				}
+			}
+
+			if( dicingCamera )
+			{
+				AiNodeSetPtr( options, g_subdivDicingCameraString, dicingCamera );
+			}
+			else
+			{
+				AiNodeResetParameter( options, g_subdivDicingCameraString );
+			}
 
 			// Do the appropriate render based on
 			// m_renderType.
@@ -2957,16 +3042,38 @@ class ArnoldGlobals
 				case IECoreScenePreview::Renderer::Interactive :
 					// If we want to use Arnold's progressive refinement, we can't be constantly switching
 					// the camera around, so just use the default camera
+					if( m_renderBegun )
+					{
+						AiRenderInterrupt( AI_BLOCKING );
+					}
 					updateCamera( m_cameraName );
-					m_interactiveRenderController.setRendering( true );
 
+					AiNodeSetBool( AiUniverseGetOptions(), g_enableProgressiveRenderString, true );
+					AiRenderSetHintBool( AtString( "progressive" ), true );
+					AiRenderSetHintInt( AtString( "progressive_min_AA_samples" ), m_progressiveMinAASamples.get_value_or( -4 ) );
+
+					if( !m_renderBegun )
+					{
+						AiRenderBegin( AI_RENDER_MODE_CAMERA );
+
+						// Arnold's AiRenderGetStatus is not particularly reliable - renders start up on a separate thread,
+						// and the currently reported status may not include recent changes.  So instead, we track a basic
+						// status flag for whether we are already rendering ourselves
+						m_renderBegun = true;
+					}
+					else
+					{
+						AiRenderRestart();
+					}
 					break;
 			}
 		}
 
 		void pause()
 		{
-			m_interactiveRenderController.setRendering( false );
+			// We need to block here because pause() is used to make sure that the render isn't running
+			// before performing IPR edits.
+			AiRenderInterrupt( AI_BLOCKING );
 		}
 
 	private :
@@ -3110,9 +3217,21 @@ class ArnoldGlobals
 					it->second->append( outputs->writable(), lpes->writable() );
 				}
 			}
+			std::sort( outputs->writable().begin(), outputs->writable().end() );
 			IECoreArnold::ParameterAlgo::setParameter( options, "outputs", outputs.get() );
 			IECoreArnold::ParameterAlgo::setParameter( options, "light_path_expressions", lpes.get() );
 
+			// Set the beauty as the output to get frequent interactive updates
+			unsigned int primaryOutput = 0;
+			for( unsigned int i = 0; i < outputs->readable().size(); i++ )
+			{
+				if( boost::starts_with( outputs->readable()[i], "RGBA " ) )
+				{
+					primaryOutput = i;
+					break;
+				}
+			}
+			AiRenderSetInteractiveOutput( primaryOutput );
 
 			const IECoreScene::Camera *cortexCamera;
 			AtNode *arnoldCamera = AiNodeLookUpByName( AtString( cameraName.c_str() ) );
@@ -3230,6 +3349,7 @@ class ArnoldGlobals
 		typedef std::map<IECore::InternedString, ArnoldShaderPtr> AOVShaderMap;
 		AOVShaderMap m_aovShaders;
 
+		ArnoldShaderPtr m_colorManager;
 		ArnoldShaderPtr m_atmosphere;
 		ArnoldShaderPtr m_background;
 
@@ -3237,17 +3357,17 @@ class ArnoldGlobals
 		typedef tbb::concurrent_unordered_map<std::string, IECoreScene::ConstCameraPtr> CameraMap;
 		CameraMap m_cameras;
 		SharedAtNodePtr m_defaultCamera;
+		std::string m_subdivDicingCameraName;
 
 		int m_logFileFlags;
 		int m_consoleFlags;
 		boost::optional<int> m_frame;
 		boost::optional<int> m_aaSeed;
+		boost::optional<int> m_progressiveMinAASamples;
 		boost::optional<bool> m_sampleMotion;
 		ShaderCache *m_shaderCache;
 
-		// Members used by interactive renders
-
-		InteractiveRenderController m_interactiveRenderController;
+		bool m_renderBegun;
 
 		// Members used by ass generation "renders"
 

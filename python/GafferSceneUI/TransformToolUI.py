@@ -116,7 +116,7 @@ class _SelectionWidget( GafferUI.Frame ) :
 					GafferUI.Image( "infoSmall.png" )
 					GafferUI.Spacer( size = imath.V2i( 4 ), maximumSize = imath.V2i( 4 ) )
 					self.__infoLabel = GafferUI.Label( "" )
-					self.__nameLabel = GafferUI.NameLabel( graphComponent = None, numComponents = sys.maxint )
+					self.__nameLabel = GafferUI.NameLabel( graphComponent = None, numComponents = sys.maxsize )
 					self.__nameLabel.setFormatter( _boldFormatter )
 					self.__nameLabel.buttonDoubleClickSignal().connect( Gaffer.WeakMethod( self.__buttonDoubleClick ), scoped = False )
 
@@ -139,15 +139,15 @@ class _SelectionWidget( GafferUI.Frame ) :
 			return toolTip
 
 		toolSelection = self.__tool.selection()
-		if not toolSelection :
+		if not toolSelection or not self.__tool.selectionEditable() :
 			return ""
 
 		result = ""
-		script = toolSelection[0].transformPlug.ancestor( Gaffer.ScriptNode )
+		script = toolSelection[0].editTarget().ancestor( Gaffer.ScriptNode )
 		for s in toolSelection :
 			if result :
 				result += "\n"
-			result += "- Transforming {0} using {1}".format( s.path, s.transformPlug.relativeName( script ) )
+			result += "- Transforming {0} using {1}".format( s.path(), s.editTarget().relativeName( script ) )
 
 		return result
 
@@ -161,52 +161,54 @@ class _SelectionWidget( GafferUI.Frame ) :
 			return
 
 		toolSelection = self.__tool.selection()
-		selectedPaths = GafferSceneUI.ContextAlgo.getSelectedPaths( self.context() )
 
 		if len( toolSelection ) :
 
-			self.__infoRow.setVisible( True )
-			if len( toolSelection ) == 1 :
+			# Get unique edit targets and warnings
+
+			editTargets = { s.editTarget() for s in toolSelection if s.editable() }
+			warnings = { s.warning() for s in toolSelection if s.warning() }
+
+			# Update info row to show what we're editing
+
+			if not self.__tool.selectionEditable() :
+				self.__infoRow.setVisible( False )
+			elif len( editTargets ) == 1 :
+				self.__infoRow.setVisible( True )
 				self.__infoLabel.setText( "Editing " )
+				editTarget = next( iter( editTargets ) )
 				numComponents = _distance(
-					toolSelection[0].transformPlug.commonAncestor( toolSelection[0].scene ),
-					toolSelection[0].transformPlug,
+					editTarget.commonAncestor( toolSelection[0].scene() ),
+					editTarget,
 				)
-				if toolSelection[0].scene.node().isAncestorOf( toolSelection[0].transformPlug ) :
+				if toolSelection[0].scene().node().isAncestorOf( editTarget ) :
 					numComponents += 1
 				self.__nameLabel.setNumComponents( numComponents )
-				self.__nameLabel.setGraphComponent( toolSelection[0].transformPlug )
+				self.__nameLabel.setGraphComponent( editTarget )
 			else :
-				self.__infoLabel.setText( "Editing {0} transforms".format( len( toolSelection ) ) )
+				self.__infoRow.setVisible( True )
+				self.__infoLabel.setText( "Editing {0} transforms".format( len( editTargets ) ) )
 				self.__nameLabel.setGraphComponent( None )
 
-			editingAncestor = any(
-				not ( selectedPaths.match( s.path ) & IECore.PathMatcher.Result.ExactMatch )
-				for s in toolSelection
-			)
-			if editingAncestor :
-				self.__warningLabel.setText( "( Parent location )" )
+			# Update warning row
+
+			if warnings :
+				if len( warnings ) == 1 :
+					self.__warningLabel.setText( next( iter( warnings ) ) )
+					self.__warningLabel.setToolTip( "" )
+				else :
+					self.__warningLabel.setText( "{} warnings".format( len( warnings ) ) )
+					self.__warningLabel.setToolTip( "\n".join( "- " + w for w in warnings ) )
 				self.__warningRow.setVisible( True )
 			else :
 				self.__warningRow.setVisible( False )
 
 		else :
 
-			validSelectedPaths = IECore.PathMatcher()
-			with self.context() :
-				GafferScene.SceneAlgo.matchingPaths(
-					selectedPaths, self.__tool.view()["in"], validSelectedPaths
-				)
-
-			if validSelectedPaths.isEmpty() :
-				self.__infoRow.setVisible( True )
-				self.__warningRow.setVisible( False )
-				self.__infoLabel.setText( "Select something to transform" )
-				self.__nameLabel.setGraphComponent( None )
-			else:
-				self.__infoRow.setVisible( False )
-				self.__warningRow.setVisible( True )
-				self.__warningLabel.setText( "Transform not editable - create a Transform node" )
+			self.__infoRow.setVisible( True )
+			self.__warningRow.setVisible( False )
+			self.__infoLabel.setText( "Select something to transform" )
+			self.__nameLabel.setGraphComponent( None )
 
 	def __buttonDoubleClick( self, widget, event ) :
 

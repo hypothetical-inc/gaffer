@@ -52,8 +52,16 @@ Gaffer.Metadata.registerNode(
 	object, making one copy per vertex. Additional primitive
 	variables on the target object can be used to choose between
 	multiple instances, and to specify their orientation and
-	scale.
+	scale. Note the target object will be removed from the scene.
 	""",
+
+	"layout:section:Settings.General:collapsed", False,
+	"layout:section:Settings.Transforms:collapsed", False,
+	"layout:section:Settings.Attributes:collapsed", False,
+
+	"layout:activator:modeIsIndexedRootsList", lambda node : node["prototypeMode"].getValue() == GafferScene.Instancer.PrototypeMode.IndexedRootsList,
+	"layout:activator:modeIsNotIndexedRootsList", lambda node : node["prototypeMode"].getValue() != GafferScene.Instancer.PrototypeMode.IndexedRootsList,
+	"layout:activator:modeIsNotRootPerVertex", lambda node : node["prototypeMode"].getValue() != GafferScene.Instancer.PrototypeMode.RootPerVertex,
 
 	plugs = {
 
@@ -67,7 +75,9 @@ Gaffer.Metadata.registerNode(
 			this object. This is ignored when a filter is
 			connected, in which case the filter specifies
 			multiple objects to make the instances from.
-			"""
+			""",
+
+			"layout:section", "Settings.General",
 
 		],
 
@@ -78,41 +88,115 @@ Gaffer.Metadata.registerNode(
 			The name of the location the instances will be
 			generated below. This will be parented directly
 			under the parent location.
-			"""
+			""",
+
+			"layout:section", "Settings.General",
 
 		],
 
-		"instances" : [
+		"prototypes" : [
 
 			"description",
 			"""
-			The scene containing the instances to be applied to
-			each vertex. Specify multiple instances by parenting
-			them at the root of the scene :
+			The scene containing the prototypes to be applied to
+			each vertex. Use the `prototypeMode` and associated
+			plugs to control the mapping between prototypes and
+			instances.
 
-			- /instance0
-			- /instance1
-			- /instance2
-
-			Note that the instances are not limited to being a
-			single object : they can each have arbitrary child
-			hierarchies.
+			Note that the prototypes are not limited to being a single
+			object - they can have arbitrary child hierarchies.
 			""",
 
 			"plugValueWidget:type", "",
 
 		],
 
-		"index" : [
+		"prototypeMode" : [
 
 			"description",
 			"""
-			The name of a per-vertex integer primitive variable
-			used to determine which instance is applied to the
-			vertex. An index of 0 applies the first location from
-			the instances scene, an index of 1 applies the second
-			and so on.
+			The method used to define how the prototypes map
+			onto each instance.
+
+			- In "Indexed (Roots List)" mode, the `prototypeIndex`
+			  primitive variable must be an integer per-vertex.
+			  Optionally, a path in the prototypes scene corresponding
+			  to each index can be specified via the `prototypeRootsList`
+			  plug. If no roots are specified, an index of 0 applies the
+			  first location from the prototypes scene, an index of 1
+			  applies the second, and so on.
+
+			- In "Indexed (Roots Variable)" mode, the `prototypeIndex`
+			  primitive variable must be an integer per-vertex, and
+			  the `prototypeRoots` primitive variable must be a separate
+			  constant string array specifying a path in the prototypes
+			  scene corresponding to each index.
+
+			- In "Root per Vertex" mode, the `prototypeRoots` primitive
+			  variable must be a string per-vertex which will be used to
+			  specify a path in the prototypes scene for each instance.
+
+			  > Note : it is advisable to provide an indexed string
+			  array in order to limit the number of unique prototypes.
+			""",
+
+			"preset:Indexed (Roots List)", GafferScene.Instancer.PrototypeMode.IndexedRootsList,
+			"preset:Indexed (Roots Variable)", GafferScene.Instancer.PrototypeMode.IndexedRootsVariable,
+			"preset:Root per Vertex", GafferScene.Instancer.PrototypeMode.RootPerVertex,
+			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
+			"layout:section", "Prototypes",
+
+		],
+
+		"prototypeIndex" : [
+
+			"description",
 			"""
+			The name of a per-vertex integer primitive variable used
+			to determine which prototype is applied to the vertex.
+			This plug is used in "Indexed (Roots List)" mode as well
+			as "Indexed (Roots Variable)" mode.
+			""",
+
+			"userDefault", "prototypeIndex",
+			"layout:section", "Prototypes",
+			"layout:visibilityActivator", "modeIsNotRootPerVertex",
+
+		],
+
+		"prototypeRoots" : [
+
+			"description",
+			"""
+			If `prototypeMode` is set to "Indexed (Roots Variable)",
+			then this should specify the name of a constant string
+			array primitive variable used to map between `prototypeIndex`
+			and paths in the prototypes scene.
+
+			If `prototypeMode` is set to "Root per Vertex", then this
+			should specify the name of a per-vertex string primitive
+			variable used to specify a path in the prototypes scene
+			for each instance.
+
+			This plug is not used in "Indexed (Roots List)" mode.
+			""",
+
+			"layout:section", "Prototypes",
+			"layout:visibilityActivator", "modeIsNotIndexedRootsList",
+
+		],
+
+		"prototypeRootsList" : [
+
+			"description",
+			"""
+			An explicit list of paths used to map between `prototypeIndex`
+			and paths in the prototypes scene. This plug is only used in
+			"Indexed (Roots List)" mode.
+			""",
+
+			"layout:section", "Prototypes",
+			"layout:visibilityActivator", "modeIsIndexedRootsList",
 
 		],
 
@@ -125,7 +209,9 @@ Gaffer.Metadata.registerNode(
 			is useful when points are added and removed over time,
 			as is often the case in a particle simulation. The
 			id is used to name the instance in the output scene.
-			"""
+			""",
+
+			"layout:section", "Settings.General",
 
 		],
 
@@ -136,6 +222,8 @@ Gaffer.Metadata.registerNode(
 			The name of the per-vertex primitive variable used
 			to specify the position of each instance.
 			""",
+
+			"layout:section", "Settings.Transforms",
 
 		],
 
@@ -150,6 +238,9 @@ Gaffer.Metadata.registerNode(
 			before instancing.
 			""",
 
+			"userDefault", "orientation",
+			"layout:section", "Settings.Transforms",
+
 		],
 
 		"scale" : [
@@ -162,6 +253,9 @@ Gaffer.Metadata.registerNode(
 			to define different scaling in each axis.
 			""",
 
+			"userDefault", "scale",
+			"layout:section", "Settings.Transforms",
+
 		],
 
 		"attributes" : [
@@ -173,6 +267,21 @@ Gaffer.Metadata.registerNode(
 			be separated by spaces and can use Gaffer's
 			standard wildcards.
 			""",
+
+			"layout:section", "Settings.Attributes",
+
+		],
+
+		"attributePrefix" : [
+
+			"description",
+			"""
+			A prefix added to all per-instance attributes specified
+			via the \"attributes\" plug. 
+			""",
+
+			"userDefault", "user:",
+			"layout:section", "Settings.Attributes",
 
 		],
 

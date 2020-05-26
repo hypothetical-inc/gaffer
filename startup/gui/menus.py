@@ -235,22 +235,24 @@ if "APPLESEED" in os.environ :
 		import GafferOSL
 		import GafferOSLUI
 
-		GafferAppleseedUI.ShaderMenu.appendShaders( nodeMenu.definition() )
+		if os.environ.get( "GAFFERAPPLESEED_HIDE_UI", "" ) != "1" :
 
-		GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
+			GafferAppleseedUI.ShaderMenu.appendShaders( nodeMenu.definition() )
 
-		nodeMenu.append( "/Appleseed/Attributes", GafferAppleseed.AppleseedAttributes, searchText = "AppleseedAttributes" )
-		nodeMenu.append( "/Appleseed/Options", GafferAppleseed.AppleseedOptions, searchText = "AppleseedOptions" )
-		nodeMenu.append( "/Appleseed/Render", GafferAppleseed.AppleseedRender, searchText = "AppleseedRender" )
-		nodeMenu.append( "/Appleseed/Interactive Render", GafferAppleseed.InteractiveAppleseedRender, searchText = "InteractiveAppleseedRender" )
-		nodeMenu.append( "/Appleseed/Shader Ball", GafferAppleseed.AppleseedShaderBall, searchText = "AppleseedShaderBall" )
+			GafferAppleseedUI.LightMenu.appendLights( nodeMenu.definition() )
 
-		scriptWindowMenu.append(
-			"/Help/Appleseed/User Docs",
-			{
-				"command" : functools.partial( GafferUI.showURL, "https://github.com/appleseedhq/appleseed/wiki" ),
-			}
-		)
+			nodeMenu.append( "/Appleseed/Attributes", GafferAppleseed.AppleseedAttributes, searchText = "AppleseedAttributes" )
+			nodeMenu.append( "/Appleseed/Options", GafferAppleseed.AppleseedOptions, searchText = "AppleseedOptions" )
+			nodeMenu.append( "/Appleseed/Render", GafferAppleseed.AppleseedRender, searchText = "AppleseedRender" )
+			nodeMenu.append( "/Appleseed/Interactive Render", GafferAppleseed.InteractiveAppleseedRender, searchText = "InteractiveAppleseedRender" )
+			nodeMenu.append( "/Appleseed/Shader Ball", GafferAppleseed.AppleseedShaderBall, searchText = "AppleseedShaderBall" )
+
+			scriptWindowMenu.append(
+				"/Help/Appleseed/User Docs",
+				{
+					"command" : functools.partial( GafferUI.showURL, "https://github.com/appleseedhq/appleseed/wiki" ),
+				}
+			)
 
 	except Exception, m :
 
@@ -274,7 +276,9 @@ nodeMenu.append( "/Scene/Source/Primitive/Text", GafferScene.Text )
 nodeMenu.append( "/Scene/Source/Seeds", GafferScene.Seeds )
 nodeMenu.append( "/Scene/Source/Instancer", GafferScene.Instancer )
 nodeMenu.append( "/Scene/Object/Primitive Variables", GafferScene.PrimitiveVariables, searchText = "PrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Copy Primitive Variables", GafferScene.CopyPrimitiveVariables, searchText = "CopyPrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Delete Primitive Variables", GafferScene.DeletePrimitiveVariables, searchText = "DeletePrimitiveVariables" )
+nodeMenu.append( "/Scene/Object/Shuffle Primitive Variables", GafferScene.ShufflePrimitiveVariables, searchText = "ShufflePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Resample Primitive Variables", GafferScene.ResamplePrimitiveVariables, searchText = "ResamplePrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Collect Primitive Variables", GafferScene.CollectPrimitiveVariables, searchText = "CollectPrimitiveVariables" )
 nodeMenu.append( "/Scene/Object/Orientation", GafferScene.Orientation )
@@ -294,11 +298,15 @@ nodeMenu.append( "/Scene/Object/Delete Object", GafferScene.DeleteObject, search
 nodeMenu.append( "/Scene/Object/Reverse Winding", GafferScene.ReverseWinding, searchText = "ReverseWinding" )
 nodeMenu.append( "/Scene/Object/Mesh Distortion", GafferScene.MeshDistortion, searchText = "MeshDistortion" )
 nodeMenu.append( "/Scene/Object/Camera Tweaks", GafferScene.CameraTweaks, searchText = "CameraTweaks" )
+nodeMenu.append( "/Scene/Object/Curve Sampler", GafferScene.CurveSampler, searchText = "CurveSampler" )
+nodeMenu.append( "/Scene/Object/Closest Point Sampler", GafferScene.ClosestPointSampler, searchText = "ClosestPointSampler" )
 nodeMenu.append( "/Scene/Attributes/Shader Assignment", GafferScene.ShaderAssignment, searchText = "ShaderAssignment" )
 nodeMenu.append( "/Scene/Attributes/Shader Tweaks", GafferScene.ShaderTweaks, searchText = "ShaderTweaks" )
 nodeMenu.append( "/Scene/Attributes/Standard Attributes", GafferScene.StandardAttributes, searchText = "StandardAttributes" )
 nodeMenu.append( "/Scene/Attributes/Custom Attributes", GafferScene.CustomAttributes, searchText = "CustomAttributes" )
 nodeMenu.append( "/Scene/Attributes/Delete Attributes", GafferScene.DeleteAttributes, searchText = "DeleteAttributes" )
+nodeMenu.append( "/Scene/Attributes/Shuffle Attributes", GafferScene.ShuffleAttributes, searchText = "ShuffleAttributes" )
+nodeMenu.append( "/Scene/Attributes/Localise Attributes", GafferScene.LocaliseAttributes, searchText = "LocaliseAttributes" )
 nodeMenu.append( "/Scene/Attributes/Attribute Visualiser", GafferScene.AttributeVisualiser, searchText = "AttributeVisualiser" )
 nodeMenu.append( "/Scene/Attributes/Copy Attributes", GafferScene.CopyAttributes, searchText = "CopyAttributes" )
 nodeMenu.append( "/Scene/Attributes/Collect Transforms", GafferScene.CollectTransforms, searchText = "CollectTransforms" )
@@ -307,6 +315,7 @@ nodeMenu.append( "/Scene/Filters/Path Filter", GafferScene.PathFilter, searchTex
 nodeMenu.append( "/Scene/Filters/Union Filter", GafferScene.UnionFilter, searchText = "UnionFilter" )
 nodeMenu.append( "/Scene/Hierarchy/Group", GafferScene.Group )
 nodeMenu.append( "/Scene/Hierarchy/Parent", GafferScene.Parent )
+nodeMenu.append( "/Scene/Hierarchy/Merge", GafferScene.MergeScenes, searchText = "MergeScenes" )
 nodeMenu.append( "/Scene/Hierarchy/Duplicate", GafferScene.Duplicate )
 nodeMenu.append( "/Scene/Hierarchy/SubTree", GafferScene.SubTree ) #\todo - rename to 'Subtree' (node needs to change too)
 nodeMenu.append( "/Scene/Hierarchy/Prune", GafferScene.Prune )
@@ -376,6 +385,14 @@ nodeMenu.append( "/Image/Utility/Stats", GafferImage.ImageStats, searchText = "I
 nodeMenu.append( "/Image/Utility/Sampler", GafferImage.ImageSampler, searchText = "ImageSampler" )
 nodeMenu.append( "/Image/Utility/Catalogue", GafferImage.Catalogue )
 nodeMenu.append( "/Image/Utility/Catalogue Select", GafferImage.CatalogueSelect )
+nodeMenu.append( "/Image/Deep/FlatToDeep", GafferImage.FlatToDeep, searchText = "FlatToDeep" )
+nodeMenu.append( "/Image/Deep/Merge", GafferImage.DeepMerge, searchText = "DeepMerge" )
+nodeMenu.append( "/Image/Deep/Tidy", GafferImage.DeepTidy, searchText = "DeepTidy" )
+nodeMenu.append( "/Image/Deep/DeepToFlat", GafferImage.DeepToFlat )
+nodeMenu.append( "/Image/Deep/Sample Counts", GafferImage.DeepSampleCounts, searchText = "DeepSampleCounts" )
+nodeMenu.append( "/Image/Deep/Deep Sampler", GafferImage.DeepSampler, searchText = "DeepSampler" )
+nodeMenu.append( "/Image/Deep/Deep Holdout", GafferImage.DeepHoldout, searchText = "DeepHoldout" )
+nodeMenu.append( "/Image/Deep/Deep Recolor", GafferImage.DeepRecolor, searchText = "DeepRecolor" )
 
 # OSL nodes
 
@@ -391,44 +408,48 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
+	# Appleseed comes with a library of OSL shaders which we put
+	# on the OSL_SHADER_PATHS, but we don't want to show them in
+	# this menu, because we show them in the Appleseed menu instead.
+	# Likewise, 3Delight comes with a library of shaders that we
+	# show in the 3Delight menu and don't want to show here.
+	#
+	# The OSLCode node also generates a great many shaders behind
+	# the scenes that we don't want to place in the menus. Typically
+	# these aren't on the OSL_SHADER_PATHS anyway because they are
+	# given to the renderer via absolute paths, but at the time of
+	# writing it is necessary to place them on the OSL_SHADER_PATHS
+	# in order to use them in Arnold. We don't enable this by default
+	# because it causes Arnold to potentially load a huge number of
+	# shader plugins at startup, but we hide any oslCode shaders here
+	# in case someone else enables it.
+	#
+	# This match expression filters these categories of shader out
+	# as follows :
+	#
+	# - (?!__) asserts that the shader does not begin with double underscore.
+	# - (^|.*/) matches any number (including zero) of directory
+	#   names preceding the shader name.
+	# - (?<!maya/osl/) is a negative lookbehind, asserting that the
+	#   directory is not maya/osl, the directory containing 3delight's
+	#   shaders.
+	# - (?<!3DelightForKatana/osl/) is the same, but for another location
+	#   where 3delight seems to put copies of the same shaders.
+	# - (?!as_|oslCode) is a negative lookahead, asserting that the shader
+	#   name does not start with "as_", the prefix for all
+	#   Appleseed shaders, or "oslCode", the prefix for all OSLCode
+	#   shaders.
+	# - [^/]*$ matches the rest of the shader name, ensuring it
+	#   doesn't include any directory separators.
+
+	shader_regex = "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$" if os.name != "nt" else r"(^|.*\\)(?<!maya\\osl\\)(?<!3DelightForKatana\\osl\\)(?!as_|oslCode)[^\\]*$"
+
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
-		os.environ["OSL_SHADER_PATHS"].split( ":" ),
+		os.environ["OSL_SHADER_PATHS"].split( os.path.pathsep ),
 		[ "oso" ],
-		__shaderNodeCreator,
-		# Appleseed comes with a library of OSL shaders which we put
-		# on the OSL_SHADER_PATHS, but we don't want to show them in
-		# this menu, because we show them in the Appleseed menu instead.
-		# Likewise, 3Delight comes with a library of shaders that we
-		# show in the 3Delight menu and don't want to show here.
-		#
-		# The OSLCode node also generates a great many shaders behind
-		# the scenes that we don't want to place in the menus. Typically
-		# these aren't on the OSL_SHADER_PATHS anyway because they are
-		# given to the renderer via absolute paths, but at the time of
-		# writing it is necessary to place them on the OSL_SHADER_PATHS
-		# in order to use them in Arnold. We don't enable this by default
-		# because it causes Arnold to potentially load a huge number of
-		# shader plugins at startup, but we hide any oslCode shaders here
-		# in case someone else enables it.
-		#
-		# This match expression filters these categories of shader out
-		# as follows :
-		#
-		# - (^|.*/) matches any number (including zero) of directory
-		#   names preceding the shader name.
-		# - (?<!maya/osl/) is a negative lookbehind, asserting that the
-		#   directory is not maya/osl, the directory containing 3delight's
-		#   shaders.
-		# - (?<!3DelightForKatana/osl/) is the same, but for another location
-		#   where 3delight seems to put copies of the same shaders.
-		# - (?!as_|oslCode) is a negative lookahead, asserting that the shader
-		#   name does not start with "as_", the prefix for all
-		#   Appleseed shaders, or "oslCode", the prefix for all OSLCode
-		#   shaders.
-		# - [^/]*$ matches the rest of the shader name, ensuring it
-		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		__shaderNodeCreator,	
+		matchExpression = re.compile( shader_regex ),
 		searchTextPrefix = "osl",
 	)
 
@@ -436,7 +457,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 	nodeMenu.append( "/OSL/Image", GafferOSL.OSLImage, searchText = "OSLImage" )
 	nodeMenu.append( "/OSL/Object", GafferOSL.OSLObject, searchText = "OSLObject" )
 
-	oslDocs = os.path.expandvars( "$GAFFER_ROOT/doc/osl-languagespec.pdf" )
+	oslDocs = os.path.expandvars( os.path.join( os.environ["GAFFER_ROOT"], "doc", "osl-languagespec.pdf" ) )
 	scriptWindowMenu.append(
 		"/Help/Open Shading Language/Language Reference",
 		{
@@ -454,6 +475,7 @@ nodeMenu.append( "/VDB/Level Set To Mesh", GafferVDB.LevelSetToMesh, searchText 
 nodeMenu.append( "/VDB/Mesh To Level Set", GafferVDB.MeshToLevelSet, searchText = "MeshToLevelSet" )
 nodeMenu.append( "/VDB/Level Set Offset", GafferVDB.LevelSetOffset, searchText = "LevelSetOffset" )
 nodeMenu.append( "/VDB/Points Grid To Points", GafferVDB.PointsGridToPoints, searchText = "PointsGridToPoints" )
+nodeMenu.append( "/VDB/Sphere Level Set", GafferVDB.SphereLevelSet, searchText="SphereLevelSet")
 
 # Dispatch nodes
 
@@ -474,14 +496,17 @@ nodeMenu.append( "/Utility/Random", Gaffer.Random )
 nodeMenu.append( "/Utility/Box", GafferUI.BoxUI.nodeMenuCreateCommand )
 nodeMenu.append( "/Utility/BoxIn", Gaffer.BoxIn )
 nodeMenu.append( "/Utility/BoxOut", Gaffer.BoxOut )
+nodeMenu.append( "/Utility/Edit Scope", Gaffer.EditScope, searchText = "EditScope" )
 nodeMenu.append( "/Utility/Reference", GafferUI.ReferenceUI.nodeMenuCreateCommand )
 nodeMenu.definition().append( "/Utility/Backdrop", { "command" : GafferUI.BackdropUI.nodeMenuCreateCommand } )
 nodeMenu.append( "/Utility/Dot", Gaffer.Dot )
 nodeMenu.append( "/Utility/Switch", Gaffer.Switch )
+nodeMenu.append( "/Utility/Name Switch", Gaffer.NameSwitch, searchText = "NameSwitch" )
 nodeMenu.append( "/Utility/Context Variables", Gaffer.ContextVariables, searchText = "ContextVariables" )
 nodeMenu.append( "/Utility/Delete Context Variables", Gaffer.DeleteContextVariables, searchText = "DeleteContextVariables" )
 nodeMenu.append( "/Utility/Time Warp", Gaffer.TimeWarp, searchText = "TimeWarp" )
 nodeMenu.append( "/Utility/Loop", Gaffer.Loop )
+nodeMenu.append( "/Utility/Spreadsheet", Gaffer.Spreadsheet )
 
 ## Miscellaneous UI
 ###########################################################################

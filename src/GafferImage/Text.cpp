@@ -39,9 +39,10 @@
 #include "GafferImage/BufferAlgo.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/Transform2DPlug.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
 
-#include "IECore/LRUCache.h"
 #include "IECore/SearchPath.h"
 
 #include "tbb/enumerable_thread_specific.h"
@@ -116,7 +117,7 @@ FacePtr faceLoader( const std::string &font, size_t &cost )
 	return result;
 }
 
-typedef LRUCache<string, FacePtr> FaceCache;
+typedef IECorePreview::LRUCache<string, FacePtr> FaceCache;
 typedef std::unique_ptr<FaceCache> FaceCachePtr;
 FaceCachePtr createFaceCache()
 {
@@ -214,7 +215,7 @@ Text::Text( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "text", Plug::In, "Hello World" ) );
-	addChild( new StringPlug( "font", Plug::In, "Vera.ttf" ) );
+	addChild( new FileSystemPathPlug( "font", Plug::In, "Vera.ttf" ) );
 	addChild( new V2iPlug( "size", Plug::In, V2i( 50 ), V2i( 0 ) ) );
 	addChild( new Box2iPlug( "area" ) );
 	addChild( new IntPlug( "horizontalAlignment", Plug::In, Left, Left, HorizontalCenter ) );
@@ -237,14 +238,14 @@ const Gaffer::StringPlug *Text::textPlug() const
 	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-Gaffer::StringPlug *Text::fontPlug()
+Gaffer::FileSystemPathPlug *Text::fontPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
-const Gaffer::StringPlug *Text::fontPlug() const
+const Gaffer::FileSystemPathPlug *Text::fontPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 1 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
 }
 
 Gaffer::V2iPlug *Text::sizePlug()

@@ -37,7 +37,8 @@
 #ifndef GAFFERSCENE_MESHTYPE_H
 #define GAFFERSCENE_MESHTYPE_H
 
-#include "GafferScene/SceneElementProcessor.h"
+#include "GafferScene/Export.h"
+#include "GafferScene/ObjectProcessor.h"
 
 namespace Gaffer
 {
@@ -50,7 +51,7 @@ namespace GafferScene
 {
 
 /// The MeshType node changes the mesh interpolation type.
-class GAFFERSCENE_API MeshType : public SceneElementProcessor
+class GAFFERSCENE_API MeshType : public ObjectProcessor
 {
 
 	public :
@@ -58,7 +59,7 @@ class GAFFERSCENE_API MeshType : public SceneElementProcessor
 		MeshType( const std::string &name=defaultName<MeshType>() );
 		~MeshType() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MeshType, MeshTypeTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MeshType, MeshTypeTypeId, ObjectProcessor );
 
 		Gaffer::StringPlug *meshTypePlug();
 		const Gaffer::StringPlug *meshTypePlug() const;
@@ -69,13 +70,11 @@ class GAFFERSCENE_API MeshType : public SceneElementProcessor
 		Gaffer::BoolPlug *overwriteExistingNormalsPlug();
 		const Gaffer::BoolPlug *overwriteExistingNormalsPlug() const;
 
-		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
-
 	protected :
 
-		bool processesObject() const override;
+		bool affectsProcessedObject( const Gaffer::Plug *input ) const override;
 		void hashProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECore::ConstObjectPtr computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::ConstObjectPtr inputObject ) const override;
+		IECore::ConstObjectPtr computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, const IECore::Object *inputObject ) const override;
 
 	private :
 

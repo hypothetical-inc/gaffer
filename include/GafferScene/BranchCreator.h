@@ -124,6 +124,10 @@ class GAFFERSCENE_API BranchCreator : public FilteredSceneProcessor
 		virtual IECore::ConstCompoundObjectPtr computeBranchAttributes( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context ) const = 0;
 
 		virtual bool affectsBranchObject( const Gaffer::Plug *input ) const;
+		/// Called to determine if the parent object is affected. If true, hashBranchObject and computeBranchObject
+		/// will be called with an empty branchPath when the parentPath is an exact match. The default implementation
+		/// returns false as most BranchCreators should leave the parent object intact.
+		virtual bool processesRootObject() const;
 		virtual void hashBranchObject( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context, IECore::MurmurHash &h ) const = 0;
 		virtual IECore::ConstObjectPtr computeBranchObject( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context ) const = 0;
 
@@ -162,11 +166,11 @@ class GAFFERSCENE_API BranchCreator : public FilteredSceneProcessor
 		/// Used to calculate the name remapping needed to prevent name clashes with
 		/// the existing scene. Must be evaluated in a context where "scene:path" is
 		/// one of the parent paths.
-		Gaffer::AtomicCompoundDataPlug *mappingPlug();
-		const Gaffer::AtomicCompoundDataPlug *mappingPlug() const;
+		Gaffer::ObjectPlug *mappingPlug();
+		const Gaffer::ObjectPlug *mappingPlug() const;
 
 		void hashMapping( const Gaffer::Context *context, IECore::MurmurHash &h ) const;
-		IECore::ConstCompoundDataPtr computeMapping( const Gaffer::Context *context ) const;
+		IECore::ConstDataPtr computeMapping( const Gaffer::Context *context ) const;
 
 		// Computes the relevant parent and branch paths for computing the result
 		// at the specified path. Returns a PathMatcher::Result to describe where path is

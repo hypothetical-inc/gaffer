@@ -80,7 +80,7 @@ Gaffer.Metadata.registerNode(
 
 			"description",
 			"""
-			Sets the context variable used in the default file name to control where all the bakes will be stored.
+			Sets the Context Variable used in the default file name to control where all the bakes will be stored.
 			""",
 		],
 
@@ -112,6 +112,14 @@ Gaffer.Metadata.registerNode(
 			"""
 			The name of the primitive variable containing uvs which will determine how the mesh is unwrapped
 			for baking.  Must be a Face-Varying or Vertex V2f primitive variable.
+			""",
+		],
+
+		"udims" : [
+			"description",
+			"""
+			If non-empty, only UDIMs in this list will be baked. The formatting is the same as a frame list:
+			comma separated, with dashes indicating ranges.
 			""",
 		],
 
@@ -158,6 +166,7 @@ Gaffer.Metadata.registerNode(
 			""",
 			"divider", True,
 		],
+
 		
 		"applyMedianFilter" : [
 			"description",

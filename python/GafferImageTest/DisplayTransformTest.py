@@ -36,7 +36,11 @@
 
 import os
 import unittest
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+    import subprocess32 as subprocess
+else:
+    import subprocess
 import imath
 
 import IECore
@@ -54,27 +58,27 @@ class DisplayTransformTest( GafferImageTest.ImageTestCase ) :
 
 		n = GafferImage.ImageReader()
 		n["fileName"].setValue( self.imageFile )
-		orig = n["out"].image()
+		orig = GafferImage.ImageAlgo.image( n["out"] )
 
 		o = GafferImage.DisplayTransform()
 		o["in"].setInput( n["out"] )
 
-		self.assertEqual( orig, o["out"].image() )
+		self.assertEqual( orig, GafferImage.ImageAlgo.image( o["out"] ) )
 
 		o["inputColorSpace"].setValue( "linear" )
 		o["display"].setValue( "default" )
 		o["view"].setValue( "rec709" )
 
-		rec709 = o["out"].image()
+		rec709 = GafferImage.ImageAlgo.image( o["out"] )
 		self.assertNotEqual( orig, rec709 )
 
 		o["view"].setValue( "sRGB" )
-		sRGB = o["out"].image()
+		sRGB = GafferImage.ImageAlgo.image( o["out"] )
 		self.assertNotEqual( orig, sRGB )
 		self.assertNotEqual( rec709, sRGB )
 
 		o["inputColorSpace"].setValue( "cineon" )
-		cineon = o["out"].image()
+		cineon = GafferImage.ImageAlgo.image( o["out"] )
 		self.assertNotEqual( orig, cineon )
 		self.assertNotEqual( rec709, cineon )
 		self.assertNotEqual( sRGB, cineon )
@@ -94,7 +98,7 @@ class DisplayTransformTest( GafferImageTest.ImageTestCase ) :
 		o["display"].setValue( "default" )
 		o["view"].setValue( "rec709" )
 
-		self.assertNotEqual( n["out"].image(), o["out"].image() )
+		self.assertNotEqual( GafferImage.ImageAlgo.image( n["out"] ), GafferImage.ImageAlgo.image( o["out"] ) )
 
 		o["enabled"].setValue( False )
 
@@ -123,13 +127,13 @@ class DisplayTransformTest( GafferImageTest.ImageTestCase ) :
 		o = GafferImage.DisplayTransform()
 		o["in"].setInput( i["out"] )
 
-		self.assertEqual( i["out"].imageHash(), o["out"].imageHash() )
+		self.assertEqual( GafferImage.ImageAlgo.imageHash( i["out"] ), GafferImage.ImageAlgo.imageHash( o["out"] ) )
 
 		o["inputColorSpace"].setValue( "linear" )
 		o["display"].setValue( "default" )
 		o["view"].setValue( "rec709" )
 
-		self.assertNotEqual( i["out"].imageHash(), o["out"].imageHash() )
+		self.assertNotEqual( GafferImage.ImageAlgo.imageHash( i["out"] ), GafferImage.ImageAlgo.imageHash( o["out"] ) )
 
 	def testChannelsAreSeparate( self ) :
 

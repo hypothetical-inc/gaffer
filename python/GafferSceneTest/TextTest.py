@@ -54,9 +54,9 @@ class TextTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( t.getName(), "Text" )
 		self.assertEqual( t["name"].getValue(), "text" )
 
- 	def testCompute( self ) :
+	def testCompute( self ) :
 
- 		t = GafferScene.Text()
+		t = GafferScene.Text()
 
 		self.assertEqual( t["out"].object( "/" ), IECore.NullObject() )
 		self.assertEqual( t["out"].transform( "/" ), imath.M44f() )
@@ -69,7 +69,7 @@ class TextTest( GafferSceneTest.SceneTestCase ) :
 		m2 = t["out"].object( "/text" )
 		self.assertTrue( isinstance( m2, IECoreScene.MeshPrimitive ) )
 
-		self.failUnless( m2.bound().size().x > m1.bound().size().x )
+		self.assertGreater( m2.bound().size().x, m1.bound().size().x )
 
 	def testAffects( self ) :
 
@@ -78,11 +78,10 @@ class TextTest( GafferSceneTest.SceneTestCase ) :
 		s = GafferTest.CapturingSlot( t.plugDirtiedSignal() )
 
 		t["name"].setValue( "ground" )
-		self.assertEqual( len( s ), 4 )
-		self.failUnless( s[0][0].isSame( t["name"] ) )
-		self.failUnless( s[1][0].isSame( t["out"]["childNames"] ) )
-		self.failUnless( s[2][0].isSame( t["out"]["set"] ) )
-		self.failUnless( s[3][0].isSame( t["out"] ) )
+		self.assertEqual(
+			{ x[0] for x in s if not x[0].getName().startswith( "__" ) },
+			{ t["name"], t["out"]["childNames"], t["out"]["set"], t["out"] }
+		)
 
 		del s[:]
 		t["text"].setValue( "cat" )

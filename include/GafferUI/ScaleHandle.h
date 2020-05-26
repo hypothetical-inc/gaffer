@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_SCALEHANDLE_H
 #define GAFFERUI_SCALEHANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 namespace GafferUI
@@ -61,7 +62,7 @@ class GAFFERUI_API ScaleHandle : public Handle
 		// scaling in that axis.
 		Imath::V3i axisMask() const;
 
-		Imath::V3f scaling( const DragDropEvent &event ) const;
+		Imath::V3f scaling( const DragDropEvent &event );
 
 	protected :
 
@@ -72,7 +73,6 @@ class GAFFERUI_API ScaleHandle : public Handle
 
 		Style::Axes m_axes;
 		LinearDrag m_drag;
-		Imath::V2f m_uniformDragStartPosition;
 
 };
 

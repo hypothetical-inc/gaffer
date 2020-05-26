@@ -77,20 +77,25 @@ class GAFFERSCENEUI_API ScaleTool : public TransformTool
 			Scale( const Selection &selection );
 
 			bool canApply( const Imath::V3i &axisMask ) const;
-			void apply( const Imath::V3f &scale ) const;
+			void apply( const Imath::V3f &scale );
 
 			private :
 
-				Gaffer::V3fPlugPtr m_plug;
-				Imath::V3f m_originalScale;
-				float m_time;
+				// For the validity of this reference, we rely
+				// on `TransformTool::selection()` not changing
+				// during drags.
+				const Selection &m_selection;
+
+				// Initialised lazily when we first
+				// acquire the transform plug.
+				boost::optional<Imath::V3f> m_originalScale;
 
 		};
 
 		// Drag handling.
 
 		IECore::RunTimeTypedPtr dragBegin( GafferUI::Style::Axes axes );
-		bool dragMove( const GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
+		bool dragMove( GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
 		bool dragEnd();
 
 		std::vector<Scale> m_drag;

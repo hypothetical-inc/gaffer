@@ -88,7 +88,7 @@ class TweakPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 		return True
 
-	def childPlugValueWidget( self, childPlug, lazy=True ) :
+	def childPlugValueWidget( self, childPlug ) :
 
 		for w in self.__row :
 			if w.getPlug().isSame( childPlug ) :
@@ -137,7 +137,7 @@ def __plugPopupMenu( menuDefinition, plugValueWidget ):
 		}
 	)
 
-__plugPopupMenuConnection = GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu )
+GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu, scoped = False )
 
 GafferUI.PlugValueWidget.registerType( GafferScene.TweakPlug, TweakPlugValueWidget )
 
@@ -189,8 +189,28 @@ def __noduleLabel( plug ) :
 
 	return name or plug.getName()
 
+def __spreadsheetColumnName( plug ) :
+
+	tweakPlug = plug.parent()
+	if plug == tweakPlug["name"] :
+		return plug.getName()
+
+	# Use some heuristics to come up with a more helpful
+	# column name.
+
+	name = tweakPlug.getName()
+	if name.startswith( "tweak" ) and tweakPlug["name"].source().direction() != Gaffer.Plug.Direction.Out :
+		name = tweakPlug["name"].getValue()
+
+	if name :
+		return name + plug.getName().title()
+	else :
+		return plug.getName()
+
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "nodule:type", "GafferUI::CompoundNodule" )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "*", "nodule:type", "" )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "value", "nodule:type", "GafferUI::StandardNodule" )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "noduleLayout:label", __noduleLabel )
 Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "value", "noduleLayout:label", __noduleLabel )
+Gaffer.Metadata.registerValue( GafferScene.TweakPlug, "*", "spreadsheet:columnName", __spreadsheetColumnName )
+

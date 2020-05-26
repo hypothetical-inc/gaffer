@@ -110,6 +110,7 @@ _styleColors = {
 	"tintLighter" :         ( 255, 255, 255, 20 ),
 	"tintLighterStrong" :   ( 255, 255, 255, 40 ),
 	"tintLighterStronger" : ( 255, 255, 255, 100 ),
+	"tintDarkerSubtle" :    ( 0, 0, 0, 10 ),
 	"tintDarker" :          ( 0, 0, 0, 20 ),
 	"tintDarkerStrong" :    ( 0, 0, 0, 40 ),
 	"tintDarkerStronger" :    ( 0, 0, 0, 70 ),
@@ -118,11 +119,12 @@ _styleColors = {
 _themeVariables = {
 	"roundedCornerRadius" : "6px",
 	"widgetCornerRadius" : "4px",
-	"controlCornerRadius" : "2px"
+	"controlCornerRadius" : "2px",
+	"toolOverlayInset" : "44px"
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -237,7 +239,8 @@ _styleSheet = string.Template(
 		background-color: $backgroundLight;
 	}
 
-	QMenu[gafferHasTitle="true"] {
+	QMenu[gafferHasTitle="true"],
+	QMenu[gafferHasLeadingLabelledDivider="true"] {
 		/* make sure the title widget sits at the very top.
 		   infuriatingly, qt uses padding-top for the bottom
 		   as well, and is ignoring padding-bottom. that makes
@@ -252,6 +255,22 @@ _styleSheet = string.Template(
 		font-weight: bold;
 		padding: 5px 25px 5px 20px;
 		margin-bottom: 6px;
+	}
+
+	QMenu[gafferHasLeadingLabelledDivider="true"] QLabel#gafferMenuTitle {
+		/* If the first item is a labeled section, we don't want any
+		   space under the title. */
+		margin-bottom: 0;
+	}
+
+
+	QLabel#gafferMenuLabeledDivider {
+		background-color: $backgroundLightLowlight;
+		font-weight: bold;
+		padding: 3px 25px 3px 20px;
+		margin-bottom: 4px;
+		margin-top: 0;
+		color: $foreground;
 	}
 
 	QLabel#gafferMenuTitle:disabled {
@@ -485,7 +504,8 @@ _styleSheet = string.Template(
 		padding: 2px;
 	}
 
-	/* tabs */
+	/* Tabs */
+	/* ==== */
 
 	QTabWidget::tab-bar {
 		left: 0px;
@@ -562,11 +582,6 @@ _styleSheet = string.Template(
 		background-color: $tintLighterSubtle;
 	}
 
-	QSplitter[gafferHighlighted="true"] {
-
-		border: 1px solid $brightColor;
-	}
-
 	QTabWidget::pane {
 		background-color: $background;
 		/* tab widget frame has a line at the top, tweaked up 1 pixel */
@@ -592,6 +607,75 @@ _styleSheet = string.Template(
 		border-color: $backgroundRaisedHighlight;
 		border-right-color: $backgroundRaisedLowlight;
 		border-bottom-color: $backgroundRaisedLowlight;
+	}
+
+	QTabWidget[gafferHighlighted="true"]::pane {
+		border: 1px solid $brightColor;
+		border-top: 1px solid $brightColor;
+		top: -1px;
+	}
+
+	QTabWidget[gafferHighlighted="true"] > QTabBar::tab:selected {
+		border-color: $brightColor;
+		border-bottom-color: $background; /* blend into frame below */
+	}
+
+	QTabWidget QTabWidget[gafferHighlighted="true"] > QTabBar::tab:selected {
+		border-color: $brightColor;
+		border-bottom-color: $backgroundRaised; /* blend into frame below */
+	}
+
+	QTabWidget[gafferHighlighted="true"] > QTabBar::tab:!selected {
+		border-bottom-color: $brightColor;
+	}
+
+	/*
+	TabBars not inside a QTabWidget. Currently these are only used by
+	SpreadsheetUI.
+	*/
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tab {
+
+		border-color: $tintDarkerStronger;
+		background-color: $tintDarkerStrong;
+		border-radius: 0px;
+		margin-right: -1px;
+
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tab:selected {
+
+		background-color: $tintDarkerStronger;
+
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tab:first {
+
+		border-top-left-radius: $widgetCornerRadius;
+		border-bottom-left-radius: $widgetCornerRadius;
+
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tab:last {
+
+		border-top-right-radius: $widgetCornerRadius;
+		border-bottom-right-radius: $widgetCornerRadius;
+		margin-right: 0px;
+
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tab:only-one {
+
+		border-radius: $widgetCornerRadius;
+
+	}
+
+	/* Splitters */
+	/* ========= */
+
+	QSplitter[gafferHighlighted="true"] {
+
+		border: 1px solid $brightColor;
 	}
 
 	/* Ensures the QSplitter border is visible if we need to highlight */
@@ -620,25 +704,6 @@ _styleSheet = string.Template(
 	QMenu::item:selected, QMenuBar::item:selected, QSplitter::handle:hover {
 		color: white;
 		background-color: $brightColor;
-	}
-	QTabWidget[gafferHighlighted="true"]::pane {
-		border: 1px solid $brightColor;
-		border-top: 1px solid $brightColor;
-		top: -1px;
-	}
-
-	QTabWidget[gafferHighlighted="true"] > QTabBar::tab:selected {
-		border-color: $brightColor;
-		border-bottom-color: $background; /* blend into frame below */
-	}
-
-	QTabwidget QTabWidget[gafferHighlighted="true"] > QTabBar::tab:selected {
-		border-color: $brightColor;
-		border-bottom-color: $backgroundRaised; /* blend into frame below */
-	}
-
-	QTabWidget[gafferHighlighted="true"] > QTabBar::tab:!selected {
-		border-bottom-color: $brightColor;
 	}
 
 	QCheckBox#gafferCollapsibleToggle {
@@ -691,41 +756,40 @@ _styleSheet = string.Template(
 		background-color: $tintLighter;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:first {
+	_TableView QHeaderView::section:vertical:first {
 		border-top-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:last {
+	_TableView QHeaderView::section:vertical:last {
 		border-bottom-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical:only-one {
+	_TableView QHeaderView::section:vertical:only-one {
 		border-top-left-radius: $widgetCornerRadius;
 		border-bottom-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:first {
+	_TableView QHeaderView::section:horizontal:first {
 		border-top-left-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:last {
+	_TableView QHeaderView::section:horizontal:last {
 		border-top-right-radius: $widgetCornerRadius;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:horizontal:only-one {
+	_TableView QHeaderView::section:horizontal:only-one {
 		border-top-left-radius: $widgetCornerRadius;
 		border-top-right-radius: $widgetCornerRadius;
 	}
 
-	/* tuck adjacent header sections beneath one another so we only get */
-	/* a single width line between them                                 */
+	/* Remove left/top borders so we don't get a double-width line between columns */
 
 	QHeaderView::section:horizontal:!first:!only-one {
-		margin-left: -1px;
+		border-left-color: transparent;
 	}
 
 	QHeaderView::section:vertical:!first:!only-one {
-		margin-top: -1px;
+		border-top-color: transparent;
 	}
 
 	QHeaderView::down-arrow {
@@ -830,11 +894,40 @@ _styleSheet = string.Template(
 		spacing: 5px;
 	}
 
-	QTreeView QHeaderView {
-		/* tuck header border inside the treeview border */
-		margin-top: -1px;
-		margin-left: -1px;
-		margin-right: -1px;
+	/* Avoid a double border with the tree view's border */
+
+	QTreeView QHeaderView::section:horizontal {
+		border-top-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:horizontal:only-one {
+		border-left-color: transparent;
+		border-right-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:horizontal:first {
+		border-left-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:horizontal:last {
+		border-right-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:vertical {
+		border-left-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:vertical:only-one {
+		border-top-color: transparent;
+		border-bottom-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:vertical:first {
+		border-top-color: transparent;
+	}
+
+	QTreeView QHeaderView::section:vertical:last {
+		border-bottom-color: transparent;
 	}
 
 	QTreeView::branch {
@@ -979,6 +1072,10 @@ _styleSheet = string.Template(
 		margin-right: 10px;
 	}
 
+	QFrame[gafferClass="GafferUI.Divider"][gafferHighlighted="true"] {
+		color: $brightColor;
+	}
+
 	QToolTip {
 		background-clip: border;
 		color: $backgroundDarkest;
@@ -1020,26 +1117,26 @@ _styleSheet = string.Template(
 		border: none;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView {
+	_TableView {
 		gridline-color: $backgroundLowlight;
 		padding: 0px;
 		background-color: $backgroundRaised;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"] {
+	_TableView[gafferEditable="true"] {
 		padding: 0px;
 		gridline-color: $backgroundLowlight;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"]::item {
+	_TableView[gafferEditable="true"]::item {
 		background-color: $backgroundLight;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferEditable="true"]::item:selected {
+	_TableView::item:selected {
 		background-color: $brightColor;
 	}
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QHeaderView::section:vertical {
+	_TableView QHeaderView::section:vertical {
 		padding: 2px;
 	}
 
@@ -1069,14 +1166,30 @@ _styleSheet = string.Template(
 		background-color: $brightColor;
 	}
 
+	QTableView[gafferToggleIndicator="true"]::indicator:unchecked {
+		image: url($GAFFER_ROOT/graphics/toggleOff.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:unchecked:hover {
+		image: url($GAFFER_ROOT/graphics/toggleOffHover.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:checked {
+		image: url($GAFFER_ROOT/graphics/toggleOn.png);
+	}
+
+	QTableView[gafferToggleIndicator="true"]::indicator:checked:hover {
+		image: url($GAFFER_ROOT/graphics/toggleOnHover.png);
+	}
+
 	/* highlighted state for VectorDataWidget and tree views */
 
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferHighlighted="true"] {
+	_TableView[gafferHighlighted="true"] {
 		gridline-color: $brightColor;
 	}
 
 	QTreeView[gafferHighlighted="true"],
-	*[gafferClass="GafferUI.VectorDataWidget"] QTableView[gafferHighlighted="true"] QHeaderView::section {
+	_TableView[gafferHighlighted="true"] QHeaderView::section {
 		border-color: $brightColor;
 	}
 
@@ -1099,7 +1212,13 @@ _styleSheet = string.Template(
 		border: none;
 	}
 
-	/* frame variants */
+	/*
+	 * Frame variants
+	 * --------------
+	 *
+	 * \todo Add a `setRole/getRole` methods to GafferUI.Frame
+	 * and use that to drive the styling.
+	 */
 
 	*[gafferDiff="A"] {
 		background: solid rgba( 181, 30, 0, 80 );
@@ -1128,12 +1247,31 @@ _styleSheet = string.Template(
 	}
 
 	#gafferColorInspector,
-	*[gafferClass="GafferSceneUI.TransformToolUI._SelectionWidget"]
+	*[gafferClass="GafferSceneUI.TransformToolUI._SelectionWidget"],
+	*[gafferClass="GafferSceneUI.CropWindowToolUI._StatusWidget"],
+	*[gafferClass="GafferUI.EditScopeUI.EditScopePlugValueWidget"] > QFrame,
+	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] > QFrame
 	{
 		background: rgba( 42, 42, 42, 200 );
 		border-color: rgba( 30, 30, 30, 200 );
 		border-radius: 2px;
 		padding: 2px;
+	}
+
+	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] QPushButton[gafferWithFrame="true"] {
+		padding: 1px;
+	}
+
+	*[gafferClass="GafferSceneUI.CropWindowToolUI._StatusWidget"]
+	{
+		margin-left: $toolOverlayInset;
+		margin-right: auto;
+	}
+
+	#gafferColorInspector
+	{
+		margin-left: $toolOverlayInset;
+		margin-right: $toolOverlayInset;
 	}
 
 	/* Corner Rounding - also allow squaring based on adjacency of other widgets */
@@ -1188,6 +1326,39 @@ _styleSheet = string.Template(
 		border-bottom-right-radius: $widgetCornerRadius;
 	}
 
+	/* Adjoined buttons */
+	/* Selector specificity requires radius to be re-specified as the base */
+	/* QPushButton[gafferWithFrame="true"] radius overrides those above. */
+
+	QPushButton[gafferAdjoinedTop="true"] {
+		border-top-left-radius: 0px;
+		border-top-right-radius: 0px;
+		border-top-color: $tintLighter;
+		margin-top: 0;
+	}
+
+	QPushButton[gafferAdjoinedBottom="true"] {
+		border-bottom-left-radius: 0px;
+		border-bottom-right-radius: 0px;
+		border-bottom-color: $tintDarkerSubtle;
+		margin-bottom: 0;
+	}
+
+	QPushButton[gafferAdjoinedLeft="true"] {
+		border-top-left-radius: 0px;
+		border-bottom-left-radius: 0px;
+		border-left-color: $tintLighter;
+		margin-left: 0;
+	}
+
+	QPushButton[gafferAdjoinedRight="true"] {
+		border-top-right-radius: 0px;
+		border-bottom-right-radius: 0px;
+		border-right-color: $tintDarkerSubtle;
+		margin-right: 0;
+	}
+
+
 	/* PathChooseWidget */
 
 	*[gafferClass="GafferUI.PathChooserWidget"] #gafferPathListingContainer {
@@ -1221,6 +1392,42 @@ _styleSheet = string.Template(
 		border-radius: 0;
 		border-bottom-left-radius: $widgetCornerRadius;
 		border-bottom-right-radius: $widgetCornerRadius;
+	}
+
+	/* PinningWidget */
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="0"] {
+		/* border-color: rgb( 181, 110, 120 ); */
+		background: rgba( 181, 110, 120, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="1"] {
+		/* border-color: rgb( 217, 204, 122 ); */
+		background: rgba( 217, 204, 122, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="2"] {
+		/* border-color: rgb( 89, 140, 71 ); */
+		background: rgba( 89, 140, 71, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"][linkGroup="3"] {
+		/* border-color: rgb( 145, 110, 181 ); */
+		background: rgba( 145, 110, 181, 0.4 );
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] #menuDownArrow {
+		margin-top: 1px;
+		margin-left: 2px;
+		margin-right: 1px;
+	}
+
+	QFrame[gafferClass="GafferUI.CompoundEditor._PinningWidget"] {
+		padding: 1px;
+		padding-left: 4px;
+		border-radius: 2px;
+		border: none;
+		background: $background;
 	}
 
 	"""

@@ -57,6 +57,7 @@ ArnoldOptions::ArnoldOptions( const std::string &name )
 	// Sampling parameters
 
 	options->addChild( new Gaffer::NameValuePlug( "ai:AA_samples", new IECore::IntData( 3 ), false, "aaSamples" ) );
+	options->addChild( new Gaffer::NameValuePlug( "ai:progressive_min_AA_samples", new IECore::IntData( -4 ), false, "progressiveMinAASamples" ) );
 	options->addChild( new Gaffer::NameValuePlug( "ai:GI_diffuse_samples", new IECore::IntData( 2 ), false, "giDiffuseSamples" ) );
 	options->addChild( new Gaffer::NameValuePlug( "ai:GI_specular_samples", new IECore::IntData( 2 ), false, "giSpecularSamples" ) );
 	options->addChild( new Gaffer::NameValuePlug( "ai:GI_transmission_samples", new IECore::IntData( 2 ), false, "giTransmissionSamples" ) );
@@ -85,6 +86,9 @@ ArnoldOptions::ArnoldOptions( const std::string &name )
 	// Subdivision
 
 	options->addChild( new Gaffer::NameValuePlug( "ai:max_subdivisions", new IECore::IntData(999), false, "maxSubdivisions" ) );
+	options->addChild( new Gaffer::NameValuePlug( "ai:subdiv_dicing_camera", new IECore::StringData( "" ), false, "subdivDicingCamera" ) );
+	options->addChild( new Gaffer::NameValuePlug( "ai:subdiv_frustum_culling", new IECore::BoolData( false ), false, "subdivFrustumCulling" ) );
+	options->addChild( new Gaffer::NameValuePlug( "ai:subdiv_frustum_padding", new IECore::FloatData( 0.0f ), false, "subdivFrustumPadding" ) );
 
 	// Texturing parameters
 
@@ -153,6 +157,7 @@ ArnoldOptions::ArnoldOptions( const std::string &name )
 
 	// Statistics
 	options->addChild( new Gaffer::NameValuePlug( "ai:statisticsFileName", new IECore::StringData( "" ), false, "statisticsFileName" ) );
+	options->addChild( new Gaffer::NameValuePlug( "ai:profileFileName", new IECore::StringData( "" ), false, "profileFileName" ) );
 
 	// Licensing
 

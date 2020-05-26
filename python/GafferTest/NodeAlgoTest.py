@@ -34,6 +34,8 @@
 #
 ##########################################################################
 
+import six
+
 import IECore
 
 import Gaffer
@@ -187,11 +189,295 @@ class NodeAlgoTest( GafferTest.TestCase ) :
 		self.assertEqual( node["op1"].getValue(), 10 )
 		self.assertEqual( Gaffer.NodeAlgo.currentPreset( node["op1"] ), "c" )
 
+	def __visitationGraph( self ) :
+
+		# L1_1     L1_2
+		#   |       |\
+		#   |       | \
+		#   |       |  \
+		# L2_1   L2_2   L2_3
+		#   |\      |   /
+		#   | \     |  /
+		#   |  \    | /
+		#   |   \   |/
+		# L3_1   L3_2
+
+		s = Gaffer.ScriptNode()
+
+		s["L1_1"] = GafferTest.MultiplyNode()
+		s["L1_2"] = GafferTest.AddNode()
+
+		s["L2_1"] = GafferTest.AddNode()
+		s["L2_2"] = GafferTest.MultiplyNode()
+		s["L2_3"] = GafferTest.AddNode()
+
+		s["L3_1"] = GafferTest.AddNode()
+		s["L3_2"] = GafferTest.MultiplyNode()
+		s["L3_2"]["op3"] = Gaffer.IntPlug()
+
+		s["L2_1"]["op1"].setInput( s["L1_1"]["product"] )
+		s["L2_2"]["op1"].setInput( s["L1_2"]["sum"] )
+		s["L2_3"]["op1"].setInput( s["L1_2"]["sum"] )
+
+		s["L3_1"]["op1"].setInput( s["L2_1"]["sum"] )
+		s["L3_2"]["op1"].setInput( s["L2_1"]["sum"] )
+		s["L3_2"]["op2"].setInput( s["L2_2"]["product"] )
+		s["L3_2"]["op3"].setInput( s["L2_3"]["sum"] )
+
+		return s
+
+	class __CapturingVisitor( object ) :
+
+		def __init__( self ) :
+
+			self.visited = []
+
+		def __call__( self, node ) :
+
+			self.visited.append( node )
+			return True
+
+	def testVisitUpstream( self ) :
+
+		g = self.__visitationGraph()
+
+		v = self.__CapturingVisitor()
+		Gaffer.NodeAlgo.visitUpstream( g["L3_1"], v )
+		self.assertEqual( v.visited, [ g["L2_1"], g["L1_1"] ] )
+
+		del v.visited[:]
+		Gaffer.NodeAlgo.visitUpstream( g["L3_2"], v )
+		self.assertEqual( v.visited, [ g["L2_1"], g["L2_2"], g["L2_3"], g["L1_1"], g["L1_2"] ] )
+
+		del v.visited[:]
+		Gaffer.NodeAlgo.visitUpstream( g["L3_2"], v, order = Gaffer.NodeAlgo.VisitOrder.DepthFirst )
+		self.assertEqual( v.visited, [ g["L2_1"], g["L1_1"], g["L2_2"], g["L1_2"], g["L2_3"] ] )
+
+	def testVisitDownstream( self ) :
+
+		g = self.__visitationGraph()
+
+		v = self.__CapturingVisitor()
+		Gaffer.NodeAlgo.visitDownstream( g["L1_1"], v )
+		self.assertEqual( v.visited, [ g["L2_1"], g["L3_1"], g["L3_2"] ] )
+
+		del v.visited[:]
+		Gaffer.NodeAlgo.visitDownstream( g["L1_2"], v )
+		self.assertEqual( v.visited, [ g["L2_2"], g["L2_3"], g["L3_2"] ] )
+
+		del v.visited[:]
+		Gaffer.NodeAlgo.visitDownstream( g["L1_2"], v, order = Gaffer.NodeAlgo.VisitOrder.DepthFirst )
+		self.assertEqual( v.visited, [ g["L2_2"], g["L3_2"], g["L2_3"] ] )
+
+	def testVisitConnected( self ) :
+
+		g = self.__visitationGraph()
+
+		v = self.__CapturingVisitor()
+		Gaffer.NodeAlgo.visitConnected( g["L2_1"], v )
+		self.assertEqual( v.visited, [ g["L1_1"], g["L3_1"], g["L3_2"], g["L2_2"], g["L2_3"], g["L1_2"] ] )
+
+		v = self.__CapturingVisitor()
+		Gaffer.NodeAlgo.visitConnected( g["L2_1"], v, order = Gaffer.NodeAlgo.VisitOrder.DepthFirst )
+		self.assertEqual( v.visited, [ g["L1_1"], g["L3_1"], g["L3_2"], g["L2_2"], g["L1_2"], g["L2_3"] ] )
+
+	def testFindUpstream( self ) :
+
+		g = self.__visitationGraph()
+		isLevelOne = lambda node : node.getName().startswith( "L1" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findUpstream( g["L3_1"], isLevelOne ), g["L1_1"] )
+		self.assertEqual( Gaffer.NodeAlgo.findUpstream( g["L3_2"], isLevelOne ), g["L1_1"] )
+		self.assertEqual( Gaffer.NodeAlgo.findUpstream( g["L1_1"], isLevelOne ), None )
+
+	def testFindDownstream( self ) :
+
+		g = self.__visitationGraph()
+		isLevelThree = lambda node : node.getName().startswith( "L3" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findDownstream( g["L1_1"], isLevelThree ), g["L3_1"] )
+		self.assertEqual( Gaffer.NodeAlgo.findDownstream( g["L1_2"], isLevelThree ), g["L3_2"] )
+		self.assertEqual( Gaffer.NodeAlgo.findDownstream( g["L3_2"], isLevelThree ), None )
+
+	def testFindConnected( self ) :
+
+		g = self.__visitationGraph()
+		isLevelTwo = lambda node : node.getName().startswith( "L2" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findConnected( g["L1_1"], isLevelTwo ), g["L2_1"] )
+		self.assertEqual( Gaffer.NodeAlgo.findConnected( g["L1_2"], isLevelTwo ), g["L2_2"] )
+		self.assertEqual( Gaffer.NodeAlgo.findConnected( g["L2_1"], isLevelTwo ), g["L2_2"] )
+
+	def testFindAllUpstream( self ) :
+
+		g = self.__visitationGraph()
+		isLevelOne = lambda node : node.getName().startswith( "L1" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findAllUpstream( g["L3_1"], isLevelOne ), [ g["L1_1"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllUpstream( g["L3_2"], isLevelOne ), [ g["L1_1"], g["L1_2"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllUpstream( g["L1_1"], isLevelOne ), [] )
+
+	def testFindAllDownstream( self ) :
+
+		g = self.__visitationGraph()
+		isLevelThree = lambda node : node.getName().startswith( "L3" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findAllDownstream( g["L1_1"], isLevelThree ), [ g["L3_1"], g["L3_2"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllDownstream( g["L1_2"], isLevelThree ), [ g["L3_2"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllDownstream( g["L3_2"], isLevelThree ), [] )
+
+	def testFindAllConnected( self ) :
+
+		g = self.__visitationGraph()
+		isLevelTwo = lambda node : node.getName().startswith( "L2" )
+
+		self.assertEqual( Gaffer.NodeAlgo.findAllConnected( g["L1_1"], isLevelTwo ), [ g["L2_1"], g["L2_2"], g["L2_3"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllConnected( g["L1_2"], isLevelTwo ), [ g["L2_2"], g["L2_3"], g["L2_1"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.findAllConnected( g["L2_1"], isLevelTwo ), [ g["L2_2"], g["L2_3"] ] )
+
+	def testUpstreamNodes( self ) :
+
+		g = self.__visitationGraph()
+
+		self.assertEqual( Gaffer.NodeAlgo.upstreamNodes( g["L3_1"] ), [ g["L2_1" ], g["L1_1"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.upstreamNodes( g["L3_1"], GafferTest.MultiplyNode ), [ g["L1_1"] ] )
+
+	def testDownstreamNodes( self ) :
+
+		g = self.__visitationGraph()
+
+		self.assertEqual( Gaffer.NodeAlgo.downstreamNodes( g["L1_1"] ), [ g["L2_1" ], g["L3_1"], g["L3_2"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.downstreamNodes( g["L1_1"], GafferTest.MultiplyNode ), [ g["L3_2"] ] )
+
+	def testConnectedNodes( self ) :
+
+		g = self.__visitationGraph()
+
+		self.assertEqual( Gaffer.NodeAlgo.connectedNodes( g["L1_1"] ), [ g["L2_1" ], g["L3_1"], g["L3_2"], g["L2_2"], g["L2_3"], g["L1_2"] ] )
+		self.assertEqual( Gaffer.NodeAlgo.connectedNodes( g["L1_1"], GafferTest.MultiplyNode ), [ g["L3_2"], g["L2_2"] ] )
+
+	def testBadVisitorReturnValue( self ) :
+
+		g = self.__visitationGraph()
+
+		with six.assertRaisesRegex( self, RuntimeError, "Visitor must return a bool \(True to continue, False to prune\)" ) :
+			Gaffer.NodeAlgo.visitUpstream( g["L3_1"], lambda node : None )
+
+	def __boxedVisitationGraph( self ) :
+
+		s = self.__visitationGraph()
+		b = Gaffer.Box.create( s, Gaffer.StandardSet( [ s["L1_1"] ] ) )
+		b.setName( "Box_L1_1" )
+		b = Gaffer.Box.create( s, Gaffer.StandardSet( [ s["L2_3"] ] ) )
+		b.setName( "Box_L2_3" )
+		return s
+
+	def testVisitBoxedNodesDepthFirst( self ) :
+
+		s = self.__boxedVisitationGraph()
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["Box_L1_1"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s[ "L2_1"], s["L3_1"], s["L3_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["Box_L1_1"]["L1_1"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s["Box_L1_1"], s[ "L2_1"], s["L3_1"], s["L3_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["L1_2"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s["L2_2"], s["L3_2"], s["Box_L2_3"], s["Box_L2_3"]["L2_3"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["Box_L2_3"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s[ "L1_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["Box_L2_3"]["L2_3"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s["Box_L2_3"], s[ "L1_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["L3_1"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s[ "L2_1"], s["Box_L1_1"], s["Box_L1_1"]["L1_1"] ]
+		)
+
+	def testVisitBoxedNodesBreadthFirst( self ) :
+
+		s = self.__boxedVisitationGraph()
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["Box_L1_1"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s[ "L2_1"], s["L3_1"], s["L3_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["Box_L1_1"]["L1_1"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s["Box_L1_1"], s[ "L2_1"], s["L3_1"], s["L3_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.downstreamNodes( s["L1_2"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s["L2_2"], s["Box_L2_3"], s["Box_L2_3"]["L2_3"], s["L3_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["Box_L2_3"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s[ "L1_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["Box_L2_3"]["L2_3"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s["Box_L2_3"], s[ "L1_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["L3_1"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s[ "L2_1"], s["Box_L1_1"], s["Box_L1_1"]["L1_1"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["L3_2"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s["L2_1"], s[ "L2_2"], s["Box_L2_3"], s["Box_L2_3"]["L2_3"], s["Box_L1_1"], s["Box_L1_1"]["L1_1"], s["L1_2"] ]
+		)
+
+	def testVisitBoxedBranches( self ) :
+
+		s = Gaffer.ScriptNode()
+		s["b"] = Gaffer.Box()
+
+		s["b"]["L1"] = GafferTest.AddNode()
+		s["b"]["L2_1"] = GafferTest.AddNode()
+		s["b"]["L2_2"] = GafferTest.AddNode()
+		s["b"]["L3_1"] = GafferTest.AddNode()
+
+		s["b"]["L1"]["op1"].setInput( s["b"]["L2_1"]["sum"] )
+		s["b"]["L1"]["op2"].setInput( s["b"]["L2_2"]["sum"] )
+
+		s["b"]["L2_1"]["op1"].setInput( s["b"]["L3_1"]["sum"] )
+
+		s["n"] = GafferTest.AddNode()
+		s["n"]["op1"].setInput( Gaffer.PlugAlgo.promote( s["b"]["L1"]["sum"] ) )
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["n"], order = Gaffer.NodeAlgo.VisitOrder.DepthFirst ),
+			[ s["b"], s["b"]["L1"], s["b"]["L2_1"], s["b"]["L3_1"], s["b"]["L2_2"] ]
+		)
+
+		self.assertEqual(
+			Gaffer.NodeAlgo.upstreamNodes( s["n"], order = Gaffer.NodeAlgo.VisitOrder.BreadthFirst ),
+			[ s["b"], s["b"]["L1"], s["b"]["L2_1"], s["b"]["L2_2"], s["b"]["L3_1"] ]
+		)
+
 	def tearDown( self ) :
-		
+
 		Gaffer.Metadata.deregisterValue( GafferTest.AddNode, "op1", "userDefault" )
 		Gaffer.Metadata.deregisterValue( GafferTest.AddNode, "op2", "userDefault" )
 		Gaffer.Metadata.deregisterValue( GafferTest.CompoundPlugNode, "p.s", "userDefault" )
-		
+
 if __name__ == "__main__":
 	unittest.main()

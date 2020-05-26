@@ -133,19 +133,23 @@ class NodeSetEditor( GafferUI.Editor ) :
 
 			drivingEditor.__registerDrivenEditor( self, mode )
 
-			weakDriver = weakref.ref(
-				drivingEditor,
-				# We need to unlink ourselves if the driver goes away
-				lambda _ : self.setNodeSetDriver( None )
-			)
+			weakSelf = weakref.ref( self )
+
+			# We need to unlink ourselves if the driver goes away
+			def disconnect( _ ) :
+				if weakSelf() is not None:
+					weakSelf().setNodeSetDriver( None )
+
+			weakDriver = weakref.ref( drivingEditor, disconnect )
+
 			changeCallback = self.__nodeSetDriverModes[ mode ]
 
 			def updateFromDriver( _ ) :
-				if weakDriver() is not None :
+				if weakDriver() is not None and weakSelf() is not None :
 					nodeSet = weakDriver().getNodeSet()
 					if changeCallback :
-						nodeSet = changeCallback( self, weakDriver() )
-					self.__setNodeSetInternal( nodeSet, callUpdateFromSet=True )
+						nodeSet = changeCallback( weakSelf(), weakDriver() )
+					weakSelf().__setNodeSetInternal( nodeSet, callUpdateFromSet=True )
 
 			self.__nodeSetDriver = {
 				"mode" : mode,
@@ -155,6 +159,7 @@ class NodeSetEditor( GafferUI.Editor ) :
 			updateFromDriver( drivingEditor )
 
 		self.__nodeSetDriverChangedSignal( self )
+		self.__dirtyTitle()
 
 	## Returns a tuple of the drivingEditor and the drive mode.
 	# When there is no driver ( None, "" ) will be returned.
@@ -241,10 +246,21 @@ class NodeSetEditor( GafferUI.Editor ) :
 	# The supplied callback will be called with ( thisEditor, drivingEditor ) and
 	# must return a derivative of Gaffer.Set that represents the nodesSet to be
 	# set in the driven editor.
+	# If provided, 'description' should be a sensible message to describe the
+	# nature of the user-observed behaviour, '{editor}' will be replaced with
+	# the name of the driving editor. eg:
+	#   "Following the source node for the scene selection of {editor}"
 	@classmethod
-	def registerNodeSetDriverMode( cls, mode, changeCallback ) :
+	def registerNodeSetDriverMode( cls, mode, changeCallback, description = "Following {editor}." ) :
 
 		cls.__nodeSetDriverModes[ mode ] = changeCallback
+		# TODO: Move to the NodeSetEditor class once they are GraphComponents
+		Gaffer.Metadata.registerValue( "NodeSetEditor", "nodeSetDriverMode:%s:description" % mode, description )
+
+	@staticmethod
+	def nodeSetDriverModeDescription( mode ) :
+
+		return Gaffer.Metadata.value( "NodeSetEditor", "nodeSetDriverMode:%s:description" % mode )
 
 	## Overridden to display the names of the nodes being edited.
 	# Derived classes should override _titleFormat() rather than
@@ -309,12 +325,20 @@ class NodeSetEditor( GafferUI.Editor ) :
 			scriptWindow.getLayout().addEditor( editor )
 		else :
 			window = _EditorWindow( scriptWindow, editor )
-			## \todo Can we do better using `window.resizeToFitChild()`?
-			# Our problem is that some NodeEditors (for GafferImage.Text for instance)
-			# are very large, whereas some (GafferScene.Shader) don't have
-			# a valid size until the UI has been built lazily.
-			window._qtWidget().resize( 400, 400 )
+			# Ensure keyboard shortcuts are relayed to the main menu bar
+			scriptWindow.menuBar().addShortcutTarget( window )
 			window.setVisible( True )
+
+			if isinstance( editor, GafferUI.NodeEditor ) :
+				# The window will have opened at the perfect size for the
+				# contained widgets. But some NodeEditors have expanding
+				# sections and buttons to add new widgets, and for that
+				# reason, a minimum height of 400px has been deemed more
+				# suitable.
+				size = window._qtWidget().size()
+				if size.height() < 400 :
+					size.setHeight( 400 )
+					window._qtWidget().resize( size )
 
 		return editor
 
@@ -334,12 +358,7 @@ class NodeSetEditor( GafferUI.Editor ) :
 	# All implementations must first call the base class implementation.
 	def _updateFromSet( self ) :
 
-		# flush information needed for making the title -
-		# we'll update it lazily in getTitle().
-		self.__nameChangedConnections = []
-		self.__titleFormat = None
-
-		self.titleChangedSignal()( self )
+		self.__dirtyTitle()
 
 	# May be called to ensure that _updateFromSet() is called
 	# immediately if a lazy update has been scheduled but not
@@ -358,26 +377,45 @@ class NodeSetEditor( GafferUI.Editor ) :
 		else :
 			result = [ _prefix ]
 
-		numNames = min( _maxNodes, len( self.__nodeSet ) )
-		if numNames :
+		# Only add node names if we're pinned in some way shape or form
+		if not self.__nodeSetIsScriptSelection() :
 
-			result.append( " : " )
+			result.append( " [" )
 
-			if _reverseNodes :
-				nodes = self.__nodeSet[len(self.__nodeSet)-numNames:]
-				nodes.reverse()
-			else :
-				nodes = self.__nodeSet[:numNames]
+			numNames = min( _maxNodes, len( self.__nodeSet ) )
+			if numNames :
 
-			for i, node in enumerate( nodes ) :
-				result.append( node )
-				if i < numNames - 1 :
-					result.append( ", " )
+				if _reverseNodes :
+					nodes = self.__nodeSet[len(self.__nodeSet)-numNames:]
+					nodes.reverse()
+				else :
+					nodes = self.__nodeSet[:numNames]
 
-			if _ellipsis and len( self.__nodeSet ) > _maxNodes :
-				result.append( "..." )
+				for i, node in enumerate( nodes ) :
+					result.append( node )
+					if i < numNames - 1 :
+						result.append( ", " )
+
+				if _ellipsis and len( self.__nodeSet ) > _maxNodes :
+					result.append( "..." )
+
+			result.append( "]" )
 
 		return result
+
+	def __dirtyTitle( self ) :
+
+		# flush information needed for making the title -
+		# we'll update it lazily in getTitle().
+		self.__nameChangedConnections = []
+		self.__titleFormat = None
+
+		self.titleChangedSignal()( self )
+
+	def __nodeSetIsScriptSelection( self ) :
+
+		driver = self.drivingEditor() or self
+		return driver.getNodeSet() == self.scriptNode().selection()
 
 	def __setNodeSetInternal( self, nodeSet, callUpdateFromSet ) :
 
@@ -388,6 +426,7 @@ class NodeSetEditor( GafferUI.Editor ) :
 		self.__nodeSet = nodeSet
 		self.__memberAddedConnection = self.__nodeSet.memberAddedSignal().connect( Gaffer.WeakMethod( self.__membersChanged ) )
 		self.__memberRemovedConnection = self.__nodeSet.memberRemovedSignal().connect( Gaffer.WeakMethod( self.__membersChanged ) )
+		self.__dirtyTitle()
 
 		if isinstance( nodeSet, Gaffer.StandardSet ) :
 			nodeSet.setRemoveOrphans( True )
@@ -449,4 +488,7 @@ class _EditorWindow( GafferUI.Window ) :
 			self.parent().removeChild( self )
 
 
-NodeSetEditor.registerNodeSetDriverMode( NodeSetEditor.DriverModeNodeSet, None )
+NodeSetEditor.registerNodeSetDriverMode(
+	NodeSetEditor.DriverModeNodeSet, None,
+	"Following {editor}."
+)

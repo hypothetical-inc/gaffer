@@ -97,6 +97,14 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		/// Return whether the viewport is currently in planar movement mode
 		bool getPlanarMovement() const;
 
+		/// Sets whether the Viewport supports precise motion mode via
+		/// modifier keys. NOTE: This defaults to true, and causes the
+		/// viewport to consume button press events using the corresponding
+		/// modifiers.
+		void setPreciseMotionAllowed( bool allowed );
+		/// Return whether the viewport is currently allows precise motion
+		bool getPreciseMotionAllowed() const;
+
 		/// Return the camera currently used to render the viewport.
 		/// This bakes in aperture and clipping planes based on tweaks
 		/// made using the ViewportGadget.
@@ -159,7 +167,7 @@ class GAFFERUI_API ViewportGadget : public Gadget
 
 		/// The SelectionScope class can be used by child Gadgets to perform
 		/// OpenGL selection from event signal callbacks.
-		class SelectionScope
+		class GAFFERUI_API SelectionScope : boost::noncopyable
 		{
 
 			public :
@@ -201,7 +209,7 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		};
 
 		/// The RasterScope class can be used to perform drawing in raster space.
-		class RasterScope
+		class GAFFERUI_API RasterScope : boost::noncopyable
 		{
 
 			public :
@@ -244,6 +252,9 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		void updateGadgetUnderMouse( const ButtonEvent &event );
 		void emitEnterLeaveEvents( GadgetPtr newGadgetUnderMouse, GadgetPtr oldGadgetUnderMouse, const ButtonEvent &event );
 
+		void updateMotionState( const DragDropEvent &event, bool initialEvent = false );
+		Imath::V2f motionPositionFromEvent( const DragDropEvent &event ) const;
+
 		GadgetPtr updatedDragDestination( std::vector<GadgetPtr> &gadgets, const DragDropEvent &event );
 
 		void trackDrag( const DragDropEvent &event );
@@ -259,6 +270,11 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		std::unique_ptr<CameraController> m_cameraController;
 		bool m_cameraInMotion;
 		bool m_cameraEditable;
+
+		bool m_preciseMotionAllowed;
+		bool m_preciseMotionEnabled;
+		Imath::V2f m_motionSegmentOrigin;
+		Imath::V2f m_motionSegmentEventOrigin;
 
 		GadgetPtr m_lastButtonPressGadget;
 		GadgetPtr m_gadgetUnderMouse;

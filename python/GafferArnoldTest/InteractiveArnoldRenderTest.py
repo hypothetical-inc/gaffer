@@ -111,6 +111,8 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 		script["attributes"]["in"].setInput( script["meshType"]["out"] )
 		script["attributes"]["attributes"]["subdivIterations"]["enabled"].setValue( True )
 
+		script["catalogue"] = GafferImage.Catalogue()
+
 		script["outputs"] = GafferScene.Outputs()
 		script["outputs"].addOutput(
 			"beauty",
@@ -119,17 +121,17 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 				"ieDisplay",
 				"rgba",
 				{
-					"driverType" : "ImageDisplayDriver",
-					"handle" : "subdivisionTest",
+					"driverType" : "ClientDisplayDriver",
+					"displayHost" : "localhost",
+					"displayPort" : str( script['catalogue'].displayDriverServer().portNumber() ),
+					"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
 				}
 			)
 		)
 		script["outputs"]["in"].setInput( script["attributes"]["out"] )
 
-		script["objectToImage"] = GafferImage.ObjectToImage()
-
 		script["imageStats"] = GafferImage.ImageStats()
-		script["imageStats"]["in"].setInput( script["objectToImage"]["out"] )
+		script["imageStats"]["in"].setInput( script["catalogue"]["out"] )
 		script["imageStats"]["channels"].setValue( IECore.StringVectorData( [ "R", "G", "B", "A" ] ) )
 		script["imageStats"]["area"].setValue( imath.Box2i( imath.V2i( 0 ), imath.V2i( 640, 480 ) ) )
 
@@ -144,24 +146,29 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 		# Render the cube with one level of subdivision. Check we get roughly the
 		# alpha coverage we expect.
 
-		script["render"]["state"].setValue( script["render"].State.Running )
-		time.sleep( 1 )
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as handler :
 
-		script["objectToImage"]["object"].setValue( IECoreImage.ImageDisplayDriver.storedImage( "subdivisionTest" ) )
-		self.assertAlmostEqual( script["imageStats"]["average"][3].getValue(), 0.381, delta = 0.001 )
+			script["render"]["state"].setValue( script["render"].State.Running )
 
-		# Now up the number of subdivision levels. The alpha coverage should
-		# increase as the shape tends towards the limit surface.
+			handler.waitFor( 1 )
 
-		script["attributes"]["attributes"]["subdivIterations"]["value"].setValue( 4 )
-		time.sleep( 1 )
+			self.assertAlmostEqual( script["imageStats"]["average"][3].getValue(), 0.381, delta = 0.001 )
 
-		script["objectToImage"]["object"].setValue( IECoreImage.ImageDisplayDriver.storedImage( "subdivisionTest" ) )
-		self.assertAlmostEqual( script["imageStats"]["average"][3].getValue(), 0.424, delta = 0.001 )
+			# Now up the number of subdivision levels. The alpha coverage should
+			# increase as the shape tends towards the limit surface.
+
+			script["attributes"]["attributes"]["subdivIterations"]["value"].setValue( 4 )
+			handler.waitFor( 1 )
+
+			self.assertAlmostEqual( script["imageStats"]["average"][3].getValue(), 0.424, delta = 0.001 )
+
+			script["render"]["state"].setValue( script["render"].State.Stopped )
 
 	def testLightLinkingAfterParameterUpdates( self ) :
 
 		s = Gaffer.ScriptNode()
+		s["catalogue"] = GafferImage.Catalogue()
+
 
 		s["s"] = GafferScene.Sphere()
 
@@ -184,14 +191,6 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 		s["Light"] = GafferArnold.ArnoldLight( "skydome_light" )
 		s["Light"].loadShader( "skydome_light" )
 
-		s["FloatToRGB"] = GafferArnold.ArnoldShader( "FloatToRGB" )
-		s["FloatToRGB"].loadShader( "float_to_rgb" )
-		s["FloatToRGB"]["parameters"]["r"].setValue( 1.0 )
-		s["FloatToRGB"]["parameters"]["g"].setValue( 1.0 )
-		s["FloatToRGB"]["parameters"]["b"].setValue( 1.0 )
-
-		s["Light"]["parameters"]["color"].setInput( s["FloatToRGB"]["out"] )
-
 		s["c"] = GafferScene.Camera()
 		s["c"]["transform"]["translate"]["z"].setValue( 2 )
 
@@ -208,8 +207,10 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 				"ieDisplay",
 				"rgba",
 				{
-					"driverType" : "ImageDisplayDriver",
-					"handle" : "litByEnvironment",
+					"driverType" : "ClientDisplayDriver",
+					"displayHost" : "localhost",
+					"displayPort" : str( s['catalogue'].displayDriverServer().portNumber() ),
+					"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
 				}
 			)
 		)
@@ -225,29 +226,120 @@ class InteractiveArnoldRenderTest( GafferSceneTest.InteractiveRenderTest ) :
 
 		# Start rendering and make sure the light is linked to the sphere
 
-		s["r"]["state"].setValue( s["r"].State.Running )
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as handler :
 
-		time.sleep( 0.5 )
+			s["r"]["state"].setValue( s["r"].State.Running )
 
-		c = self._color3fAtUV(
-			IECoreImage.ImageDisplayDriver.storedImage( "litByEnvironment" ),
-			imath.V2f( 0.5 )
+			handler.waitFor( 1.0 )
+
+			self.assertAlmostEqual(
+				self._color4fAtUV( s["catalogue"], imath.V2f( 0.5 ) ).r,
+				1,
+				delta = 0.01
+			)
+
+			# Change a value on the light. The light should still be linked to the sphere
+			# and we should get the same result as before.
+			s["Light"]['parameters']['shadow_density'].setValue( 0.0 )
+
+			handler.waitFor( 1.0 )
+
+			self.assertAlmostEqual(
+				self._color4fAtUV( s["catalogue"], imath.V2f( 0.5 ) ).r,
+				1,
+				delta = 0.01
+			)
+
+			s["r"]["state"].setValue( s["r"].State.Stopped )
+
+	def testQuadLightTextureEdits( self ) :
+
+		# Quad light texture edits don't currently update correctly in Arnold.
+		# Check that our workaround is working
+
+		s = Gaffer.ScriptNode()
+		s["catalogue"] = GafferImage.Catalogue()
+
+
+		s["s"] = GafferScene.Sphere()
+
+		s["PathFilter"] = GafferScene.PathFilter( "PathFilter" )
+		s["PathFilter"]["paths"].setValue( IECore.StringVectorData( [ '/sphere' ] ) )
+
+		s["ShaderAssignment"] = GafferScene.ShaderAssignment( "ShaderAssignment" )
+		s["ShaderAssignment"]["in"].setInput( s["s"]["out"] )
+		s["ShaderAssignment"]["filter"].setInput( s["PathFilter"]["out"] )
+
+		s["lambert"], _ = self._createMatteShader()
+		s["ShaderAssignment"]["shader"].setInput( s["lambert"]["out"] )
+
+		s["Tex"] = GafferArnold.ArnoldShader( "image" )
+		s["Tex"].loadShader( "image" )
+		s["Tex"]["parameters"]["filename"].setValue( "python/GafferArnoldTest/images/sphereLightBake.exr" )
+		s["Tex"]["parameters"]["multiply"].setValue( imath.Color3f( 1, 0, 0 ) )
+
+		s["Light"] = GafferArnold.ArnoldLight( "quad_light" )
+		s["Light"].loadShader( "quad_light" )
+		s["Light"]["transform"]["translate"]["z"].setValue( 2 )
+		s["Light"]["parameters"]["color"].setInput( s["Tex"]["out"] )
+		s["Light"]["parameters"]["exposure"].setValue( 4 )
+
+		s["c"] = GafferScene.Camera()
+		s["c"]["transform"]["translate"]["z"].setValue( 2 )
+
+		s["group"] = GafferScene.Group()
+		s["group"]["in"][0].setInput( s["ShaderAssignment"]["out"] )
+		s["group"]["in"][1].setInput( s["Light"]["out"] )
+		s["group"]["in"][2].setInput( s["c"]["out"] )
+
+		s["o"] = GafferScene.Outputs()
+		s["o"].addOutput(
+			"beauty",
+			IECoreScene.Output(
+				"test",
+				"ieDisplay",
+				"rgba",
+				{
+					"driverType" : "ClientDisplayDriver",
+					"displayHost" : "localhost",
+					"displayPort" : str( s['catalogue'].displayDriverServer().portNumber() ),
+					"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
+				}
+			)
 		)
+		s["o"]["in"].setInput( s["group"]["out"] )
 
-		self.assertEqual( c, imath.Color3f( 1.0 ) )
+		s["so"] = GafferScene.StandardOptions()
+		s["so"]["options"]["renderCamera"]["value"].setValue( "/group/camera" )
+		s["so"]["options"]["renderCamera"]["enabled"].setValue( True )
+		s["so"]["in"].setInput( s["o"]["out"] )
 
-		# Change a value on the light. The light should still be linked to the sphere
-		# and we should get the same result as before.
-		s["Light"]['parameters']['shadow_density'].setValue( 0.0 )
+		s["r"] = self._createInteractiveRender()
+		s["r"]["in"].setInput( s["so"]["out"] )
 
-		time.sleep( 0.5 )
+		# Start rendering and make sure the light is linked to the sphere
 
-		c = self._color3fAtUV(
-			IECoreImage.ImageDisplayDriver.storedImage( "litByEnvironment" ),
-			imath.V2f( 0.5 )
-		)
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as handler :
 
-		self.assertEqual( c, imath.Color3f( 1.0 ) )
+			s["r"]["state"].setValue( s["r"].State.Running )
+
+			handler.waitFor( 1.0 )
+
+			initialColor = self._color4fAtUV( s["catalogue"], imath.V2f( 0.5 ) )
+			self.assertAlmostEqual( initialColor.r, 0.09, delta = 0.01 )
+			self.assertAlmostEqual( initialColor.g, 0, delta = 0.01 )
+
+			# Edit texture network and make sure the changes take effect
+
+			s["Tex"]["parameters"]["multiply"].setValue( imath.Color3f( 0, 1, 0 ) )
+
+			handler.waitFor( 1.0 )
+
+			updateColor = self._color4fAtUV( s["catalogue"], imath.V2f( 0.5 ) )
+			self.assertAlmostEqual( updateColor.r, 0, delta = 0.01 )
+			self.assertAlmostEqual( updateColor.g, 0.06, delta = 0.01 )
+
+			s["r"]["state"].setValue( s["r"].State.Stopped )
 
 	def _createInteractiveRender( self ) :
 

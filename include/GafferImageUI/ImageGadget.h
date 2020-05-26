@@ -201,6 +201,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 		// be inserted/updated in parallel in a multithreaded
 		// update step.
 
+	public:
 		struct TileIndex
 		{
 			TileIndex( const Imath::V2i &tileOrigin, IECore::InternedString channelName )
@@ -217,6 +218,7 @@ class GAFFERIMAGEUI_API ImageGadget : public GafferUI::Gadget
 			IECore::InternedString channelName;
 		};
 
+	private:
 		struct Tile
 		{
 

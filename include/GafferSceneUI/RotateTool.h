@@ -84,24 +84,43 @@ class GAFFERSCENEUI_API RotateTool : public TransformTool
 			Rotation( const Selection &selection, Orientation orientation );
 
 			bool canApply( const Imath::V3i &axisMask ) const;
-			void apply( const Imath::Eulerf &rotation ) const;
+			void apply( const Imath::Eulerf &rotation );
 
 			private :
 
-				Imath::V3f updatedRotateValue( const Imath::Eulerf &rotation, Imath::V3f *currentValue = nullptr ) const;
+				Imath::V3f updatedRotateValue( const Gaffer::V3fPlug *rotatePlug, const Imath::Eulerf &rotation, Imath::V3f *currentValue = nullptr ) const;
 
-				Gaffer::V3fPlugPtr m_plug;
-				Imath::Eulerf m_originalRotation; // Radians
+				// For the validity of this reference, we rely
+				// on `TransformTool::selection()` not changing
+				// during drags.
+				const Selection &m_selection;
 				Imath::M44f m_gadgetToTransform;
-				float m_time;
+
+				// Initialised lazily when we first
+				// acquire the transform plug.
+				mutable boost::optional<Imath::Eulerf> m_originalRotation; // Radians
 
 		};
 
-		// Drag handling.
+		// Handle Drag handling.
 
-		IECore::RunTimeTypedPtr dragBegin();
-		bool dragMove( const GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
-		bool dragEnd();
+		IECore::RunTimeTypedPtr handleDragBegin();
+		bool handleDragMove( GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
+		bool handleDragEnd();
+
+		// Target mode handling
+
+		bool keyPress( const GafferUI::KeyEvent &event );
+		bool keyRelease( const GafferUI::KeyEvent &event );
+		void sceneGadgetLeave( const GafferUI::ButtonEvent &event );
+		void visibilityChanged( GafferUI::Gadget *gadget );
+		void plugSet( Gaffer::Plug *plug );
+
+		bool buttonPress( const GafferUI::ButtonEvent &event );
+
+		void setTargetedMode( bool targeted );
+		inline bool getTargetedMode() const { return m_targetedMode; }
+		bool m_targetedMode;
 
 		std::vector<Rotation> m_drag;
 

@@ -38,8 +38,6 @@
 
 #include "Transform2DPlugBinding.h"
 
-#include "GafferImage/Format.h"
-
 #include "GafferBindings/PlugBinding.h"
 
 #include "Gaffer/Transform2DPlug.h"

@@ -57,7 +57,7 @@ class BoxTest( GafferTest.TestCase ) :
 		s2 = Gaffer.ScriptNode()
 		s2.execute( s.serialise() )
 
-		self.assert_( s2["b"]["n2"]["op1"].getInput().isSame( s2["b"]["n1"]["sum"] ) )
+		self.assertTrue( s2["b"]["n2"]["op1"].getInput().isSame( s2["b"]["n1"]["sum"] ) )
 
 	def testCreate( self ) :
 
@@ -1048,7 +1048,7 @@ class BoxTest( GafferTest.TestCase ) :
 
 		try :
 			box = Gaffer.Box.create( scriptNode, setOfNodesToBox )
-		except RuntimeError, e :
+		except RuntimeError as e :
 			self.assertTrue( False, msg = "boxing should not raise an exception here" )
 
 	def testPassThroughCreatedInVersion0_52( self ) :

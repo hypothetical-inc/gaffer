@@ -57,17 +57,13 @@ GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ShaderTweaks );
 size_t ShaderTweaks::g_firstPlugIndex = 0;
 
 ShaderTweaks::ShaderTweaks( const std::string &name )
-	:	SceneElementProcessor( name, IECore::PathMatcher::NoMatch )
+	:	AttributeProcessor( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "shader" ) );
 	addChild( new BoolPlug( "ignoreMissing", Plug::In, false ) );
 	addChild( new TweaksPlug( "tweaks" ) );
-
-	// Fast pass-throughs for the things we don't alter.
-	outPlug()->objectPlug()->setInput( inPlug()->objectPlug() );
-	outPlug()->transformPlug()->setInput( inPlug()->transformPlug() );
-	outPlug()->boundPlug()->setInput( inPlug()->boundPlug() );
+	addChild( new BoolPlug( "localise", Plug::In, false ) );
 }
 
 ShaderTweaks::~ShaderTweaks()
@@ -104,35 +100,49 @@ const GafferScene::TweaksPlug *ShaderTweaks::tweaksPlug() const
 	return getChild<GafferScene::TweaksPlug>( g_firstPlugIndex + 2 );
 }
 
-void ShaderTweaks::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
+Gaffer::BoolPlug *ShaderTweaks::localisePlug()
 {
-	SceneElementProcessor::affects( input, outputs );
-
-	if(
-		tweaksPlug()->isAncestorOf( input ) ||
-		input == shaderPlug() ||
-		input == ignoreMissingPlug()
-	)
-	{
-		outputs.push_back( outPlug()->attributesPlug() );
-	}
+	return getChild<Gaffer::BoolPlug>( g_firstPlugIndex + 3 );
 }
 
-bool ShaderTweaks::processesAttributes() const
+const Gaffer::BoolPlug *ShaderTweaks::localisePlug() const
 {
-	// Although the base class says that we should return a constant, it should
-	// be OK to return this because it's constant across the hierarchy.
-	return !tweaksPlug()->children().empty();
+	return getChild<Gaffer::BoolPlug>( g_firstPlugIndex + 3 );
+}
+
+bool ShaderTweaks::affectsProcessedAttributes( const Gaffer::Plug *input ) const
+{
+	return
+		AttributeProcessor::affectsProcessedAttributes( input ) ||
+		tweaksPlug()->isAncestorOf( input ) ||
+		input == shaderPlug() ||
+		input == ignoreMissingPlug() ||
+		input == localisePlug()
+	;
 }
 
 void ShaderTweaks::hashProcessedAttributes( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const
 {
-	shaderPlug()->hash( h );
-	tweaksPlug()->hash( h );
-	ignoreMissingPlug()->hash( h );
+	if( tweaksPlug()->children().empty() )
+	{
+		h = inPlug()->attributesPlug()->hash();
+	}
+	else
+	{
+		AttributeProcessor::hashProcessedAttributes( path, context, h );
+		shaderPlug()->hash( h );
+		tweaksPlug()->hash( h );
+		ignoreMissingPlug()->hash( h );
+		localisePlug()->hash( h );
+
+		if( localisePlug()->getValue() )
+		{
+			h.append( inPlug()->fullAttributesHash( path ) );
+		}
+	}
 }
 
-IECore::ConstCompoundObjectPtr ShaderTweaks::computeProcessedAttributes( const ScenePath &path, const Gaffer::Context *context, IECore::ConstCompoundObjectPtr inputAttributes ) const
+IECore::ConstCompoundObjectPtr ShaderTweaks::computeProcessedAttributes( const ScenePath &path, const Gaffer::Context *context, const IECore::CompoundObject *inputAttributes ) const
 {
 	const string shader = shaderPlug()->getValue();
 	if( shader.empty() )
@@ -149,25 +159,40 @@ IECore::ConstCompoundObjectPtr ShaderTweaks::computeProcessedAttributes( const S
 	const bool ignoreMissing = ignoreMissingPlug()->getValue();
 
 	CompoundObjectPtr result = new CompoundObject;
-	const CompoundObject::ObjectMap &in = inputAttributes->members();
+	result->members() = inputAttributes->members();
 	CompoundObject::ObjectMap &out = result->members();
-	for( CompoundObject::ObjectMap::const_iterator it = in.begin(), eIt = in.end(); it != eIt; ++it )
+
+	// We switch our source attributes depending on whether we are
+	// localising inherited shaders or just using the ones at the location.
+
+	const CompoundObject::ObjectMap *source = &inputAttributes->members();
+
+	// If we're using fullAttributes, we need to keep them alive.
+	ConstCompoundObjectPtr fullAttributes;
+	if( localisePlug()->getValue() )
 	{
-		if( !StringAlgo::matchMultiple( it->first, shader ) )
+		fullAttributes = inPlug()->fullAttributes( path );
+		source = &fullAttributes->members();
+	}
+
+	for( const auto &attribute : *source )
+	{
+		if( !StringAlgo::matchMultiple( attribute.first, shader ) )
 		{
-			out.insert( *it );
 			continue;
 		}
-		const ShaderNetwork *network = runTimeCast<const ShaderNetwork>( it->second.get() );
+
+		const ShaderNetwork *network = runTimeCast<const ShaderNetwork>( attribute.second.get() );
 		if( !network )
 		{
-			out.insert( *it );
 			continue;
 		}
 
 		ShaderNetworkPtr tweakedNetwork = network->copy();
-		tweaksPlug->applyTweaks( tweakedNetwork.get(), ignoreMissing ? TweakPlug::MissingMode::Ignore : TweakPlug::MissingMode::Error );
-		out[it->first] = tweakedNetwork;
+		if( tweaksPlug->applyTweaks( tweakedNetwork.get(), ignoreMissing ? TweakPlug::MissingMode::Ignore : TweakPlug::MissingMode::Error ) )
+		{
+			out[attribute.first] = tweakedNetwork;
+		}
 	}
 
 	return result;

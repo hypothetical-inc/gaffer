@@ -56,12 +56,29 @@
 
 using namespace std;
 using namespace boost::python;
+using namespace IECorePython;
 using namespace Gaffer;
 using namespace GafferScene;
 using namespace GafferSceneUI;
 
 namespace
 {
+
+struct StatusChangedSlotCaller
+{
+	boost::signals::detail::unusable operator()( boost::python::object slot, CropWindowTool &t )
+	{
+		try
+		{
+			slot( CropWindowToolPtr( &t ) );
+		}
+		catch( const error_already_set &e )
+		{
+			IECorePython::ExceptionAlgo::translatePythonException();
+		}
+		return boost::signals::detail::unusable();
+	}
+};
 
 boost::python::list selection( const TransformTool &tool )
 {
@@ -77,6 +94,12 @@ boost::python::list selection( const TransformTool &tool )
 		result.append( s );
 	}
 	return result;
+}
+
+bool selectionEditable( const TransformTool &tool )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	return tool.selectionEditable();
 }
 
 struct SelectionChangedSlotCaller
@@ -97,41 +120,48 @@ struct SelectionChangedSlotCaller
 
 ScenePlugPtr scene( const TransformTool::Selection &s )
 {
-	return boost::const_pointer_cast<ScenePlug>( s.scene );
+	return const_cast<ScenePlug *>( s.scene() );
 }
 
 std::string path( const TransformTool::Selection &s )
 {
 	std::string result;
-	ScenePlug::pathToString( s.path, result );
+	ScenePlug::pathToString( s.path(), result );
 	return result;
 }
 
 ContextPtr context( const TransformTool::Selection &s )
 {
-	return boost::const_pointer_cast<Context>( s.context );
+	return const_cast<Context *>( s.context() );
 }
 
 ScenePlugPtr upstreamScene( const TransformTool::Selection &s )
 {
-	return boost::const_pointer_cast<ScenePlug>( s.upstreamScene );
+	return const_cast<ScenePlug *>( s.upstreamScene() );
 }
 
 std::string upstreamPath( const TransformTool::Selection &s )
 {
 	std::string result;
-	ScenePlug::pathToString( s.upstreamPath, result );
+	ScenePlug::pathToString( s.upstreamPath(), result );
 	return result;
 }
 
 ContextPtr upstreamContext( const TransformTool::Selection &s )
 {
-	return boost::const_pointer_cast<Context>( s.context );
+	return const_cast<Context *>( s.upstreamContext() );
 }
 
-TransformPlugPtr transformPlug( const TransformTool::Selection &s )
+EditScopePtr editScope( const TransformTool::Selection &s )
 {
-	return s.transformPlug;
+	return const_cast<EditScope *>( s.editScope() );
+}
+
+object acquireTransformEdit( const TransformTool::Selection &s, bool createIfNecessary )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	auto p = s.acquireTransformEdit( createIfNecessary );
+	return p ? object( *p ) : object();
 }
 
 } // namespace
@@ -140,27 +170,42 @@ void GafferSceneUIModule::bindTools()
 {
 
 	GafferBindings::NodeClass<SelectionTool>( nullptr, no_init );
-	GafferBindings::NodeClass<CropWindowTool>( nullptr, no_init );
+
+	{
+		GafferBindings::NodeClass<CropWindowTool>( nullptr, no_init )
+			.def( "status", &CropWindowTool::status )
+			.def( "statusChangedSignal", &CropWindowTool::statusChangedSignal, return_internal_reference<1>() )
+		;
+
+		GafferBindings::SignalClass<CropWindowTool::StatusChangedSignal, GafferBindings::DefaultSignalCaller<CropWindowTool::StatusChangedSignal>, StatusChangedSlotCaller>( "StatusChangedSignal" );
+	}
 
 	{
 		scope s = GafferBindings::NodeClass<TransformTool>( nullptr, no_init )
 			.def( "selection", &selection )
+			.def( "selectionEditable", &selectionEditable )
 			.def( "selectionChangedSignal", &TransformTool::selectionChangedSignal, return_internal_reference<1>() )
 			.def( "handlesTransform", &TransformTool::handlesTransform )
 		;
 
 		class_<TransformTool::Selection>( "Selection", no_init )
 
-			.add_property( "scene", &scene )
-			.add_property( "path", &path )
-			.add_property( "context", &context )
+			.def( init<const ConstScenePlugPtr &, const ScenePlug::ScenePath &, const ConstContextPtr &, const EditScopePtr &>() )
 
-			.add_property( "upstreamScene", &upstreamScene )
-			.add_property( "upstreamPath", &upstreamPath )
-			.add_property( "upstreamContext", &upstreamContext )
+			.def( "scene", &scene )
+			.def( "path", &path )
+			.def( "context", &context )
 
-			.add_property( "transformPlug", &transformPlug )
-			.def_readonly( "transformSpace", &TransformTool::Selection::transformSpace )
+			.def( "upstreamScene", &upstreamScene )
+			.def( "upstreamPath", &upstreamPath )
+			.def( "upstreamContext", &upstreamContext )
+
+			.def( "editable", &TransformTool::Selection::editable )
+			.def( "warning", &TransformTool::Selection::warning, return_value_policy<copy_const_reference>() )
+			.def( "editScope", &editScope )
+			.def( "acquireTransformEdit", &acquireTransformEdit, ( boost::python::arg( "createIfNecessary" ) = true ) )
+			.def( "editTarget", &TransformTool::Selection::editTarget, return_value_policy<CastToIntrusivePtr>() )
+			.def( "transformSpace", &TransformTool::Selection::transformSpace, return_value_policy<copy_const_reference>() )
 
 		;
 

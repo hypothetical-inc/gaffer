@@ -37,7 +37,8 @@
 #ifndef GAFFERSCENEUI_STANDARDLIGHTVISUALISER_H
 #define GAFFERSCENEUI_STANDARDLIGHTVISUALISER_H
 
-#include "GafferSceneUI/LightVisualiser.h"
+#include "GafferSceneUI/Export.h"
+#include "GafferScene/Private/IECoreGLPreview/LightVisualiser.h"
 
 #include "IECoreGL/Group.h"
 
@@ -52,7 +53,7 @@ namespace GafferSceneUI
 /// This also provides several protected utility methods for
 /// making standard visualisations, so is suitable for use as
 /// a base class for custom light visualisers.
-class GAFFERSCENEUI_API StandardLightVisualiser : public LightVisualiser
+class GAFFERSCENEUI_API StandardLightVisualiser : public IECoreGLPreview::LightVisualiser
 {
 
 	public :
@@ -62,30 +63,55 @@ class GAFFERSCENEUI_API StandardLightVisualiser : public LightVisualiser
 		StandardLightVisualiser();
 		~StandardLightVisualiser() override;
 
-		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		IECoreGLPreview::Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
-		static void spotlightParameters( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, float &innerAngle, float &outerAngle, float &lensRadius );
+		static void spotlightParameters( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, float &innerAngle, float &outerAngle, float &radius, float &lensRadius );
 
 	protected :
-
-		static const char *faceCameraVertexSource();
 
 		static IECoreGL::ConstRenderablePtr ray();
 		static IECoreGL::ConstRenderablePtr pointRays( float radius = 0 );
 		static IECoreGL::ConstRenderablePtr distantRays();
-		static IECoreGL::ConstRenderablePtr spotlightCone( float innerAngle, float outerAngle, float lensRadius );
-		static IECoreGL::ConstRenderablePtr environmentSphere( const Imath::Color3f &color, const std::string &textureFileName, int maxTextureResolution );
-		static IECoreGL::ConstRenderablePtr colorIndicator( const Imath::Color3f &color, bool cameraFacing = true );
+		static IECoreGL::ConstRenderablePtr spotlightCone( float innerAngle, float outerAngle, float lensRadius, float length = 1.0f, float lineWidthScale = 1.0f );
+		static IECoreGL::ConstRenderablePtr sphereWireframe( float radius, const Imath::Vec3<bool> &axisRings, float lineWidthScale = 1.0f, const Imath::V3f &center = Imath::V3f( 0.0f ) );
+
+		static IECoreGL::ConstRenderablePtr quadPortal( const Imath::V2f &size, float hatchingScale = 1.0f );
+
+		static IECoreGL::ConstRenderablePtr colorIndicator( const Imath::Color3f &color );
+
+		// This method should be overridden by any sub-classes that wish to
+		// provide an alternate surface texture for area-based lights.
+		//
+		// It should return one of :
+		//  - nullptr : No texture applicable
+		//  - StringData : The file path of a texture.
+		//  - CompoundData : An image representation of the texture data, as
+		//      supported by IECoreGL::ToGLTextureConverter.
+		//
+		// The default implementation looks for a string parameter registered
+		// as the "textureNameParameter" for the supplied shader network's
+		// output shader.
+		virtual IECore::DataPtr surfaceTexture( const IECoreScene::ShaderNetwork *shaderNetwork, const IECore::CompoundObject *attributes, int maxTextureResolution ) const;
 
 	private :
 
 		/// \todo Expose publicly once we have enough uses to dictate
 		/// the most general set of parameters.
-		static IECoreGL::ConstRenderablePtr quadShape();
-		static IECoreGL::ConstRenderablePtr diskShape( float radius );
-		static IECoreGL::ConstRenderablePtr cylinderShape( float radius );
+		static IECoreGL::ConstRenderablePtr cylinderShape( float radius, bool filled = false, const Imath::Color3f &color = Imath::Color3f( 1.0f ) );
 		static IECoreGL::ConstRenderablePtr pointShape( float radius );
 		static IECoreGL::ConstRenderablePtr cylinderRays( float radius );
+
+		// textureData should be as per return type of surfaceTexture
+
+		static IECoreGL::ConstRenderablePtr environmentSphereSurface( IECore::ConstDataPtr textureData, const Imath::Color3f &tint, int textureMaxResolution, const Imath::Color3f &fallbackColor );
+
+		static IECoreGL::ConstRenderablePtr quadWireframe( const Imath::V2f &size );
+		static IECoreGL::ConstRenderablePtr quadSurface( const Imath::V2f &size, IECore::ConstDataPtr textureData, const Imath::Color3f &tint, int textureMaxResolution, const Imath::Color3f &fallbackColor );
+
+		static IECoreGL::ConstRenderablePtr diskWireframe( float radius );
+		static IECoreGL::ConstRenderablePtr diskSurface( float radius, IECore::ConstDataPtr textureData, const Imath::Color3f &tint, int textureMaxResolution, const Imath::Color3f &fallbackColor );
+
+		static LightVisualiser::LightVisualiserDescription<StandardLightVisualiser> g_description;
 
 };
 

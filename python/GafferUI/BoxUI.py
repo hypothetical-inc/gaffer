@@ -81,7 +81,8 @@ Gaffer.Metadata.registerNode(
 
 		"*" : [
 
-			"labelPlugValueWidget:renameable", True,
+			"deletable", True,
+			"renameable", True,
 
 		],
 
@@ -198,22 +199,6 @@ def __upgradeToUseBoxIO( node ) :
 # Shared menu code
 ##########################################################################
 
-def __deletePlug( plug ) :
-
-	with Gaffer.UndoScope( plug.ancestor( Gaffer.ScriptNode ) ) :
-		plug.parent().removeChild( plug )
-
-def __appendPlugDeletionMenuItems( menuDefinition, plug, readOnly = False ) :
-
-	if not isinstance( plug.parent(), Gaffer.Box ) :
-		return
-
-	menuDefinition.append( "/DeleteDivider", { "divider" : True } )
-	menuDefinition.append( "/Delete", {
-		"command" : functools.partial( __deletePlug, plug ),
-		"active" : not readOnly,
-	} )
-
 def __promote( plug ) :
 
 	with Gaffer.UndoScope( plug.ancestor( Gaffer.ScriptNode ) ) :
@@ -224,7 +209,7 @@ def __unpromote( plug ) :
 	with Gaffer.UndoScope( plug.ancestor( Gaffer.ScriptNode ) ) :
 		Gaffer.PlugAlgo.unpromote( plug )
 
-def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnly = False ) :
+def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnlyUI = False ) :
 
 	node = plug.node()
 	if node is None :
@@ -234,11 +219,20 @@ def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnly = False ) :
 	if box is None :
 		return
 
-	parentLabel = {
+	readOnly = readOnlyUI or Gaffer.MetadataAlgo.readOnly( plug )
+
+	ancestorLabel = {
 		Gaffer.ArrayPlug : "Array",
 		Gaffer.TransformPlug : "Transform",
 		Gaffer.Transform2DPlug : "Transform",
 	}.get( type( plug.parent() ) )
+
+	if ancestorLabel is not None :
+		ancestor = plug.parent()
+	else :
+		ancestor = plug.ancestor( Gaffer.Spreadsheet.RowsPlug )
+		if ancestor is not None :
+			ancestorLabel = "Spreadsheet"
 
 	if Gaffer.PlugAlgo.canPromote( plug ) :
 
@@ -250,9 +244,9 @@ def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnly = False ) :
 			"active" : not readOnly,
 		} )
 
-		if parentLabel and Gaffer.PlugAlgo.canPromote( plug.parent() ) :
-			menuDefinition.append( "/Promote %s to %s" % ( parentLabel, box.getName() ), {
-				"command" : functools.partial( __promote, plug.parent() ),
+		if ancestorLabel and Gaffer.PlugAlgo.canPromote( ancestor ) :
+			menuDefinition.append( "/Promote %s to %s" % ( ancestorLabel, box.getName() ), {
+				"command" : functools.partial( __promote, ancestor ),
 				"active" : not readOnly,
 			} )
 
@@ -263,9 +257,9 @@ def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnly = False ) :
 		if len( menuDefinition.items() ) :
 			menuDefinition.append( "/BoxDivider", { "divider" : True } )
 
-		if parentLabel and Gaffer.PlugAlgo.isPromoted( plug.parent() ) :
-			menuDefinition.append( "/Unpromote %s from %s" % ( parentLabel, box.getName() ), {
-				"command" : functools.partial( __unpromote, plug.parent() ),
+		if ancestorLabel and Gaffer.PlugAlgo.isPromoted( ancestor ) :
+			menuDefinition.append( "/Unpromote %s from %s" % ( ancestorLabel, box.getName() ), {
+				"command" : functools.partial( __unpromote, ancestor ),
 				"active" : not readOnly,
 			} )
 		else :
@@ -282,10 +276,9 @@ def __appendPlugPromotionMenuItems( menuDefinition, plug, readOnly = False ) :
 
 def __plugPopupMenu( menuDefinition, plugValueWidget ) :
 
-	__appendPlugDeletionMenuItems( menuDefinition, plugValueWidget.getPlug(), readOnly = plugValueWidget.getReadOnly() )
-	__appendPlugPromotionMenuItems( menuDefinition, plugValueWidget.getPlug(), readOnly = plugValueWidget.getReadOnly() )
+	__appendPlugPromotionMenuItems( menuDefinition, plugValueWidget.getPlug(), readOnlyUI = plugValueWidget.getReadOnly() )
 
-__plugPopupMenuConnection = GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu )
+GafferUI.PlugValueWidget.popupMenuSignal().connect( __plugPopupMenu, scoped = False )
 
 # GraphEditor plug context menu
 ##########################################################################
@@ -338,7 +331,7 @@ def __graphEditorPlugContextMenu( graphEditor, plug, menuDefinition ) :
 			"/Rename...",
 			{
 				"command" : functools.partial( __renamePlug, plug = parentPlug ),
-				"active" : not readOnly,
+				"active" : not readOnly and Gaffer.Metadata.value( parentPlug, "renameable" ),
 			}
 		)
 
@@ -375,7 +368,6 @@ def __graphEditorPlugContextMenu( graphEditor, plug, menuDefinition ) :
 			}
 		)
 
-	__appendPlugDeletionMenuItems( menuDefinition, parentPlug, readOnly )
 	__appendPlugPromotionMenuItems( menuDefinition, plug, readOnly )
 
 GafferUI.GraphEditor.plugContextMenuSignal().connect( __graphEditorPlugContextMenu, scoped = False )

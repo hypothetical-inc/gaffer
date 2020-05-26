@@ -152,10 +152,10 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 		g["in"][0].setInput( p["out"] )
 		self.assertEqual( len( g["in"] ), 2 )
 
- 		g["in"][1].setInput( p["out"] )
+		g["in"][1].setInput( p["out"] )
 		self.assertEqual( len( g["in"] ), 3 )
 
- 		g["in"][1].setInput( None )
+		g["in"][1].setInput( None )
 		self.assertEqual( len( g["in"] ), 2 )
 
 		g["in"][0].setInput( None )
@@ -164,7 +164,7 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 		g["in"][0].setInput( p["out"] )
 		self.assertEqual( len( g["in"] ), 2 )
 
- 		g["in"][1].setInput( p["out"] )
+		g["in"][1].setInput( p["out"] )
 		self.assertEqual( len( g["in"] ), 3 )
 
 		g["in"].setInput( None )
@@ -322,8 +322,8 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 		s = Gaffer.ScriptNode()
 		s.execute( ss )
 
-		self.failUnless( s["g"]["in"][0].getInput().isSame( s["c"]["out"] ) )
-		self.failUnless( s["g"]["in"][1].getInput().isSame( s["c"]["out"] ) )
+		self.assertTrue( s["g"]["in"][0].getInput().isSame( s["c"]["out"] ) )
+		self.assertTrue( s["g"]["in"][1].getInput().isSame( s["c"]["out"] ) )
 		self.assertEqual( len( s["g"]["in"] ), 3 )
 		self.assertEqual( s["g"]["in"][2].getInput(), None )
 
@@ -451,13 +451,13 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 		g1["in"][0].setInput( p["out"] )
 
 		g2 = GafferScene.Group()
- 		g2["in"][0].setInput( p["out"] )
+		g2["in"][0].setInput( p["out"] )
 
- 		self.assertSceneHashesEqual( g1["out"], g2["out"] )
+		self.assertSceneHashesEqual( g1["out"], g2["out"] )
 
-	 	g2["transform"]["translate"].setValue( imath.V3f( 1, 0, 0 ) )
+		g2["transform"]["translate"].setValue( imath.V3f( 1, 0, 0 ) )
 
- 		self.assertSceneHashesEqual( g1["out"], g2["out"], pathsToIgnore = ( "/", "/group", ) )
+		self.assertSceneHashesEqual( g1["out"], g2["out"], pathsToIgnore = ( "/", "/group", ) )
 		self.assertSceneHashesEqual( g1["out"], g2["out"], checks = self.allSceneChecks - { "transform", "bound" } )
 		self.assertNotEqual( g1["out"].transformHash( "/group" ), g2["out"].transformHash( "/group" ) )
 		self.assertEqual( g1["out"].boundHash( "/group" ), g2["out"].boundHash( "/group" ) )
@@ -471,9 +471,9 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 		g1["in"][0].setInput( p["out"] )
 
 		g2 = GafferScene.Group()
- 		g2["in"][0].setInput( p["out"] )
+		g2["in"][0].setInput( p["out"] )
 
- 		self.assertSceneHashesEqual( g1["out"], g2["out"] )
+		self.assertSceneHashesEqual( g1["out"], g2["out"] )
 
 		g2["name"].setValue( "stuff" )
 
@@ -758,6 +758,40 @@ class GroupTest( GafferSceneTest.SceneTestCase ) :
 
 		self.assertEqual( noduleColor, None )
 		self.assertEqual( noduleColor, connectionColor )
+
+	def testProcessInvalidSet( self ) :
+
+		sphere = GafferScene.Sphere()
+
+		bogusSet = GafferScene.Set()
+		bogusSet["in"].setInput( sphere["out"] )
+		bogusSet["paths"].setValue( IECore.StringVectorData( [ "/sphere", "/notASphere" ] ) )
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( bogusSet["out"] )
+
+		self.assertEqual(
+			group["out"].set( "set" ).value,
+			IECore.PathMatcher( [ "/group/sphere" ] )
+		)
+
+		self.assertSceneValid( group["out"] )
+
+	def testExists( self ) :
+
+		sphere = GafferScene.Sphere()
+		cube = GafferScene.Cube()
+		group = GafferScene.Group()
+		group["in"][0].setInput( sphere["out"] )
+		group["in"][1].setInput( cube["out"] )
+
+		self.assertTrue( group["out"].exists( "/" ) )
+		self.assertTrue( group["out"].exists( "/group" ) )
+		self.assertTrue( group["out"].exists( "/group/sphere" ) )
+		self.assertTrue( group["out"].exists( "/group/cube" ) )
+		self.assertFalse( group["out"].exists( "/group2" ) )
+		self.assertFalse( group["out"].exists( "/group/plane" ) )
+		self.assertFalse( group["out"].exists( "/road/to/nowhere" ) )
 
 	def setUp( self ) :
 

@@ -48,6 +48,7 @@
 #include "IECore/BoxOps.h"
 #include "IECore/MessageHandler.h"
 
+#include "boost/algorithm/string/predicate.hpp"
 #include "boost/bind.hpp"
 #include "boost/bind/placeholders.hpp"
 #include "boost/lexical_cast.hpp"
@@ -69,6 +70,8 @@ using namespace GafferImage;
 
 namespace GafferImage
 {
+
+static const std::string g_headerPrefix = "header:";
 
 class GafferDisplayDriver : public IECoreImage::DisplayDriver
 {
@@ -94,6 +97,15 @@ class GafferDisplayDriver : public IECoreImage::DisplayDriver
 			);
 
 			m_parameters = parameters ? parameters->copy() : CompoundDataPtr( new CompoundData );
+			CompoundDataPtr metadata = new CompoundData;
+			for( const auto &p : m_parameters->readable() )
+			{
+				if( boost::starts_with( p.first.string(), g_headerPrefix ) )
+				{
+					metadata->writable()[p.first.string().substr( g_headerPrefix.size() )] = p.second;
+				}
+			}
+			m_metadata = metadata;
 
 			if( const FloatData *pixelAspect = m_parameters->member<FloatData>( "pixelAspect" ) )
 			{
@@ -111,7 +123,7 @@ class GafferDisplayDriver : public IECoreImage::DisplayDriver
 		GafferDisplayDriver( GafferDisplayDriver &other )
 			:	DisplayDriver( other.displayWindow(), other.dataWindow(), other.channelNames(), other.parameters() ),
 				m_gafferFormat( other.m_gafferFormat ), m_gafferDataWindow( other.m_gafferDataWindow ),
-				m_parameters( other.m_parameters )
+				m_parameters( other.m_parameters ), m_metadata( other.m_metadata )
 		{
 			// boost::multi_array has a joke assignment operator that only works
 			// if you first resize the target of the assignment to match the
@@ -143,6 +155,11 @@ class GafferDisplayDriver : public IECoreImage::DisplayDriver
 		const CompoundData *parameters() const
 		{
 			return m_parameters.get();
+		}
+
+		const CompoundData *metadata() const
+		{
+			return m_metadata.get();
 		}
 
 		void imageData( const Imath::Box2i &box, const float *data, size_t dataSize ) override
@@ -292,6 +309,7 @@ class GafferDisplayDriver : public IECoreImage::DisplayDriver
 		Format m_gafferFormat;
 		Imath::Box2i m_gafferDataWindow;
 		IECore::ConstCompoundDataPtr m_parameters;
+		IECore::ConstCompoundDataPtr m_metadata;
 		DataReceivedSignal m_dataReceivedSignal;
 		ImageReceivedSignal m_imageReceivedSignal;
 
@@ -314,11 +332,24 @@ Display::Display( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
-	// This plug is incremented when new data is received, triggering dirty signals
-	// and prompting reevaluation in the viewer.
+	// This plug is incremented when a new driver is set, triggering dirty signals
+	// on all output plugs and prompting reevaluation in the viewer.
 	addChild(
 		new IntPlug(
-			"__updateCount",
+			"__driverCount",
+			Plug::In,
+			0,
+			0,
+			Imath::limits<int>::max(),
+			Plug::Default & ~Plug::Serialisable
+		)
+	);
+
+	// This plug is incremented when new data is received, triggering dirty signals
+	// on only the channel data plug and prompting reevaluation in the viewer.
+	addChild(
+		new IntPlug(
+			"__channelDataCount",
 			Plug::In,
 			0,
 			0,
@@ -332,26 +363,40 @@ Display::~Display()
 {
 }
 
-Gaffer::IntPlug *Display::updateCountPlug()
+Gaffer::IntPlug *Display::driverCountPlug()
 {
 	return getChild<IntPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::IntPlug *Display::updateCountPlug() const
+const Gaffer::IntPlug *Display::driverCountPlug() const
 {
 	return getChild<IntPlug>( g_firstPlugIndex );
+}
+
+Gaffer::IntPlug *Display::channelDataCountPlug()
+{
+	return getChild<IntPlug>( g_firstPlugIndex + 1 );
+}
+
+const Gaffer::IntPlug *Display::channelDataCountPlug() const
+{
+	return getChild<IntPlug>( g_firstPlugIndex + 1 );
 }
 
 void Display::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
 	ImageNode::affects( input, outputs );
 
-	if( input == updateCountPlug() )
+	if( input == driverCountPlug() )
 	{
 		for( ValuePlugIterator it( outPlug() ); !it.done(); ++it )
 		{
 			outputs.push_back( it->get() );
 		}
+	}
+	else if( input == channelDataCountPlug() )
+	{
+		outputs.push_back( outPlug()->channelDataPlug() );
 	}
 }
 
@@ -376,6 +421,8 @@ void Display::setDriver( IECoreImage::DisplayDriverPtr driver, bool copy )
 	}
 
 	setupDriver( copy ? new GafferDisplayDriver( *gafferDisplayDriver ) : gafferDisplayDriver );
+
+	driverCountPlug()->setValue( driverCountPlug()->getValue() + 1 );
 }
 
 IECoreImage::DisplayDriver *Display::getDriver()
@@ -463,9 +510,35 @@ Imath::Box2i Display::computeDataWindow( const Gaffer::Context *context, const I
 	return Box2i();
 }
 
+void Display::hashMetadata( const GafferImage::ImagePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	const CompoundData *d = m_driver ? m_driver->metadata() : outPlug()->metadataPlug()->defaultValue();
+	h = d->Object::hash();
+}
+
 IECore::ConstCompoundDataPtr Display::computeMetadata( const Gaffer::Context *context, const ImagePlug *parent ) const
 {
-	return outPlug()->metadataPlug()->defaultValue();
+	return m_driver ? m_driver->metadata() : outPlug()->metadataPlug()->defaultValue();
+}
+
+void Display::hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	h.append( false );
+}
+
+bool Display::computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const
+{
+	return false;
+}
+
+void Display::hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	h = ImagePlug::flatTileSampleOffsets()->Object::hash();
+}
+
+IECore::ConstIntVectorDataPtr Display::computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const
+{
+	return ImagePlug::flatTileSampleOffsets();
 }
 
 void Display::hashChannelData( const GafferImage::ImagePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const
@@ -537,7 +610,7 @@ PendingUpdates &pendingUpdates()
 };
 
 // Called on a background thread when data is received on the driver.
-// We need to increment `updateCountPlug()`, but all graph edits must
+// We need to increment `channelDataCountPlug()`, but all graph edits must
 // be performed on the UI thread, so we can't do it directly.
 void Display::dataReceived()
 {
@@ -595,7 +668,7 @@ void Display::dataReceivedUI()
 			// the time we're called, so we must check.
 			if( Display *display = runTimeCast<Display>( plug->node() ) )
 			{
-				display->updateCountPlug()->setValue( display->updateCountPlug()->getValue() + 1 );
+				display->channelDataCountPlug()->setValue( display->channelDataCountPlug()->getValue() + 1 );
 			}
 		}
 	}

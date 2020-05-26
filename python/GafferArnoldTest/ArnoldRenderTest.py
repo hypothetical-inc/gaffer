@@ -38,11 +38,16 @@
 import os
 import inspect
 import unittest
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 import threading
 
 import arnold
 import imath
+import six
 
 import IECore
 import IECoreImage
@@ -94,10 +99,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 			stderr = subprocess.PIPE,
 		)
 		p.wait()
-		self.failIf( p.returncode )
+		self.assertFalse( p.returncode )
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%d.ass" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%d.ass" % i ) )
 
 	def testWaitForImage( self ) :
 
@@ -121,7 +126,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["render"]["in"].setInput( s["outputs"]["out"] )
 		s["render"]["task"].execute()
 
-		self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.tif" ) )
+		self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.tif" ) )
 
 	def testExecuteWithStringSubstitutions( self ) :
 
@@ -142,10 +147,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 			stderr = subprocess.PIPE,
 		)
 		p.wait()
-		self.failIf( p.returncode )
+		self.assertFalse( p.returncode )
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.ass" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.ass" % i ) )
 
 	def testImageOutput( self ) :
 
@@ -175,7 +180,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 				s["render"]["task"].execute()
 
 		for i in range( 1, 4 ) :
-			self.failUnless( os.path.exists( self.temporaryDirectory() + "/test.%04d.tif" % i ) )
+			self.assertTrue( os.path.exists( self.temporaryDirectory() + "/test.%04d.tif" % i ) )
 
 	def testTypeNamePrefixes( self ) :
 
@@ -629,14 +634,14 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		# The requested camera doesn't exist - this should raise an exception.
 
-		self.assertRaisesRegexp( RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
 
 		# And even the existence of a different camera shouldn't change that.
 
 		s["camera"] = GafferScene.Camera()
 		s["options"]["in"].setInput( s["camera"]["out"] )
 
-		self.assertRaisesRegexp( RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "/i/dont/exist", s["render"]["task"].execute )
 
 	def testManyCameras( self ) :
 
@@ -1085,7 +1090,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["render"] = GafferArnold.ArnoldRender()
 		s["render"]["in"].setInput( s["outputs"]["out"] )
 
-		self.assertRaisesRegexp( RuntimeError, "Render aborted", s["render"]["task"].execute )
+		six.assertRaisesRegex( self, RuntimeError, "Render aborted", s["render"]["task"].execute )
 
 	def testOSLShaders( self ) :
 
@@ -1101,6 +1106,8 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		ball = GafferArnold.ArnoldShaderBall()
 		ball["shader"].setInput( pack["out"] )
 
+		catalogue = GafferImage.Catalogue()
+
 		outputs = GafferScene.Outputs()
 		outputs.addOutput(
 			"beauty",
@@ -1109,8 +1116,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 				"ieDisplay",
 				"rgba",
 				{
-					"driverType" : "ImageDisplayDriver",
-					"handle" : "myLovelySphere",
+					"driverType" : "ClientDisplayDriver",
+					"displayHost" : "localhost",
+					"displayPort" : str( catalogue.displayDriverServer().portNumber() ),
+					"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
 				}
 			)
 		)
@@ -1118,11 +1127,13 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		render = GafferArnold.ArnoldRender()
 		render["in"].setInput( outputs["out"] )
-		render["task"].execute()
 
-		image = IECoreImage.ImageDisplayDriver.storedImage( "myLovelySphere" )
-		self.assertTrue( isinstance( image, IECoreImage.ImagePrimitive ) )
-		self.assertEqual( self.__color4fAtUV( image, imath.V2f( 0.5 ) ), imath.Color4f( 1, 0, 0, 1 ) )
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as handler :
+			render["task"].execute()
+
+			handler.waitFor( 0.1 ) #Just need to let the catalogue update
+
+			self.assertEqual( self.__color4fAtUV( catalogue, imath.V2f( 0.5 ) ), imath.Color4f( 1, 0, 0, 1 ) )
 
 	def testDefaultLightsMistakesDontForceLinking( self ) :
 
@@ -1163,18 +1174,10 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 	def __color4fAtUV( self, image, uv ) :
 
-		objectToImage = GafferImage.ObjectToImage()
-		objectToImage["object"].setValue( image )
-
 		sampler = GafferImage.ImageSampler()
-		sampler["image"].setInput( objectToImage["out"] )
-		sampler["pixel"].setValue(
-			uv * imath.V2f(
-				image.displayWindow.size().x,
-				image.displayWindow.size().y
-			)
-		)
-
+		sampler["image"].setInput( image["out"] )
+		dw = image['out']["format"].getValue().getDisplayWindow().size()
+		sampler["pixel"].setValue( uv * imath.V2f( dw.x, dw.y ) )
 		return sampler["color"].getValue()
 
 	def __arrayToSet( self, a ) :
@@ -1221,7 +1224,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		s["parent"] = GafferScene.Parent()
 		s["parent"]["in"].setInput( s["planeAttrs"]["out"] )
-		s["parent"]["child"].setInput( s["cubeAttrs"]["out"] )
+		s["parent"]["children"][0].setInput( s["cubeAttrs"]["out"] )
 		s["parent"]["parent"].setValue( "/plane" )
 
 		s["shader"] = GafferArnold.ArnoldShader()
@@ -1252,12 +1255,9 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["goboAssign"]["in"].setInput( s["light"]["out"] )
 		s["goboAssign"]["shader"].setInput( s["gobo"]["out"] )
 
-		
 		s["lightBlocker"] = GafferArnold.ArnoldLightFilter()
 		s["lightBlocker"].loadShader( "light_blocker" )
 		s["lightBlocker"]["parameters"]["geometry_type"].setValue( "<attr:geometryType>" )
-		#s["lightBlocker"]["parameters"]["geometry_type"].setValue( "plane" )
-
 
 		s["lightGroup"] = GafferScene.Group()
 		s["lightGroup"]["name"].setValue( "lightGroup" )
@@ -1266,7 +1266,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		s["parent2"] = GafferScene.Parent()
 		s["parent2"]["in"].setInput( s["shaderAssignment"]["out"] )
-		s["parent2"]["child"].setInput( s["lightGroup"]["out"] )
+		s["parent2"]["children"][0].setInput( s["lightGroup"]["out"] )
 		s["parent2"]["parent"].setValue( "/" )
 
 		s["globalAttrs"] = GafferScene.CustomAttributes()
@@ -1275,7 +1275,6 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "A", Gaffer.StringPlug( "value", defaultValue = 'default1' ) ) )
 		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "B", Gaffer.StringPlug( "value", defaultValue = 'default2' ) ) )
 		s["globalAttrs"]["attributes"].addChild( Gaffer.NameValuePlug( "geometryType", Gaffer.StringPlug( "value", defaultValue = 'cylinder' ) ) )
-
 
 		s["render"] = GafferArnold.ArnoldRender()
 		s["render"]["in"].setInput( s["globalAttrs"]["out"] )

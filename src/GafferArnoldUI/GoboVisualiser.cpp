@@ -34,12 +34,18 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferOSL/ShadingEngine.h"
+#include "GafferArnoldUI/Export.h"
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
+#include "GafferArnoldUI/Private/VisualiserAlgo.h"
+
+#include "GafferOSL/ShadingEngineAlgo.h"
+
 #include "GafferSceneUI/StandardLightVisualiser.h"
 
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
+
 #include "Gaffer/Metadata.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
 
 #include "IECoreGL/Group.h"
 #include "IECoreGL/Primitive.h"
@@ -51,7 +57,6 @@
 
 #include "IECoreScene/Shader.h"
 
-#include "IECore/LRUCache.h"
 #include "IECore/VectorTypedData.h"
 
 #include "boost/format.hpp"
@@ -61,18 +66,20 @@ using namespace Imath;
 using namespace IECore;
 using namespace IECoreScene;
 using namespace IECoreGL;
+using namespace IECoreGLPreview;
 using namespace GafferSceneUI;
+using namespace GafferArnoldUI::Private;
 
-namespace
+namespace GoboVisualiserUtils
 {
 
 /// \todo We have similar methods in several places. Can we consolidate them all somewhere? Perhaps a new
 /// method of CompoundData?
 template<typename T>
-T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue )
+T parameterOrDefault(const IECore::CompoundData *parameters, const IECore::InternedString &name, const T &defaultValue)
 {
 	typedef IECore::TypedData<T> DataType;
-	if( const DataType *d = parameters->member<DataType>( name ) )
+	if (const DataType *d = parameters->member<DataType>(name))
 	{
 		return d->readable();
 	}
@@ -81,6 +88,12 @@ T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::Inte
 		return defaultValue;
 	}
 }
+
+}	// namespace GoboVisualiserUtils
+
+
+namespace GafferArnoldUI
+{
 
 CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork, int resolution );
 
@@ -92,11 +105,13 @@ struct OSLTextureCacheGetterKey
 	{
 	}
 
-	OSLTextureCacheGetterKey( IECoreScene::ShaderNetwork *shaderNetwork, int resolution )
-		:	shaderNetwork( shaderNetwork ), resolution( resolution )
+	OSLTextureCacheGetterKey( const IECoreScene::ShaderNetwork::Parameter &out, const IECoreScene::ShaderNetwork *shaderNetwork, int resolution )
+		:	output( out ), shaderNetwork( shaderNetwork ), resolution( resolution )
 	{
 		shaderNetwork->hash( hash );
 		hash.append( resolution );
+		hash.append( output.shader );
+		hash.append( output.name );
 	}
 
 	operator const IECore::MurmurHash & () const
@@ -104,7 +119,8 @@ struct OSLTextureCacheGetterKey
 		return hash;
 	}
 
-	IECoreScene::ShaderNetwork *shaderNetwork;
+	IECoreScene::ShaderNetwork::Parameter output;
+	const IECoreScene::ShaderNetwork *shaderNetwork;
 	int resolution;
 	MurmurHash hash;
 
@@ -112,12 +128,18 @@ struct OSLTextureCacheGetterKey
 
 CompoundDataPtr getter( const OSLTextureCacheGetterKey &key, size_t &cost )
 {
-	cost = 1;
-	return evalOSLTexture( key.shaderNetwork, key.resolution );
+	// make the cost be image data in bytes
+	cost = key.resolution * key.resolution * 3 * 4;
+
+	if( ShaderNetworkPtr textureNetwork = VisualiserAlgo::conformToOSLNetwork( key.output, key.shaderNetwork ) )
+	{
+		return GafferOSL::ShadingEngineAlgo::shadeUVTexture( textureNetwork.get(), V2i( key.resolution ) );
+	}
+	return nullptr;
 }
 
-typedef LRUCache<IECore::MurmurHash, CompoundDataPtr, LRUCachePolicy::Parallel, OSLTextureCacheGetterKey> OSLTextureCache;
-OSLTextureCache g_oslTextureCache( getter, 100 );
+typedef IECorePreview::LRUCache<IECore::MurmurHash, CompoundDataPtr, IECorePreview::LRUCachePolicy::Parallel, OSLTextureCacheGetterKey> OSLTextureCache;
+OSLTextureCache g_oslTextureCache( getter, 1024 * 1024 * 64 );
 
 const char *goboFragSource()
 {
@@ -126,13 +148,16 @@ const char *goboFragSource()
 		"#define in varying\n"
 		"#endif\n"
 		""
+		"#include \"IECoreGL/ColorAlgo.h\"\n"
+		""
 		"in vec2 fragmentuv;"
 		""
 		"uniform sampler2D texture;"
 		""
 		"void main()"
 		"{"
-			"gl_FragColor = texture2D( texture, fragmentuv );"
+			"vec4 t = texture2D( texture, fragmentuv );"
+			"gl_FragColor =  vec4( ieLinToSRGB( t.xyz ), t.w );"
 		"}"
 	;
 }
@@ -220,7 +245,7 @@ CompoundDataPtr evalOSLTexture( const IECoreScene::ShaderNetwork *shaderNetwork,
 	return result;
 }
 
-class GoboVisualiser final : public LightFilterVisualiser
+class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
 {
 
 	public :
@@ -230,7 +255,7 @@ class GoboVisualiser final : public LightFilterVisualiser
 		GoboVisualiser();
 		~GoboVisualiser() override;
 
-		IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 	protected :
 
@@ -251,7 +276,7 @@ GoboVisualiser::~GoboVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
+Visualisations GoboVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *shaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
 	IECoreGL::GroupPtr result = new IECoreGL::Group();
 
@@ -260,17 +285,16 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 	CompoundDataPtr imageData = new CompoundData;
 	if( slideMapInput )
 	{
-		IECoreScene::ShaderNetworkPtr surfaceNetwork = shaderNetwork->copy();
-		IECore::InternedString surface = surfaceNetwork->addShader( "surface", new IECoreScene::Shader( "Surface/Constant", "osl:shader" ) );
-		surfaceNetwork->addConnection( { slideMapInput, { surface, "Cs" } } );
-		surfaceNetwork->setOutput( { surface, "" } );
-
 		const IntData *maxTextureResolutionData = attributes->member<IntData>( "gl:visualiser:maxTextureResolution" );
 		const int resolution = maxTextureResolutionData ? maxTextureResolutionData->readable() : 512;
 
 		try
 		{
-			imageData = g_oslTextureCache.get( OSLTextureCacheGetterKey( surfaceNetwork.get(), resolution ) );
+			const OSLTextureCacheGetterKey key( slideMapInput, shaderNetwork, resolution );
+			if( CompoundDataPtr shadedImageData = g_oslTextureCache.get( key ) )
+			{
+				imageData = shadedImageData;
+			}
 		}
 		catch( const Exception &e )
 		{
@@ -284,7 +308,7 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 
 	if( imageData->readable().empty() )
 	{
-		const Color3f goboColor = parameterOrDefault( filterParameters, "slidemap", Color3f( 1 ) );
+		const Color3f goboColor = GoboVisualiserUtils::parameterOrDefault( filterParameters, "slidemap", Color3f( 1 ) );
 
 		Box2iDataPtr singlePixelWindow = new Box2iData( { V2i( 0.0f ), V2i( 0.0f ) } );
 		imageData->writable()["dataWindow"] = singlePixelWindow;
@@ -315,9 +339,10 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 
 	float innerAngle;
 	float coneAngle;
+	float radius;
 	float lensRadius;
 
-	StandardLightVisualiser::spotlightParameters( "ai:light", lightShaderNetwork, innerAngle, coneAngle, lensRadius );
+	StandardLightVisualiser::spotlightParameters( "ai:light", lightShaderNetwork, innerAngle, coneAngle, radius, lensRadius );
 
 	float halfPi = 0.5 * M_PI;
 
@@ -325,10 +350,10 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 	const float baseRadius = sin( halfAngle ) + lensRadius;
 	const float baseDistance = cos( halfAngle );
 
-	float rotate = parameterOrDefault( filterParameters, "rotate", 0.0f );
-	float scaleS = parameterOrDefault( filterParameters, "scale_s", 1.0f );
-	float scaleT = parameterOrDefault( filterParameters, "scale_t", 1.0f );
-	V2f offset = parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
+	float rotate = GoboVisualiserUtils::parameterOrDefault( filterParameters, "rotate", 0.0f );
+	float scaleS = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_s", 1.0f );
+	float scaleT = GoboVisualiserUtils::parameterOrDefault( filterParameters, "scale_t", 1.0f );
+	V2f offset = GoboVisualiserUtils::parameterOrDefault( filterParameters, "offset", V2f( 0.0f ) );
 
 	Imath::M44f goboTrans;
 
@@ -341,7 +366,7 @@ IECoreGL::ConstRenderablePtr GoboVisualiser::visualise( const IECore::InternedSt
 
 	result->addChild( new IECoreGL::QuadPrimitive( 1.0f, 1.0f ) );
 
-	return result;
+	return { Visualisation::createOrnament( result, true ) };
 }
 
-} // namespace
+} // namespace GafferArnoldUI

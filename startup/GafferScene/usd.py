@@ -41,7 +41,7 @@ import ctypes
 import IECore
 
 moduleSearchPath = IECore.SearchPath( os.environ["PYTHONPATH"] )
-if moduleSearchPath.find( "IECoreUSD" ) :
+if moduleSearchPath.find( "IECoreUSD" ) and moduleSearchPath.find( "pxr/Usd" ) :
 
 	# Import the USD Python module _without_ RTLD_GLOBAL, otherwise
 	# we get errors like the following spewed to the shell when we first
@@ -57,11 +57,13 @@ if moduleSearchPath.find( "IECoreUSD" ) :
 	# > https://github.com/ImageEngine/cortex/pull/810.
 
 	try :
-		originalDLOpenFlags = sys.getdlopenflags()
-		sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
+		if os.name != "nt" :
+			originalDLOpenFlags = sys.getdlopenflags()
+			sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
 		from pxr import Usd
 	finally :
-		sys.setdlopenflags( originalDLOpenFlags )
+		if os.name != "nt" :
+			sys.setdlopenflags( originalDLOpenFlags )
 
 	# Import IECoreUSD so that we get the USD SceneInterface registered,
 	# providing USD functionality to both the SceneReader and SceneWriter.

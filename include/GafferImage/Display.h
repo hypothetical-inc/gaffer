@@ -89,18 +89,27 @@ class GAFFERIMAGE_API Display : public ImageNode
 		void hashDataWindow( const GafferImage::ImagePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		Imath::Box2i computeDataWindow( const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
-		// Don't need to re-implement hashMetadata() because we always return the same value.
+		void hashMetadata( const GafferImage::ImagePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstCompoundDataPtr computeMetadata( const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
 		void hashChannelData( const GafferImage::ImagePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstFloatVectorDataPtr computeChannelData( const std::string &channelName, const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
+		void hashDeep( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		bool computeDeep( const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
+		void hashSampleOffsets( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		IECore::ConstIntVectorDataPtr computeSampleOffsets( const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const override;
+
 	private :
 
 		GafferDisplayDriverPtr m_driver;
 
-		Gaffer::IntPlug *updateCountPlug();
-		const Gaffer::IntPlug *updateCountPlug() const;
+		Gaffer::IntPlug *driverCountPlug();
+		const Gaffer::IntPlug *driverCountPlug() const;
+
+		Gaffer::IntPlug *channelDataCountPlug();
+		const Gaffer::IntPlug *channelDataCountPlug() const;
 
 		void setupDriver( GafferDisplayDriverPtr driver );
 		void dataReceived();

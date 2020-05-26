@@ -126,7 +126,7 @@ enum TypeId
 	SceneFilterPathFilterTypeId = 110581,
 	DeleteObjectTypeId = 110582,
 	AttributeVisualiserTypeId = 110583,
-	SceneLoopTypeId = 110584, // Obsolete, available for reuse
+	CopyPrimitiveVariablesTypeId = 110584,
 	RenderTypeId = 110585,
 	FilterPlugTypeId = 110586,
 	ShaderTweaksTypeId = 110587,
@@ -134,13 +134,13 @@ enum TypeId
 	CopyOptionsTypeId = 110589,
 	LightToCameraTypeId = 110590,
 	FilterResultsTypeId = 110591,
-	EvaluateLightLinksTypeId = 110592, // Obsolete, available for reuse
+	ObjectProcessorTypeId = 110592,
 	MeshTangentsTypeId = 110593,
 	ResamplePrimitiveVariablesTypeId = 110594,
 	DeleteFacesTypeId = 110595,
 	DeleteCurvesTypeId = 110596,
 	DeletePointsTypeId = 110597,
-	DeleteSceneContextVariablesTypeId = 110598, // Obsolete, available for reuse
+	DeformerTypeId = 110598,
 	CollectScenesTypeId = 110599,
 	CapsuleTypeId = 110600,
 	EncapsulateTypeId = 110601,
@@ -149,6 +149,13 @@ enum TypeId
 	PrimitiveVariableExistsTypeId = 110604,
 	CollectTransformsTypeId = 110605,
 	CameraTweaksTypeId = 110606,
+	MergeScenesTypeId = 110607,
+	ShuffleAttributesTypeId = 110608,
+	ShufflePrimitiveVariablesTypeId = 110609,
+	LocaliseAttributesTypeId = 110610,
+	PrimitiveSamplerTypeId = 110611,
+	ClosestPointSamplerTypeId = 110612,
+	CurveSamplerTypeId = 110613,
 
 	PreviewGeometryTypeId = 110648,
 	PreviewProceduralTypeId = 110649,

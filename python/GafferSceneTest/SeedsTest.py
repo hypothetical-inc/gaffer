@@ -76,11 +76,11 @@ class SeedsTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( s["out"].objectHash( "/plane" ), p["out"].objectHash( "/plane" ) )
 		self.assertEqual( s["out"].object( "/plane" ), p["out"].object( "/plane" ) )
 
-		self.failUnless( isinstance( s["out"].object( "/plane/seeds" ), IECoreScene.PointsPrimitive ) )
+		self.assertIsInstance( s["out"].object( "/plane/seeds" ), IECoreScene.PointsPrimitive )
 		numPoints = s["out"].object( "/plane/seeds" ).numPoints
 
 		s["density"].setValue( 10 )
-		self.failUnless( s["out"].object( "/plane/seeds" ).numPoints > numPoints )
+		self.assertGreater( s["out"].object( "/plane/seeds" ).numPoints, numPoints )
 
 		h = s["out"].objectHash( "/plane/seeds" )
 		m = s["out"].object( "/plane/seeds" )
@@ -222,6 +222,12 @@ class SeedsTest( GafferSceneTest.SceneTestCase ) :
 
 		primitiveVariables["primitiveVariables"].addChild( Gaffer.NameValuePlug( "d", IECore.FloatData( 0.5 ) ) )
 		self.assertLessEqual( seeds["out"].object( "/plane/seeds" ).numPoints, p.numPoints )
+
+	def testInternalConnectionsNotSerialised( self ) :
+
+		s = Gaffer.ScriptNode()
+		s["seeds"] = GafferScene.Seeds()
+		self.assertNotIn( "setInput", s.serialise() )
 
 if __name__ == "__main__":
 	unittest.main()

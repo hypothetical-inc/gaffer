@@ -61,7 +61,10 @@ def __driveFromSceneSelectionSourceChangeCallback( editor, targetEditor ) :
 	return GafferSceneUI.SourceSet( context, sourceSet )
 
 DriverModeSceneSelectionSource = "SceneSelectionSource"
-GafferUI.NodeSetEditor.registerNodeSetDriverMode( DriverModeSceneSelectionSource, __driveFromSceneSelectionSourceChangeCallback  )
+GafferUI.NodeSetEditor.registerNodeSetDriverMode(
+	DriverModeSceneSelectionSource, __driveFromSceneSelectionSourceChangeCallback,
+	"Following the scene selection's source node from {editor}."
+)
 
 
 ### Pinning Menu Items
@@ -80,22 +83,28 @@ def __addFollowMenuItem( menuDefinition, editor, targetEditor, subMenuTitle, mod
 		weakEditor = weakref.ref( editor )
 		weakTarget = weakref.ref( targetEditor )
 
+		highlightTarget = weakref.ref( targetEditor.parent().parent() if targetEditor._qtWidget().isHidden() else targetEditor.parent() )
+
 		isCurrent = existingMode == mode if existingDriver is targetEditor else False
-		menuDefinition.append( "/%s/%s" % ( subMenuTitle, title ), {
+		menuDefinition.insertBefore( "/%s/%s" % ( subMenuTitle, title ), {
 			"command" : lambda _ : weakEditor().setNodeSetDriver( weakTarget(), mode ),
-			"active" : not editor.drivesNodeSet( targetEditor ) and not isCurrent,
-			"checkBox" : isCurrent
-		} )
+			"active" : not editor.drivesNodeSet( targetEditor ),
+			"checkBox" : isCurrent,
+			"enter" : lambda : highlightTarget().setHighlighted( True ),
+			"leave" : lambda : highlightTarget().setHighlighted( False )
+		}, "/Pin Divider" )
 
 # Simple follows, eg: Hierarchy -> Viewer
 def __registerEditorNodeSetDriverItems( editor, menuDefinition ) :
 
 	if not isinstance( editor, (
+		GafferUI.Viewer,
 		GafferUI.NodeEditor,
 		GafferUI.AnimationEditor,
 		GafferSceneUI.HierarchyView,
 		GafferSceneUI.SceneInspector,
-		GafferSceneUI.PrimitiveInspector
+		GafferSceneUI.PrimitiveInspector,
+		GafferSceneUI.UVInspector
 	) ) :
 		return
 
@@ -110,7 +119,7 @@ def __registerEditorNodeSetDriverItems( editor, menuDefinition ) :
 		if target is not editor :
 			__addFollowMenuItem( menuDefinition,
 				editor, target,
-				"Follow/Editor",
+				"Editor",
 				GafferUI.NodeSetEditor.DriverModeNodeSet ,
 				itemNameCounts
 			)
@@ -132,7 +141,7 @@ def __registerNodeSetFollowsSceneSelectionItems( editor, menuDefinition ) :
 		if target is not editor :
 			__addFollowMenuItem( menuDefinition,
 				editor, target,
-				"Follow/Scene Selection",
+				"Scene Selection",
 				DriverModeSceneSelectionSource,
 				itemNameCounts
 			)

@@ -39,6 +39,8 @@
 #include "GafferUI/PlugAdder.h"
 
 #include "Gaffer/ArrayPlug.h"
+#include "Gaffer/NameSwitch.h"
+#include "Gaffer/NameValuePlug.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/Switch.h"
 #include "Gaffer/UndoScope.h"
@@ -75,19 +77,44 @@ class SwitchPlugAdder : public PlugAdder
 
 		void createConnection( Plug *endpoint ) override
 		{
-			m_switch->setup( endpoint );
+			auto nameSwitch = runTimeCast<NameSwitch>( m_switch.get() );
+			if( nameSwitch  )
+			{
+				/// \todo Should `Switch::setup()` be virtual so that we don't
+				/// need to downcast?
+				nameSwitch->setup( endpoint );
+			}
+			else
+			{
+				m_switch->setup( endpoint );
+			}
+
 			ArrayPlug *inPlug = m_switch->getChild<ArrayPlug>( "in" );
 			Plug *outPlug = m_switch->getChild<Plug>( "out" );
 
 			bool inOpposite = false;
 			if( endpoint->direction() == Plug::Out )
 			{
-				inPlug->getChild<Plug>( 0 )->setInput( endpoint );
+				if( nameSwitch )
+				{
+					inPlug->getChild<NameValuePlug>( 0 )->valuePlug()->setInput( endpoint );
+				}
+				else
+				{
+					inPlug->getChild<Plug>( 0 )->setInput( endpoint );
+				}
 				inOpposite = false;
 			}
 			else
 			{
-				endpoint->setInput( outPlug );
+				if( nameSwitch )
+				{
+					endpoint->setInput( static_cast<NameValuePlug *>( outPlug )->valuePlug() );
+				}
+				else
+				{
+					endpoint->setInput( outPlug );
+				}
 				inOpposite = true;
 			}
 

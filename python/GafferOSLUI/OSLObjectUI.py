@@ -51,6 +51,7 @@ _primitiveVariableNamesOptions = {
 	"N" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.Normal ),
 	"velocity" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.Vector ),
 	"uv" : IECore.V3fData( imath.V3f(0), IECore.GeometricData.Interpretation.UV ),
+	"scale" : IECore.V3fData( imath.V3f(1) ),
 	"width" : IECore.FloatData(),
 	"Cs" : IECore.Color3fData(),
 	"customInt" : IECore.IntData(),
@@ -175,6 +176,12 @@ Gaffer.Metadata.registerNode(
 
 	plugs = {
 
+		"adjustBounds" : [
+
+			"layout:index", -2,
+
+		],
+
 		"primitiveVariables" : [
 
 			"description",
@@ -201,6 +208,9 @@ Gaffer.Metadata.registerNode(
 
 			# Add + button for showing and hiding parameters in the GraphEditor
 			"noduleLayout:customGadget:addButton:gadgetType", "GafferOSLUI.OSLObjectUI.PlugAdder",
+
+			"layout:index", -1,
+
 		],
 		"primitiveVariables.*" : [
 
@@ -270,6 +280,7 @@ Gaffer.Metadata.registerNode(
 			""",
 
 		],
+
 	}
 
 )

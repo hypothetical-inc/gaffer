@@ -1,11 +1,12 @@
 trigger:
   branches:
     include:
-    - master
+    - '*'
   tags:
     include:
-    # * on its own seems to precipitate a syntax error...
-    - 0.*
+    - '*'
+pr:
+  - '*'
 
 jobs :
 
@@ -20,7 +21,7 @@ jobs :
       name: Centos
       buildType: RELEASE
       vmImage: 'Ubuntu-16.04'
-      container: 'gafferhq/build:1.0.0'
+      container: 'gafferhq/build:1.1.0'
       publish: true
 
   - template: config/azure/build.yaml
@@ -28,7 +29,7 @@ jobs :
       name: Centos
       buildType: DEBUG
       vmImage: 'Ubuntu-16.04'
-      container: 'gafferhq/build:1.0.0'
+      container: 'gafferhq/build:1.1.0'
 
   - template: config/azure/build.yaml
     parameters:

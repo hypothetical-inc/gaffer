@@ -38,6 +38,7 @@
 #define GAFFERIMAGE_BUFFERALGO_INL
 
 #include <cassert>
+#include <algorithm>
 
 namespace GafferImage
 {

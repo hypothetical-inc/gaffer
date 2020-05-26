@@ -39,6 +39,7 @@
 
 #include "AttributesBinding.h"
 #include "CoreBinding.h"
+#include "EditScopeAlgoBinding.h"
 #include "FilterBinding.h"
 #include "GlobalsBinding.h"
 #include "HierarchyBinding.h"
@@ -47,6 +48,7 @@
 #include "TweaksBinding.h"
 #include "ObjectProcessorBinding.h"
 #include "OptionsBinding.h"
+#include "PrimitiveSamplerBinding.h"
 #include "PrimitiveVariablesBinding.h"
 #include "PrimitivesBinding.h"
 #include "RenderBinding.h"
@@ -83,6 +85,8 @@ BOOST_PYTHON_MODULE( _GafferScene )
 	bindPrimitiveVariables();
 	bindTweaks();
 	bindIO();
+	bindPrimitiveSampler();
 	bindIECoreGLPreview();
+	bindEditScopeAlgo();
 
 }

@@ -84,22 +84,41 @@ class GAFFERSCENEUI_API TranslateTool : public TransformTool
 			Translation( const Selection &selection, Orientation orientation );
 
 			bool canApply( const Imath::V3f &offset ) const;
-			void apply( const Imath::V3f &offset ) const;
+			void apply( const Imath::V3f &offset );
 
 			private :
 
-				Gaffer::V3fPlugPtr m_plug;
-				Imath::V3f m_origin;
+				// For the validity of this reference, we rely
+				// on `TransformTool::selection()` not changing
+				// during drags.
+				const Selection &m_selection;
 				Imath::M44f m_gadgetToTransform;
-				float m_time;
+
+				// Initialised lazily when we first
+				// acquire the transform plug.
+				boost::optional<Imath::V3f> m_origin;
 
 		};
 
-		// Drag handling.
+		// Handle drag handling.
 
-		IECore::RunTimeTypedPtr dragBegin();
-		bool dragMove( const GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
-		bool dragEnd();
+		IECore::RunTimeTypedPtr handleDragBegin();
+		bool handleDragMove( GafferUI::Gadget *gadget, const GafferUI::DragDropEvent &event );
+		bool handleDragEnd();
+
+		// Targeted mode handling
+
+		bool keyPress( const GafferUI::KeyEvent &event );
+		bool keyRelease( const GafferUI::KeyEvent &event );
+		void sceneGadgetLeave( const GafferUI::ButtonEvent &event );
+		void visibilityChanged( GafferUI::Gadget *gadget );
+		void plugSet( Gaffer::Plug *plug );
+
+		bool buttonPress( const GafferUI::ButtonEvent &event );
+
+		void setTargetedMode( bool targeted );
+		inline bool getTargetedMode() const { return m_targetedMode; }
+		bool m_targetedMode;
 
 		std::vector<Translation> m_drag;
 

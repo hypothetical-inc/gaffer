@@ -43,6 +43,8 @@
 #include "GafferScene/ScenePlug.h"
 #include "GafferScene/ShaderTweaks.h"
 
+#include "GafferImage/ImagePlug.h"
+
 #include "IECoreScene/Camera.h"
 
 #include "IECorePython/RefCountedBinding.h"
@@ -70,6 +72,19 @@ bool visibleWrapper( const ScenePlug *scene, const ScenePlug::ScenePath &path )
 {
 	IECorePython::ScopedGILRelease r;
 	return SceneAlgo::visible( scene, path );
+}
+
+object filteredNodesWrapper( Filter &filter )
+{
+	const auto nodes = SceneAlgo::filteredNodes( &filter );
+	list nodesList;
+	for( const auto &n : nodes )
+	{
+		nodesList.append( FilteredSceneProcessorPtr( n ) );
+	}
+
+	PyObject *nodesSet = PySet_New( nodesList.ptr() );
+	return object( handle<>( nodesSet ) );
 }
 
 void matchingPathsWrapper1( const Filter *filter, const ScenePlug *scene, PathMatcher &paths )
@@ -148,6 +163,34 @@ SceneAlgo::History::Ptr historyWrapper( const ValuePlug &scenePlugChild, const S
 	return SceneAlgo::history( &scenePlugChild, path );
 }
 
+std::string attributeHistoryGetAttributeName( const SceneAlgo::AttributeHistory &h )
+{
+	return h.attributeName.string();
+}
+
+void attributeHistorySetAttributeName( SceneAlgo::AttributeHistory &h, IECore::InternedString n )
+{
+	h.attributeName = n;
+}
+
+ObjectPtr attributeHistoryGetAttributeValue( const SceneAlgo::AttributeHistory &h )
+{
+	// Returning a copy because `attributeValue` is const, and owned by Gaffer's cache.
+	// Allowing modification in Python would be catastrophic and hard to debug.
+	return h.attributeValue ? h.attributeValue->copy() : nullptr;
+}
+
+void attributeHistorySetAttributeValue( SceneAlgo::AttributeHistory &h, ConstObjectPtr v )
+{
+	h.attributeValue = v;
+}
+
+SceneAlgo::AttributeHistory::Ptr attributeHistoryWrapper( const SceneAlgo::History &attributesHistory, const InternedString &attributeName )
+{
+	IECorePython::ScopedGILRelease r;
+	return SceneAlgo::attributeHistory( &attributesHistory, attributeName );
+}
+
 ScenePlugPtr sourceWrapper( const ScenePlug &scene, const ScenePlug::ScenePath &path )
 {
 	IECorePython::ScopedGILRelease r;
@@ -166,6 +209,18 @@ ShaderTweaksPtr shaderTweaksWrapper( const ScenePlug &scene, const ScenePlug::Sc
 	return SceneAlgo::shaderTweaks( &scene, path, attributeName );
 }
 
+std::string sourceSceneNameWrapper( const GafferImage::ImagePlug &image )
+{
+	IECorePython::ScopedGILRelease r;
+	return SceneAlgo::sourceSceneName( &image );
+}
+
+ScenePlugPtr sourceSceneWrapper( GafferImage::ImagePlug &image )
+{
+	IECorePython::ScopedGILRelease r;
+	return SceneAlgo::sourceScene( &image );
+}
+
 } // namespace
 
 namespace GafferSceneModule
@@ -179,6 +234,8 @@ void bindSceneAlgo()
 
 	def( "exists", &existsWrapper );
 	def( "visible", visibleWrapper );
+
+	def( "filteredNodes", &filteredNodesWrapper );
 	def( "matchingPaths", &matchingPathsWrapper1 );
 	def( "matchingPaths", &matchingPathsWrapper2 );
 	def( "matchingPaths", &matchingPathsWrapper3 );
@@ -212,9 +269,19 @@ void bindSceneAlgo()
 	}
 
 	def( "history", &historyWrapper );
+
+	IECorePython::RefCountedClass<SceneAlgo::AttributeHistory, SceneAlgo::History>( "AttributeHistory" )
+		.add_property( "attributeName", &attributeHistoryGetAttributeName, &attributeHistorySetAttributeName )
+		.add_property( "attributeValue", &attributeHistoryGetAttributeValue, &attributeHistorySetAttributeValue )
+	;
+
+	def( "attributeHistory", &attributeHistoryWrapper );
+
 	def( "source", &sourceWrapper );
 	def( "objectTweaks", &objectTweaksWrapper );
 	def( "shaderTweaks", &shaderTweaksWrapper );
+	def( "sourceSceneName", &sourceSceneNameWrapper );
+	def( "sourceScene", &sourceSceneWrapper );
 
 }
 

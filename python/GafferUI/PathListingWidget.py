@@ -40,7 +40,7 @@ import warnings
 import IECore
 
 import Gaffer
-import _GafferUI
+from . import _GafferUI
 import GafferUI
 
 import Qt
@@ -91,6 +91,8 @@ class PathListingWidget( GafferUI.Widget ) :
 		columns = defaultFileSystemColumns,
 		allowMultipleSelection = False,
 		displayMode = DisplayMode.List,
+		sortable = True,
+		horizontalScrollMode = GafferUI.ScrollMode.Never,
 		**kw
 	) :
 
@@ -100,6 +102,7 @@ class PathListingWidget( GafferUI.Widget ) :
 		self._qtWidget().setUniformRowHeights( True )
 		self._qtWidget().setEditTriggers( QtWidgets.QTreeView.NoEditTriggers )
 		self._qtWidget().activated.connect( Gaffer.WeakMethod( self.__activated ) )
+		self._qtWidget().setHorizontalScrollBarPolicy( GafferUI.ScrollMode._toQt( horizontalScrollMode ) )
 
 		if Qt.__binding__ in ( "PySide2", "PyQt5" ) :
 			self._qtWidget().header().setSectionsMovable( False )
@@ -107,7 +110,7 @@ class PathListingWidget( GafferUI.Widget ) :
 			self._qtWidget().header().setMovable( False )
 
 		self._qtWidget().header().setSortIndicator( 0, QtCore.Qt.AscendingOrder )
-		self._qtWidget().setSortingEnabled( True )
+		self._qtWidget().setSortingEnabled( sortable )
 
 		self._qtWidget().expansionChanged.connect( Gaffer.WeakMethod( self.__expansionChanged ) )
 
@@ -280,6 +283,7 @@ class PathListingWidget( GafferUI.Widget ) :
 
 		return not self._qtWidget().header().isHidden()
 
+	## \deprecated Use constructor argument instead.
 	def setSortable( self, sortable ) :
 
 		if sortable == self.getSortable() :
@@ -289,6 +293,7 @@ class PathListingWidget( GafferUI.Widget ) :
 		if not sortable :
 			self._qtWidget().model().sort( -1 )
 
+	## \deprecated
 	def getSortable( self ) :
 
 		return self._qtWidget().isSortingEnabled()
@@ -594,8 +599,6 @@ class _TreeView( QtWidgets.QTreeView ) :
 	def __init__( self ) :
 
 		QtWidgets.QTreeView.__init__( self )
-
-		self.setHorizontalScrollBarPolicy( QtCore.Qt.ScrollBarAlwaysOff )
 
 		self.header().geometriesChanged.connect( self.updateGeometry )
 		self.header().sectionResized.connect( self.__sectionResized )

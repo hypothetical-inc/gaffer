@@ -69,6 +69,21 @@ Gaffer.Metadata.registerNode(
 
 			"preset:None", "",
 
+			"layout:index", 0
+
+		],
+
+		"localise" : [
+
+			"description",
+			"""
+			Turn on to allow location-specific tweaks to be made to inherited
+			shaders. Shaders will be localised to locations matching the
+			node's filter prior to tweaking. The original inherited shader will
+			remain untouched.
+			""",
+
+			"layout:index", 1
 		],
 
 		"ignoreMissing" : [
@@ -77,10 +92,11 @@ Gaffer.Metadata.registerNode(
 			"""
 			Ignores tweaks targeting missing parameters. When off, missing parameters
 			cause the node to error.
-			"""
+			""",
+
+			"layout:index", 2
 
 		],
-
 
 		"tweaks" : [
 
@@ -160,7 +176,7 @@ def _pathsFromSelection( plugValueWidget ) :
 	paths = paths.paths() if paths else []
 
 	with plugValueWidget.getContext() :
-		paths = [ p for p in paths if GafferScene.SceneAlgo.exists( node["in"], p ) ]
+		paths = [ p for p in paths if node["in"].exists( p ) ]
 
 	return paths
 
@@ -172,9 +188,10 @@ def _shaderAttributes( plugValueWidget, paths, affectedOnly ) :
 		return result
 
 	with plugValueWidget.getContext() :
+		useFullAttr = node["localise"].getValue()
 		attributeNamePatterns = node["shader"].getValue() if affectedOnly else "*"
 		for path in paths :
-			attributes = node["in"].attributes( path )
+			attributes = node["in"].fullAttributes( path ) if useFullAttr else node["in"].attributes( path )
 			for name, attribute in attributes.items() :
 				if not IECore.StringAlgo.matchMultiple( name, attributeNamePatterns ) :
 					continue

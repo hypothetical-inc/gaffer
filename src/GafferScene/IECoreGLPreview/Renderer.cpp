@@ -36,8 +36,10 @@
 
 #include "GafferScene/Private/IECoreScenePreview/Renderer.h"
 
-#include "GafferScene/Private/IECoreGLPreview/ObjectVisualiser.h"
 #include "GafferScene/Private/IECoreGLPreview/AttributeVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/LightVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
+#include "GafferScene/Private/IECoreGLPreview/ObjectVisualiser.h"
 
 #include "IECoreGL/CachedConverter.h"
 #include "IECoreGL/Camera.h"
@@ -47,6 +49,7 @@
 #include "IECoreGL/Exception.h"
 #include "IECoreGL/FrameBuffer.h"
 #include "IECoreGL/GL.h"
+#include "IECoreGL/Group.h"
 #include "IECoreGL/PointsPrimitive.h"
 #include "IECoreGL/Primitive.h"
 #include "IECoreGL/Renderable.h"
@@ -64,6 +67,7 @@
 #include "IECore/Writer.h"
 
 #include "OpenEXR/ImathBoxAlgo.h"
+#include "OpenEXR/ImathMatrixAlgo.h"
 
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/format.hpp"
@@ -87,6 +91,82 @@ using namespace IECoreGLPreview;
 
 namespace
 {
+class ScopedTransform
+{
+	public:
+		ScopedTransform( const M44f &transform )
+		{
+			m_nonIdentity = transform != M44f();
+			if( m_nonIdentity )
+			{
+				glPushMatrix();
+				glMultMatrixf( transform.getValue() );
+			}
+		}
+
+		~ScopedTransform()
+		{
+			if( m_nonIdentity )
+			{
+				glPopMatrix();
+			}
+		}
+
+	private :
+		bool m_nonIdentity;
+};
+
+template <class... Vs>
+bool haveMatchingVisualisations( Visualisation::Scale scale, Visualisation::Category category, const Vs & ... visualisations )
+{
+	for( auto vs : { visualisations... } )
+	{
+		for( auto v : vs )
+		{
+			if( v.scale == scale && v.category & category )
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+template <class... Vs>
+void renderMatchingVisualisations( Visualisation::Scale scale, Visualisation::Category category, IECoreGL::State *state, const Vs & ... visualisations )
+{
+	for( auto vs : { visualisations... } )
+	{
+		for( auto v : vs )
+		{
+			if( v.scale == scale && v.category & category )
+			{
+				v.renderable()->render( state );
+			}
+		}
+	}
+}
+
+template <class... Vs>
+void accumulateVisualisationBounds( Box3f &target, Visualisation::Scale scale, Visualisation::Category category, const M44f &transform, const Vs & ... visualisations )
+{
+	for( auto vs : { visualisations... } )
+	{
+		for( auto v : vs )
+		{
+			if( !v.affectsFramingBound || v.scale != scale || !(v.category & category) )
+			{
+				continue;
+			}
+
+			const Box3f b = v.renderable()->bound();
+			if( !b.isEmpty() )
+			{
+				target.extendBy( Imath::transform( b, transform ) );
+			}
+		}
+	}
+}
 
 template<typename T>
 T *reportedCast( const IECore::RunTimeTyped *v, const char *type, const IECore::InternedString &name )
@@ -148,17 +228,73 @@ class OpenGLAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 	public :
 
 		OpenGLAttributes( const IECore::CompoundObject *attributes )
+			: m_frustumMode( FrustumMode::WhenSelected )
 		{
+			const FloatData *visualiserScaleData = attributes->member<FloatData>( "gl:visualiser:scale" );
+			m_visualiserScale = visualiserScaleData ? visualiserScaleData->readable() : 1.0;
+
+			if( const StringData *drawFrustumData = attributes->member<StringData>( "gl:visualiser:frustum" ) )
+			{
+				if( drawFrustumData->readable() == "off" )
+				{
+					m_frustumMode = FrustumMode::Off;
+				}
+				else if( drawFrustumData->readable() == "on" )
+				{
+					m_frustumMode = FrustumMode::On;
+				}
+			}
+
 			m_state = static_pointer_cast<const State>(
 				CachedConverter::defaultCachedConverter()->convert( attributes )
 			);
 
 			IECoreGL::ConstStatePtr visualisationState;
-			m_visualisation = AttributeVisualiser::allVisualisations( attributes, visualisationState );
-			if( visualisationState )
+			m_visualisations = AttributeVisualiser::allVisualisations( attributes, visualisationState );
+
+			IECoreGL::ConstStatePtr lightVisualisationState;
+			m_lightVisualisations = LightVisualiser::allVisualisations( attributes, lightVisualisationState );
+
+			IECoreGL::ConstStatePtr lightFilterVisualisationState;
+			m_lightFilterVisualisations = LightFilterVisualiser::allVisualisations( attributes, lightFilterVisualisationState );
+
+			if( !m_lightFilterVisualisations.empty() )
+			{
+				if( !m_lightVisualisations.empty() )
+				{
+					// Light filter visualisers are in `m_lightFilterVisualisations` and light visualisers are in
+					// `m_lightVisualisations`. Combine them both into `m_lightVisualisations` so that
+					// filters attached to light locations are drawn as expected.
+					m_lightVisualisations.insert( m_lightVisualisations.end(),
+						m_lightFilterVisualisations.begin(), m_lightFilterVisualisations.end()
+					);
+				}
+				else
+				{
+					// If we don't have a light visualisation, but do have filters, make sure they're drawn.
+					m_lightVisualisations = m_lightFilterVisualisations;
+				}
+			}
+
+			if( visualisationState || lightVisualisationState || lightFilterVisualisationState )
 			{
 				StatePtr combinedState = new State( *m_state );
-				combinedState->add( const_cast<State *>( visualisationState.get() ) );
+
+				if( visualisationState )
+				{
+					combinedState->add( const_cast<State *>( visualisationState.get() ) );
+				}
+
+				if( lightVisualisationState )
+				{
+					combinedState->add( const_cast<State *>( lightVisualisationState.get() ) );
+				}
+
+				if( lightFilterVisualisationState )
+				{
+					combinedState->add( const_cast<State *>( lightFilterVisualisationState.get() ) );
+				}
+
 				m_state = combinedState;
 			}
 		}
@@ -168,16 +304,55 @@ class OpenGLAttributes : public IECoreScenePreview::Renderer::AttributesInterfac
 			return m_state.get();
 		}
 
-		const IECoreGL::Renderable *visualisation() const
+		const IECoreGLPreview::Visualisations &visualisations() const
 		{
-			return m_visualisation.get();
+			return m_visualisations;
+		}
+
+		const IECoreGLPreview::Visualisations &lightVisualisations() const
+		{
+			return m_lightVisualisations;
+		}
+
+		const IECoreGLPreview::Visualisations &lightFilterVisualisations() const
+		{
+			return m_lightFilterVisualisations;
+		}
+
+		float visualiserScale() const
+		{
+			return m_visualiserScale;
+		}
+
+		bool drawFrustum( bool isSelected ) const
+		{
+			switch ( m_frustumMode )
+			{
+				case FrustumMode::WhenSelected :
+					return isSelected;
+				case FrustumMode::On :
+					return true;
+				default :
+					return false;
+			}
 		}
 
 	private :
 
 		ConstStatePtr m_state;
-		IECoreGL::ConstRenderablePtr m_visualisation;
+		Visualisations m_visualisations;
+		Visualisations m_lightVisualisations;
+		Visualisations m_lightFilterVisualisations;
 
+		enum class FrustumMode : char
+		{
+			Off,
+			WhenSelected,
+			On
+		};
+		FrustumMode m_frustumMode;
+
+		float m_visualiserScale = 1.0f;
 };
 
 IE_CORE_DECLAREPTR( OpenGLAttributes )
@@ -210,7 +385,8 @@ class OpenGLObject : public IECoreScenePreview::Renderer::ObjectInterface
 			{
 				if( const ObjectVisualiser *visualiser = IECoreGLPreview::ObjectVisualiser::acquire( object->typeId() ) )
 				{
-					m_renderable = visualiser->visualise( object );
+					m_objectVisualisations = visualiser->visualise( object );
+					m_renderable = nullptr;
 				}
 				else
 				{
@@ -231,6 +407,7 @@ class OpenGLObject : public IECoreScenePreview::Renderer::ObjectInterface
 		{
 			m_editQueue.push( [this, transform]() {
 				m_transform = transform;
+				m_transformSansScale = sansScalingAndShear( transform, false );
 			} );
 		}
 
@@ -255,21 +432,31 @@ class OpenGLObject : public IECoreScenePreview::Renderer::ObjectInterface
 		Box3f transformedBound() const
 		{
 			Box3f b;
+
 			if( m_renderable )
 			{
-				b.extendBy( m_renderable->bound() );
-			}
-			if( m_attributes->visualisation() )
-			{
-				b.extendBy( m_attributes->visualisation()->bound() );
-			}
-
-			if( b.isEmpty() )
-			{
-				return b;
+				const Box3f renderableBound = m_renderable->bound();
+				if( !renderableBound.isEmpty() )
+				{
+					b.extendBy( Imath::transform( renderableBound, m_transform ) );
+				}
 			}
 
-			return Imath::transform( b, m_transform );
+			Visualisation::Category categories = Visualisation::Category::Generic;
+			// Note: We don't have access to selection state here, so we assume it is
+			// selected to make sure we consider the frustum if it's enabled.
+			if( m_attributes->drawFrustum( true ) )
+			{
+				categories = Visualisation::Category( categories | Visualisation::Category::Frustum );
+			}
+
+			const Visualisations &attrVis = visualisations( *m_attributes );
+
+			accumulateVisualisationBounds( b, Visualisation::Scale::None, categories, m_transformSansScale, attrVis, m_objectVisualisations );
+			accumulateVisualisationBounds( b, Visualisation::Scale::Local, categories, m_transform, attrVis, m_objectVisualisations );
+			accumulateVisualisationBounds( b, Visualisation::Scale::Visualiser, categories, visualiserTransform( false ), attrVis, m_objectVisualisations );
+			accumulateVisualisationBounds( b, Visualisation::Scale::LocalAndVisualiser, categories, visualiserTransform( true ), attrVis, m_objectVisualisations );
+			return b;
 		}
 
 		const vector<InternedString> &name() const
@@ -284,29 +471,66 @@ class OpenGLObject : public IECoreScenePreview::Renderer::ObjectInterface
 
 		void render( IECoreGL::State *currentState, const IECore::PathMatcher &selection ) const
 		{
-			const bool haveTransform = m_transform != M44f();
-			if( haveTransform )
+			const Visualisations &attrVis = visualisations( *m_attributes );
+			const bool haveVisualisations = attrVis.size() > 0 || m_objectVisualisations.size() > 0;
+
+			if( !haveVisualisations && !m_renderable )
 			{
-				glPushMatrix();
-				glMultMatrixf( m_transform.getValue() );
+				return;
 			}
+
+			const bool isSelected = selected( selection );
 
 			IECoreGL::State::ScopedBinding scope( *m_attributes->state(), *currentState );
-			IECoreGL::State::ScopedBinding selectionScope( selectionState(), *currentState, selected( selection ) );
+			IECoreGL::State::ScopedBinding selectionScope( selectionState(), *currentState, isSelected );
 
-			if( m_renderable )
+			// In order to minimize z-fighting, we draw non-geometric visualisations
+			// first and real geometry last, so that they sit on top. This is
+			// still prone to flicker, but seems to provide the best results.
+
+
+			if( haveVisualisations )
 			{
+				Visualisation::Category categories = Visualisation::Category::Generic;
+				if( m_attributes->drawFrustum( isSelected ) )
+				{
+					categories = Visualisation::Category( categories | Visualisation::Category::Frustum );
+				}
+
+				if( m_attributes->visualiserScale() > 0.0f )
+				{
+					if( haveMatchingVisualisations( Visualisation::Scale::Visualiser, categories, attrVis, m_objectVisualisations ) )
+					{
+						ScopedTransform v( visualiserTransform( false ) );
+						renderMatchingVisualisations( Visualisation::Scale::Visualiser, categories, currentState, attrVis, m_objectVisualisations );
+					}
+
+					if( haveMatchingVisualisations( Visualisation::Scale::LocalAndVisualiser, categories, attrVis, m_objectVisualisations ) )
+					{
+						ScopedTransform c( visualiserTransform( true ) );
+						renderMatchingVisualisations( Visualisation::Scale::LocalAndVisualiser, categories, currentState, attrVis, m_objectVisualisations );
+					}
+				}
+
+				if( haveMatchingVisualisations( Visualisation::Scale::None, categories, attrVis, m_objectVisualisations ) )
+				{
+					ScopedTransform l( m_transformSansScale );
+					renderMatchingVisualisations( Visualisation::Scale::None, categories, currentState, attrVis, m_objectVisualisations );
+				}
+
+				if( m_renderable || haveMatchingVisualisations( Visualisation::Scale::Local, categories, attrVis, m_objectVisualisations ) )
+				{
+					ScopedTransform l( m_transform );
+
+					renderMatchingVisualisations( Visualisation::Scale::Local, categories, currentState, attrVis, m_objectVisualisations );
+					if( m_renderable ) { m_renderable->render( currentState ); }
+				}
+
+			}
+			else if( m_renderable )
+			{
+				ScopedTransform l( m_transform );
 				m_renderable->render( currentState );
-			}
-
-			if( m_attributes->visualisation() )
-			{
-				m_attributes->visualisation()->render( currentState );
-			}
-
-			if( haveTransform )
-			{
-				glPopMatrix();
 			}
 		}
 
@@ -322,12 +546,30 @@ class OpenGLObject : public IECoreScenePreview::Renderer::ObjectInterface
 			return m_editQueue;
 		}
 
+		virtual const Visualisations &visualisations( const OpenGLAttributes &attributes ) const
+		{
+			return attributes.visualisations();
+		}
+
 	private :
+
+		// sansScalingAndShear is expensive, so we store that, the other
+		// visualiser scaled variants we compute in transformedBound/render
+		// to save memory.
+
+		M44f visualiserTransform( bool includeLocal ) const
+		{
+			M44f t = includeLocal ? m_transform : m_transformSansScale;
+			t.scale( V3f( m_attributes->visualiserScale() ) );
+			return t;
+		}
 
 		IECore::TypeId m_objectType;
 		M44f m_transform;
+		M44f m_transformSansScale;
 		ConstOpenGLAttributesPtr m_attributes;
 		IECoreGL::ConstRenderablePtr m_renderable;
+		Visualisations m_objectVisualisations;
 		vector<InternedString> m_name;
 		EditQueue &m_editQueue;
 
@@ -395,6 +637,56 @@ IE_CORE_FORWARDDECLARE( OpenGLCamera )
 
 } // namespace
 
+//////////////////////////////////////////////////////////////////////////
+// OpenGLLight
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+class OpenGLLight : public OpenGLObject
+{
+
+	public :
+
+		OpenGLLight( const std::string &name, const IECore::Object *light, const ConstOpenGLAttributesPtr &attributes, EditQueue &editQueue )
+			:	OpenGLObject( name, light, attributes, editQueue )
+		{
+		}
+
+	protected :
+
+		const Visualisations &visualisations( const OpenGLAttributes &attributes ) const override
+		{
+			return attributes.lightVisualisations();
+		}
+
+};
+
+IE_CORE_FORWARDDECLARE( OpenGLLight )
+
+class OpenGLLightFilter : public OpenGLObject
+{
+
+	public :
+
+		OpenGLLightFilter( const std::string &name, const IECore::Object *object, const ConstOpenGLAttributesPtr &attributes, EditQueue &editQueue )
+			:	OpenGLObject( name, object, attributes, editQueue )
+		{
+		}
+
+	protected :
+
+		const Visualisations &visualisations( const OpenGLAttributes &attributes ) const override
+		{
+			return attributes.lightFilterVisualisations();
+		}
+
+};
+
+IE_CORE_FORWARDDECLARE( OpenGLLightFilter )
+
+} // namespace
 //////////////////////////////////////////////////////////////////////////
 // OpenGLRenderer
 //////////////////////////////////////////////////////////////////////////
@@ -515,12 +807,16 @@ class OpenGLRenderer final : public IECoreScenePreview::Renderer
 
 		ObjectInterfacePtr light( const std::string &name, const IECore::Object *object, const AttributesInterface *attributes ) override
 		{
-			return this->object( name, object, attributes );
+			OpenGLLightPtr result = new OpenGLLight( name, object, static_cast<const OpenGLAttributes *>( attributes ), m_editQueue );
+			m_editQueue.push( [this, result]() { m_objects.push_back( result ); } );
+			return result;
 		}
 
 		ObjectInterfacePtr lightFilter( const std::string &name, const IECore::Object *object, const AttributesInterface *attributes ) override
 		{
-			return this->object( name, object, attributes );
+			OpenGLLightFilterPtr result = new OpenGLLightFilter( name, object, static_cast<const OpenGLAttributes *>( attributes ), m_editQueue );
+			m_editQueue.push( [this, result]() { m_objects.push_back( result ); } );
+			return result;
 		}
 
 		Renderer::ObjectInterfacePtr object( const std::string &name, const IECore::Object *object, const AttributesInterface *attributes ) override

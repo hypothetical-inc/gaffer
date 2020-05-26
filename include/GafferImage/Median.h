@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_MEDIAN_H
 #define GAFFERIMAGE_MEDIAN_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/RankFilter.h"
 
 namespace GafferImage

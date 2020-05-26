@@ -47,7 +47,7 @@ def appendDefinitions( menuDefinition, prefix ) :
 
 	menuDefinition.append( prefix + "/About Gaffer...", { "command" : about } )
 	menuDefinition.append( prefix + "/Preferences...", { "command" : preferences } )
-	menuDefinition.append( prefix + "/Documentation...", { "command" : functools.partial( GafferUI.showURL, os.path.expandvars( "$GAFFER_ROOT/doc/gaffer/html/index.html" ) ) } )
+	menuDefinition.append( prefix + "/Documentation...", { "command" : functools.partial( GafferUI.showURL, os.path.join( os.environ["GAFFER_ROOT"], "doc", "gaffer", "html", "index.html" ) ) } )
 	menuDefinition.append( prefix + "/Quit", { "command" : quit, "shortCut" : "Ctrl+Q" } )
 
 def quit( menu ) :
@@ -118,17 +118,8 @@ def preferences( menu ) :
 		window.__closeButtonConnection = closeButton.clickedSignal().connect( __closePreferences )
 		saveButton = window._addButton( "Save" )
 		window.__saveButtonConnection = saveButton.clickedSignal().connect( __savePreferences )
-
 		window._setWidget( GafferUI.NodeUI.create( application["preferences"] ) )
-
 		__preferencesWindows[application] = weakref.ref( window )
-
-		# The NodeUI builds lazily, so we force it to build now so we can
-		# resize the window to fit. Since the plugs are configured per
-		# application, we need to build them all.
-		for plug in application["preferences"].children( Gaffer.Plug ) :
-			window._getWidget().plugValueWidget( plug, lazy=False )
-		window.resizeToFitChild()
 		scriptWindow.addChildWindow( window )
 
 	window.setVisible( True )

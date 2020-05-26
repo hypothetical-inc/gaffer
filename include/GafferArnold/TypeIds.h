@@ -57,6 +57,7 @@ enum TypeId
 	ArnoldBackgroundTypeId = 110911,
 	ArnoldCameraShadersTypeId = 110912,
 	ArnoldLightFilterTypeId = 110913,
+	ArnoldColorManagerTypeId = 110914,
 
 	LastTypeId = 110924
 };

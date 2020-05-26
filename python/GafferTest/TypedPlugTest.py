@@ -65,14 +65,14 @@ class TypedPlugTest( GafferTest.TestCase ) :
 		p2 = Gaffer.StringPlug( direction=Gaffer.Plug.Direction.In )
 
 		p2.setInput( p1 )
-		self.assert_( p2.getInput().isSame( p1 ) )
+		self.assertTrue( p2.getInput().isSame( p1 ) )
 		p2.setInput( None )
-		self.assert_( p2.getInput() is None )
+		self.assertIsNone( p2.getInput(), None )
 
 	def testAcceptsNoneInput( self ) :
 
 		p = Gaffer.StringPlug( "hello" )
-		self.failUnless( p.acceptsInput( None ) )
+		self.assertTrue( p.acceptsInput( None ) )
 
 	def testRunTimeTyped( self ) :
 
@@ -218,6 +218,31 @@ class TypedPlugTest( GafferTest.TestCase ) :
 		self.assertEqual( n["out"].getValue( _precomputedHash = h ), "hi" )
 		self.assertEqual( n.numHashCalls, numHashCalls )
 		self.assertEqual( n.numComputeCalls, 1 )
+
+	def testBoolPlugStringConnections( self ) :
+
+		n = GafferTest.AddNode()
+		n["op1"].setValue( 0 )
+		n["op2"].setValue( 2 )
+		self.assertEqual( n["sum"].getValue(), 2 )
+
+		s = Gaffer.StringPlug()
+		n["enabled"].setInput( s )
+		self.assertEqual( n["sum"].getValue(), 0 )
+
+		s.setValue( "notEmpty" )
+		self.assertEqual( n["sum"].getValue(), 2 )
+
+		s.setValue( "${test}" )
+		self.assertEqual( n["sum"].getValue(), 0 )
+
+		with Gaffer.Context() as c :
+
+			c["test"] = "notEmpty"
+			self.assertEqual( n["sum"].getValue(), 2 )
+
+			c["test"] = ""
+			self.assertEqual( n["sum"].getValue(), 0 )
 
 if __name__ == "__main__":
 	unittest.main()

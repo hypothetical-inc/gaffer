@@ -193,7 +193,7 @@ class _Camera( Gaffer.Node ) :
 		self["parent"] = GafferScene.Parent()
 		self["parent"]["in"].setInput( self["in"] )
 		self["parent"]["parent"].setValue( "/" )
-		self["parent"]["child"].setInput( self["camera"]["out"] )
+		self["parent"]["children"][0].setInput( self["camera"]["out"] )
 
 		self["cameraFilter"] = GafferScene.PathFilter()
 		self["cameraFilter"]["paths"].setValue( IECore.StringVectorData( [ "/previewCamera" ] ) )
@@ -303,7 +303,7 @@ class _ObjectPreview( Gaffer.Node ) :
 
 		import GafferCortex
 
-		self["fileName"] = Gaffer.StringPlug( defaultValue = "", substitutions = Gaffer.Context.Substitutions.NoSubstitutions )
+		self["fileName"] = Gaffer.StringPlug( defaultValue = "", substitutions = IECore.StringAlgo.Substitutions.NoSubstitutions )
 		self["frameRate"] = Gaffer.FloatPlug( defaultValue = 24.0 )
 		self["samplesPerFrame"] = Gaffer.IntPlug( defaultValue = 1, minValue = 1 )
 

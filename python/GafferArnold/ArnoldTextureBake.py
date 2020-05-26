@@ -60,6 +60,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 			self["defaultFileName"] = Gaffer.StringPlug( "defaultFileName", Gaffer.Plug.Direction.In, "${bakeDirectory}/<AOV>/<AOV>.<UDIM>.exr" )
 			self["defaultResolution"] = Gaffer.IntPlug( "defaultResolution", Gaffer.Plug.Direction.In, 512 )
 			self["uvSet"] = Gaffer.StringPlug( "uvSet", Gaffer.Plug.Direction.In, "uv" )
+			self["udims"] = Gaffer.StringPlug( "udims", Gaffer.Plug.Direction.In, "" )
 			self["normalOffset"] = Gaffer.FloatPlug( "normalOffset", Gaffer.Plug.Direction.In, 0.1 )
 			self["aovs"] = Gaffer.StringPlug( "aovs", Gaffer.Plug.Direction.In, "beauty:rgba" )
 			self["tasks"] = Gaffer.IntPlug( "tasks", Gaffer.Plug.Direction.In, 1 )
@@ -83,22 +84,28 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 			self["__chunkExpression"] = Gaffer.Expression()
 			self["__chunkExpression"].setExpression( inspect.cleandoc(
 				"""
-				# Locate the next point in the list of files to bake where we can split the list into chunks without
-				# seperating two files that need to get combined into the same texture
-				def nextChunkBreak( i, l ):
-					while i > 0 and i < len( l ) and (
-							l[i - 1].get("udim") == l[i].get("udim") and
-							l[i - 1].get("fileName") == l[i].get("fileName") ):
-						i += 1
-					return i
-					
+				import collections
+				import re
+
 				rawInfo = parent["__udimQuery"]["out"]
 
 				defaultFileName = parent["defaultFileName"]
 				defaultResolution = parent["defaultResolution"]
 
-				listInfo = []
+				selectUdimsStr = parent["udims"]
+
+				# FrameList really ought to take care of this check, instead of just doing
+				# something obviously wrong
+				if re.match( ".*[0-9] +[0-9].*", selectUdimsStr ):
+					raise RuntimeError( "ArnoldTextureBake : Udim list must be comma separated." )
+
+				selectUdims = set( IECore.FrameList.parse( selectUdimsStr ).asList() )
+
+				allMeshes = collections.defaultdict( lambda : [] )
 				for udim, meshes in rawInfo.items():
+					if selectUdims and not int( udim ) in selectUdims:
+						continue
+
 					for mesh, extraAttributes in meshes.items():
 						resolution = defaultResolution
 						if "bake:resolution" in extraAttributes:
@@ -107,41 +114,44 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 						fileName = defaultFileName
 						if "bake:fileName" in extraAttributes:
 							fileName = extraAttributes["bake:fileName"].value
-						
-						listInfo.append( { "udim" : int( udim ), "mesh" : mesh, "resolution" : resolution, "fileName" : fileName } )
 
-				listInfo.sort( key = lambda i: (i["fileName"], i["udim"] ) )
+						allMeshes[ (fileName, udim) ].append( { "mesh" : mesh, "resolution" : resolution } )
+
+				fileList = sorted( allMeshes.keys() )
 
 				info = IECore.CompoundObject()
 
-				numTasks = parent["tasks"]
+				numTasks = min( parent["tasks"], len( fileList ) )
 				taskIndex = parent["taskIndex"]
 
-				chunkStart = nextChunkBreak( ( taskIndex * len( listInfo ) ) / numTasks, listInfo )
-				chunkEnd = nextChunkBreak( ( ( taskIndex + 1 ) * len( listInfo ) ) / numTasks, listInfo )
+				if taskIndex < numTasks:
 
-				dupeCount = 0
-				prevFileName = ""
-				for i in listInfo[chunkStart:chunkEnd]:
-					o = IECore.CompoundObject()
-					o["mesh"] = IECore.StringData( i["mesh"] )
-					o["udim"] = IECore.IntData( i["udim"] )
-					o["resolution"] = IECore.IntData( i["resolution"] )
+					chunkStart = ( taskIndex * len( fileList ) ) / numTasks
+					chunkEnd = ( ( taskIndex + 1 ) * len( fileList ) ) / numTasks
 
-					udimStr = str( i["udim"] )
-					fileName = i["fileName"].replace( "<UDIM>", udimStr )
+					dupeCount = 0
+					prevFileName = ""
+					for fileNameTemplate, udim in fileList[chunkStart:chunkEnd]:
+						for meshData in allMeshes[(fileNameTemplate, udim)]:
+							o = IECore.CompoundObject()
+							o["mesh"] = IECore.StringData( meshData["mesh"] )
+							o["udim"] = IECore.IntData( int( udim ) )
+							o["resolution"] = IECore.IntData( meshData["resolution"] )
 
-					if fileName == prevFileName:
-						dupeCount += 1
-						fileName = fileName + ".layer" + str( dupeCount )
-					else:
-						prevFileName = fileName
-						dupeCount = 0
+							udimStr = str( udim )
+							fileName = fileNameTemplate.replace( "<UDIM>", udimStr )
 
-					o["fileName"] = IECore.StringData( fileName )
+							if fileName == prevFileName:
+								dupeCount += 1
+								fileName = fileName + ".layer" + str( dupeCount )
+							else:
+								prevFileName = fileName
+								dupeCount = 0
 
-					name = o["mesh"].value.replace( "/", "_" ) + "." + udimStr
-					info[ name ] = o
+							o["fileName"] = IECore.StringData( fileName )
+
+							name = o["mesh"].value.replace( "/", "_" ) + "." + udimStr
+							info[ name ] = o
 				parent["__chunkedBakeInfo"] = info
 
 				fileList = []
@@ -171,8 +181,8 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 				for key, value in inGlobals.items():
 					if not key.startswith( "output:" ):
 						outGlobals[key] = value
-			
-				# Make our own outputs	
+
+				# Make our own outputs
 				info = parent["__chunkedBakeInfo"]
 				for cameraName, i in info.items():
 					params = IECore.CompoundData()
@@ -219,7 +229,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 			self["__group"]["in"][0].setInput( self["__collectScenes"]["out"] )
 			self["__group"]["name"].setInput( self["cameraGroup"] )
 
-			self["__parent"]["child"].setInput( self["__group"]["out"] )
+			self["__parent"]["children"][0].setInput( self["__group"]["out"] )
 
 			self["__collectSceneRootsExpression"] = Gaffer.Expression()
 			self["__collectSceneRootsExpression"].setExpression( inspect.cleandoc(
@@ -257,10 +267,12 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		self["defaultFileName"] = Gaffer.StringPlug( "defaultFileName", defaultValue = "${bakeDirectory}/<AOV>/<AOV>.<UDIM>.exr" )
 		self["defaultResolution"] = Gaffer.IntPlug( "defaultResolution", defaultValue = 512 )
 		self["uvSet"] = Gaffer.StringPlug( "uvSet", defaultValue = 'uv' )
+		self["udims"] = Gaffer.StringPlug( "udims", defaultValue = "" )
 		self["normalOffset"] = Gaffer.FloatPlug( "offset", defaultValue = 0.1 )
 		self["aovs"] = Gaffer.StringPlug( "aovs", defaultValue = 'beauty:RGBA' )
 		self["tasks"] = Gaffer.IntPlug( "tasks", defaultValue = 1 )
 		self["cleanupIntermediateFiles"] = Gaffer.BoolPlug( "cleanupIntermediateFiles", defaultValue = True )
+
 
 		self["applyMedianFilter"] = Gaffer.BoolPlug( "applyMedianFilter", Gaffer.Plug.Direction.In, False )
 		self["medianRadius"] = Gaffer.IntPlug( "medianRadius", Gaffer.Plug.Direction.In, 1 )
@@ -310,12 +322,12 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		for redispatch in [ self["__RenderDispatcher"], self["__ImageDispatcher"] ]:
 			redispatch["variables"].addChild( Gaffer.NameValuePlug( "bakeDirectory", "", "bakeDirectoryVar" ) )
 			redispatch["variables"].addChild( Gaffer.NameValuePlug( "defaultFileName", "", "defaultFileNameVar" ) )
-	
+
 		# Connect the variables via an expression so that get expanded ( this also means that
-		# if you put #### in a filename you will get per frame tasks, because the hash will depend	
+		# if you put #### in a filename you will get per frame tasks, because the hash will depend
 		# on frame number )
 		self["__DispatchVariableExpression"] = Gaffer.Expression()
-		self["__DispatchVariableExpression"].setExpression( inspect.cleandoc( 
+		self["__DispatchVariableExpression"].setExpression( inspect.cleandoc(
 			"""
 			parent["__RenderDispatcher"]["variables"]["bakeDirectoryVar"]["value"] = parent["bakeDirectory"]
 			parent["__RenderDispatcher"]["variables"]["defaultFileNameVar"]["value"] = parent["defaultFileName"]
@@ -326,7 +338,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 
 		# Wedge based on tasks into the overall number of tasks to run.  Note that we don't know how
 		# much work each task will do until we actually run the render tasks ( this is when scene
-		# expansion happens ).  Because we must group all tasks that write to the same file into the 
+		# expansion happens ).  Because we must group all tasks that write to the same file into the
 		# same task batch, if tasks is a large number, some tasks batches could end up empty
 		self["__MainWedge"] = GafferDispatch.Wedge()
 		self["__MainWedge"]["preTasks"][0].setInput( self["__ImageDispatcher"]["task"] )
@@ -362,6 +374,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		self["__CameraSetup"]["aovs"].setInput( self["aovs"] )
 		self["__CameraSetup"]["normalOffset"].setInput( self["normalOffset"] )
 		self["__CameraSetup"]["tasks"].setInput( self["tasks"] )
+		self["__CameraSetup"]["udims"].setInput( self["udims"] )
 
 		self["__Expression"] = Gaffer.Expression()
 		self["__Expression"].setExpression( 'parent["__CameraSetup"]["taskIndex"] = context.get( "BAKE_WEDGE:index", 0 )', "python" )
@@ -442,7 +455,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		# Loop over all input files for this output file, and merge them all together
 		self["__ImageLoop"] = Gaffer.LoopComputeNode()
 		self["__ImageLoop"].setup( GafferImage.ImagePlug() )
-		
+
 		self["__NumInputsForCurOutputExpression"] = Gaffer.Expression()
 		self["__NumInputsForCurOutputExpression"].setExpression( inspect.cleandoc(
 			"""
@@ -477,7 +490,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		self["__ImageIntermediateReader"] = GafferImage.ImageReader()
 
 		# Now that we've merged everything together, we can use a BleedFill to fill in the background,
-		# so that texture filtering across the edges will pull in colors that are at least reasonable.	
+		# so that texture filtering across the edges will pull in colors that are at least reasonable.
 		self["__BleedFill"] = GafferImage.BleedFill()
 		self["__BleedFill"]["in"].setInput( self["__ImageIntermediateReader"]["out"] )
 
@@ -487,7 +500,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		self["__Median"]["radius"]["x"].setInput( self["medianRadius"] )
 		self["__Median"]["radius"]["y"].setInput( self["medianRadius"] )
 
-		# Write out the result	
+		# Write out the result
 		self["__ImageWriter"] = GafferImage.ImageWriter()
 		self["__ImageWriter"]["in"].setInput( self["__Median"]["out"] )
 		self["__ImageWriter"]["preTasks"][0].setInput( self["__ImageIntermediateWriter"]["task"] )

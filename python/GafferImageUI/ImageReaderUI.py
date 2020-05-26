@@ -39,7 +39,7 @@ import IECore
 import Gaffer
 import GafferUI
 import GafferImage
-import OpenColorIOTransformUI
+from . import OpenColorIOTransformUI
 
 Gaffer.Metadata.registerNode(
 
@@ -251,7 +251,7 @@ class _FrameMaskPlugValueWidget( GafferUI.PlugValueWidget ) :
 			if isinstance( w, GafferUI.PlugValueWidget ) :
 				w.setReadOnly( readOnly )
 
-	def childPlugValueWidget( self, childPlug, lazy=True ) :
+	def childPlugValueWidget( self, childPlug ) :
 
 		for i, p in enumerate( self.getPlug().children() ) :
 			if p.isSame( childPlug ) :

@@ -35,7 +35,11 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+    import subprocess32 as subprocess
+else:
+    import subprocess
 import unittest
 
 import GafferTest
@@ -54,8 +58,8 @@ class PythonApplicationTest( GafferTest.TestCase ) :
 		)
 		p.wait()
 
-		self.failUnless( "RuntimeError" in "".join( p.stderr.readlines() ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "RuntimeError", "".join( p.stderr.readlines() ) )
+		self.assertTrue( p.returncode )
 
 	def testFlagArguments( self ) :
 

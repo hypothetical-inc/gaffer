@@ -34,7 +34,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferSceneUI/LightFilterVisualiser.h"
+#include "GafferArnoldUI/Export.h"
+
+#include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
 
 #include "Gaffer/Metadata.h"
 
@@ -52,10 +54,10 @@ using namespace Imath;
 using namespace IECore;
 using namespace IECoreScene;
 using namespace IECoreGL;
+using namespace IECoreGLPreview;
 using namespace Gaffer;
-using namespace GafferSceneUI;
 
-namespace
+namespace GafferArnoldUI
 {
 
 const IECore::CompoundData *parametersAndMetadataTarget( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, InternedString &metadataTarget )
@@ -173,7 +175,7 @@ void setFalloffGroupSettings( IECoreGL::Group *group, const IECore::CompoundData
 // LightBlockerVisualiser implementation.
 //////////////////////////////////////////////////////////////////////////
 
-class GAFFERSCENEUI_API LightBlockerVisualiser : public LightFilterVisualiser
+class GAFFERARNOLDUI_API LightBlockerVisualiser : public LightFilterVisualiser
 {
 
 	public :
@@ -183,7 +185,7 @@ class GAFFERSCENEUI_API LightBlockerVisualiser : public LightFilterVisualiser
 		LightBlockerVisualiser();
 		~LightBlockerVisualiser() override;
 
-		virtual IECoreGL::ConstRenderablePtr visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
+		virtual Visualisations visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const override;
 
 	protected :
 
@@ -211,7 +213,7 @@ LightBlockerVisualiser::~LightBlockerVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr LightBlockerVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
+Visualisations LightBlockerVisualiser::visualise( const IECore::InternedString &attributeName, const IECoreScene::ShaderNetwork *filterShaderNetwork, const IECoreScene::ShaderNetwork *lightShaderNetwork, const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) const
 {
 	InternedString metadataTarget;
 	const IECore::CompoundData *shaderParameters = parametersAndMetadataTarget( attributeName, filterShaderNetwork, metadataTarget );
@@ -252,7 +254,7 @@ IECoreGL::ConstRenderablePtr LightBlockerVisualiser::visualise( const IECore::In
 		result->addChild( const_pointer_cast<IECoreGL::Renderable>( planeShape( shaderParameters ) ) );
 	}
 
-	return result;
+	return { Visualisation::createGeometry( result ) };
 }
 
 IECoreGL::ConstRenderablePtr LightBlockerVisualiser::boxShape( const IECore::CompoundData *shaderParameters )
@@ -458,4 +460,4 @@ IECoreGL::ConstRenderablePtr LightBlockerVisualiser::planeShape( const IECore::C
 	return group;
 }
 
-} // namespace
+} // namespace GafferArnoldUI

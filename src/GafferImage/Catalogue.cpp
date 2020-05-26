@@ -51,6 +51,7 @@
 #include "Gaffer/ParallelAlgo.h"
 #include "Gaffer/ScriptNode.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
@@ -98,7 +99,7 @@ class Catalogue::InternalImage : public ImageNode
 		{
 			storeIndexOfNextChild( g_firstChildIndex );
 
-			addChild( new StringPlug( "fileName" ) );
+			addChild( new FileSystemPathPlug( "fileName" ) );
 			addChild( new StringPlug( "description" ) );
 
 			// Used to load an image from disk, according to
@@ -136,9 +137,10 @@ class Catalogue::InternalImage : public ImageNode
 			// Adds on a description to the output
 			addChild( new ImageMetadata() );
 			imageMetadata()->inPlug()->setInput( imageSwitch()->outPlug() );
-			NameValuePlugPtr meta = new NameValuePlug( "ImageDescription", new StringData(), "member1" );
+			NameValuePlugPtr meta = new NameValuePlug( "ImageDescription", new StringData(), true, "member1" );
 			imageMetadata()->metadataPlug()->addChild( meta );
-			meta->valuePlug<StringPlug>()->setInput( descriptionPlug() );
+			meta->valuePlug()->setInput( descriptionPlug() );
+			meta->enabledPlug()->setInput( descriptionPlug() ); // Enable only for non-empty strings
 
 			outPlug()->setInput( imageMetadata()->outPlug() );
 		}
@@ -151,14 +153,14 @@ class Catalogue::InternalImage : public ImageNode
 			}
 		}
 
-		StringPlug *fileNamePlug()
+		FileSystemPathPlug *fileNamePlug()
 		{
-			return getChild<StringPlug>( g_firstChildIndex );
+			return getChild<FileSystemPathPlug>( g_firstChildIndex );
 		}
 
-		const StringPlug *fileNamePlug() const
+		const FileSystemPathPlug *fileNamePlug() const
 		{
-			return getChild<StringPlug>( g_firstChildIndex );
+			return getChild<FileSystemPathPlug>( g_firstChildIndex );
 		}
 
 		StringPlug *descriptionPlug()
@@ -174,7 +176,7 @@ class Catalogue::InternalImage : public ImageNode
 		void copyFrom( const InternalImage *other )
 		{
 			descriptionPlug()->source<StringPlug>()->setValue( other->descriptionPlug()->getValue() );
-			fileNamePlug()->source<StringPlug>()->setValue( other->fileNamePlug()->getValue() );
+			fileNamePlug()->source<FileSystemPathPlug>()->setValue( other->fileNamePlug()->getValue() );
 			imageSwitch()->indexPlug()->setValue( other->imageSwitch()->indexPlug()->getValue() );
 			text()->enabledPlug()->setValue( other->text()->enabledPlug()->getValue() );
 
@@ -544,7 +546,7 @@ class Catalogue::InternalImage : public ImageNode
 				{
 					// Set up the client to read from the saved image
 					client->text()->enabledPlug()->setValue( false );
-					client->fileNamePlug()->source<StringPlug>()->setValue( m_writer->fileNamePlug()->getValue() );
+					client->fileNamePlug()->source<FileSystemPathPlug>()->setValue( m_writer->fileNamePlug()->getValue() );
 					client->imageSwitch()->indexPlug()->setValue( 0 );
 					// But force hashChannelData and computeChannelData to be called
 					// so that we can reuse the cache entries created by the original
@@ -583,18 +585,18 @@ GAFFER_PLUG_DEFINE_TYPE( Catalogue::Image );
 Catalogue::Image::Image( const std::string &name, Direction direction, unsigned flags )
 	:	Plug( name, direction, flags )
 {
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new StringPlug( "description" ) );
 }
 
-Gaffer::StringPlug *Catalogue::Image::fileNamePlug()
+Gaffer::FileSystemPathPlug *Catalogue::Image::fileNamePlug()
 {
-	return getChild<StringPlug>( 0 );
+	return getChild<FileSystemPathPlug>( 0 );
 }
 
-const Gaffer::StringPlug *Catalogue::Image::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *Catalogue::Image::fileNamePlug() const
 {
-	return getChild<StringPlug>( 0 );
+	return getChild<FileSystemPathPlug>( 0 );
 }
 
 Gaffer::StringPlug *Catalogue::Image::descriptionPlug()
@@ -614,20 +616,26 @@ void Catalogue::Image::copyFrom( const Image *other )
 
 Catalogue::Image::Ptr Catalogue::Image::load( const std::string &fileName )
 {
-	// Names of Plugs can not contain '.' - we want to load files like 'test.1001.exr', though
+	// GraphComponent names are much more restrictive than filenames, so
+	// we must replace all non-alphanumeric characters with `_`, and make
+	// sure it doesn't start with a number.
+	/// \todo Relax these restrictions and/or provide automatic name
+	/// sanitisation in GraphComponent.
 	std::string name = boost::filesystem::path( fileName ).stem().string();
-	boost::replace_all( name, ".", "_" );
+	std::replace_if(
+		name.begin(), name.end(),
+		[] ( char c ) {
+			return !std::isalnum( c, std::locale::classic() );
+		},
+		'_'
+	);
+	if( std::isdigit( name[0], std::locale::classic() ) )
+	{
+		name = "_" + name;
+	}
 
 	Ptr image = new Image( name, Plug::In, Plug::Default | Plug::Dynamic );
 	image->fileNamePlug()->setValue( fileName );
-
-	ImageReaderPtr reader = new ImageReader;
-	reader->fileNamePlug()->setValue( fileName );
-	ConstCompoundDataPtr meta = reader->outPlug()->metadataPlug()->getValue();
-	if( const StringData *description = meta->member<const StringData>( "ImageDescription" ) )
-	{
-		image->descriptionPlug()->setValue( description->readable() );
-	}
 
 	return image;
 }
@@ -677,7 +685,7 @@ Catalogue::Catalogue( const std::string &name )
 	addChild( new Plug( "images" ) );
 	addChild( new IntPlug( "imageIndex" ) );
 	addChild( new StringPlug( "name" ) );
-	addChild( new StringPlug( "directory" ) );
+	addChild( new FileSystemPathPlug( "directory" ) );
 	addChild( new IntPlug( "__imageIndex", Plug::Out ) );
 	addChild( new AtomicCompoundDataPlug( "__mapping", Plug::In, new CompoundData() ) );
 
@@ -742,14 +750,14 @@ const Gaffer::StringPlug *Catalogue::namePlug() const
 	return getChild<StringPlug>( g_firstPlugIndex + 2 );
 }
 
-Gaffer::StringPlug *Catalogue::directoryPlug()
+Gaffer::FileSystemPathPlug *Catalogue::directoryPlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
-const Gaffer::StringPlug *Catalogue::directoryPlug() const
+const Gaffer::FileSystemPathPlug *Catalogue::directoryPlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
 Gaffer::IntPlug *Catalogue::internalImageIndexPlug()
@@ -836,12 +844,15 @@ std::string Catalogue::generateFileName( const Image *image ) const
 
 std::string Catalogue::generateFileName( const ImagePlug *image ) const
 {
+	// Force substitutions because Process::current() is false
+	// and FileSystemPathPlug won't do substitutions by default
 	string directory = directoryPlug()->getValue();
+
 	if( const ScriptNode *script = ancestor<ScriptNode>() )
 	{
-		directory = script->context()->substitute( directory );
+		directory = directoryPlug()->getValue(nullptr, script->context(), true);
 	}
-	else if( Context::hasSubstitutions( directory ) )
+	else if( IECore::StringAlgo::hasSubstitutions( directory ) )
 	{
 		// Its possible for a Catalogue to have been removed from its script
 		// and still receive an image. If it will attempt to save that image
@@ -858,7 +869,7 @@ std::string Catalogue::generateFileName( const ImagePlug *image ) const
 	}
 
 	boost::filesystem::path result( directory );
-	result /= image->imageHash().toString();
+	result /= ImageAlgo::imageHash( image ).toString();
 	result.replace_extension( "exr" );
 
 	return result.string();

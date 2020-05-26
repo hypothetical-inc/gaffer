@@ -32,6 +32,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include <limits>
+
 #include "boost/python.hpp"
 
 #include "ImageProcessorBinding.h"
@@ -39,6 +41,8 @@
 #include "GafferImage/CollectImages.h"
 #include "GafferImage/CopyChannels.h"
 #include "GafferImage/DeleteChannels.h"
+#include "GafferImage/FlatImageProcessor.h"
+#include "GafferImage/ImageProcessor.h"
 #include "GafferImage/Merge.h"
 #include "GafferImage/Mix.h"
 #include "GafferImage/Shuffle.h"
@@ -60,13 +64,15 @@ void GafferImageModule::bindImageProcessor()
 	GafferBindings::DependencyNodeClass<ImageProcessor, ImageProcessorWrapper>()
 		.def( init<const std::string &, size_t, size_t>(
 				(
-					arg( "name" ) = GraphComponent::defaultName<ImageProcessor>(),
-					arg( "minInputs" ),
-					arg( "maxInputs" ) = Imath::limits<size_t>::max()
+					boost::python::arg_( "name" ) = GraphComponent::defaultName<ImageProcessor>(),
+					boost::python::arg_( "minInputs" ),
+					boost::python::arg_( "maxInputs" ) = std::numeric_limits<size_t>::max()
 				)
 			)
 		)
 	;
+
+	GafferBindings::DependencyNodeClass<FlatImageProcessor>();
 
 	DependencyNodeClass<CollectImages>();
 	DependencyNodeClass<CopyChannels>();

@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_GROUP_H
 #define GAFFERSCENE_GROUP_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer
@@ -85,7 +86,6 @@ class GAFFERSCENE_API Group : public SceneProcessor
 		void hashSet( const IECore::InternedString &setName, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const override;
 
 		void compute( Gaffer::ValuePlug *output, const Gaffer::Context *context ) const override;
-		virtual IECore::ObjectPtr computeMapping( const Gaffer::Context *context ) const;
 		Imath::Box3f computeBound( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;
 		Imath::M44f computeTransform( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;
 		IECore::ConstCompoundObjectPtr computeAttributes( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;

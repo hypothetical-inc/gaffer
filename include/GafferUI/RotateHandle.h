@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_ROTATEHANDLE_H
 #define GAFFERUI_ROTATEHANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 IECORE_PUSH_DEFAULT_VISIBILITY
@@ -65,7 +66,7 @@ class GAFFERUI_API RotateHandle : public Handle
 		Imath::V3i axisMask() const;
 
 		// Measured in radians
-		Imath::Eulerf rotation( const DragDropEvent &event ) const;
+		Imath::Eulerf rotation( const DragDropEvent &event );
 
 	protected :
 
@@ -78,14 +79,20 @@ class GAFFERUI_API RotateHandle : public Handle
 		bool mouseMove( const ButtonEvent &event );
 		Imath::V3f pointOnSphere( const IECore::LineSegment3f &line ) const;
 
+		void updatePreciseMotionState( const DragDropEvent &event );
+		IECore::LineSegment3f updatedLineFromEvent( const DragDropEvent &event ) const;
+
 		Style::Axes m_axes;
 		// For X, Y and Z handles.
-		PlanarDrag m_drag;
+		AngularDrag m_drag;
 		float m_rotation;
-		// For XYZ handle.
+		// For free rotation handle.
 		Imath::M44f m_dragBeginWorldTransform;
 		Imath::V3f m_dragBeginPointOnSphere;
 		Imath::V3f m_highlightVector;
+
+		bool m_preciseMotionEnabled;
+		IECore::LineSegment3f m_preciseMotionOriginLine;
 
 };
 

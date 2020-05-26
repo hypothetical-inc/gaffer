@@ -362,18 +362,86 @@ Gaffer.Metadata.registerNode(
 
 		],
 
-		"attributes.maxTextureResolution" : [
+		"attributes.visualiserScale" : [
 
 			"description",
 			"""
-			Light visualisers that load textures will respect this setting to
+			Scales non-geometric visualisations in the viewport to make them
+			easier to work with.
+			""",
+
+			"layout:section", "Visualisers",
+			"label", "Scale",
+
+		],
+
+		"attributes.visualiserMaxTextureResolution" : [
+
+			"description",
+			"""
+			Visualisers that load textures will respect this setting to
 			limit their resolution.
 			""",
 
-			"layout:section", "Light Visualisers",
+			"layout:section", "Visualisers",
 			"label", "Max Texture Resolution",
 
 		],
+
+		"attributes.visualiserFrustum" : [
+
+			"description",
+			"""
+			Controls whether applicable locations draw a representation of
+			their projection or frustum.
+			""",
+
+			"layout:section", "Visualisers",
+			"label", "Frustum",
+
+		],
+
+		"attributes.visualiserFrustum.value" : [
+
+				"preset:Off", "off",
+				"preset:When Selected", "whenSelected",
+				"preset:On", "on",
+
+				"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget"
+		],
+
+		"attributes.lightDrawingMode" : [
+
+			"description",
+			"""
+			Controls how lights are presented in the Viewer.
+			""",
+
+			"layout:section", "Visualisers",
+			"label", "Light Drawing Mode",
+
+		],
+
+		"attributes.lightDrawingMode.value" : [
+
+			"preset:Wireframe", "wireframe",
+			"preset:Color", "color",
+			"preset:Texture", "texture",
+
+			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget"
+
+		],
+
+		"attributes.lightFrustumScale" : [
+
+			"description",
+			"""
+			Allows light projections to be scaled to better suit the scene.
+			""",
+
+			"layout:section", "Visualisers",
+		],
+
 
 	}
 

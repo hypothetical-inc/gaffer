@@ -56,8 +56,8 @@ class CopyAttributesTest( GafferSceneTest.SceneTestCase ) :
 		# Node should do nothing without a filter applied.
 
 		copyAttributes = GafferScene.CopyAttributes()
-		copyAttributes["in"][0].setInput( plane["out"] )
-		copyAttributes["in"][1].setInput( customAttributes["out"] )
+		copyAttributes["in"].setInput( plane["out"] )
+		copyAttributes["source"].setInput( customAttributes["out"] )
 
 		self.assertScenesEqual( plane["out"], copyAttributes["out"] )
 		self.assertSceneHashesEqual( plane["out"], copyAttributes["out"] )
@@ -91,8 +91,8 @@ class CopyAttributesTest( GafferSceneTest.SceneTestCase ) :
 		bAttributes["attributes"].addChild( b )
 
 		copyAttributes = GafferScene.CopyAttributes()
-		copyAttributes["in"][0].setInput( aAttributes["out"] )
-		copyAttributes["in"][1].setInput( bAttributes["out"] )
+		copyAttributes["in"].setInput( aAttributes["out"] )
+		copyAttributes["source"].setInput( bAttributes["out"] )
 
 		f = GafferScene.PathFilter()
 		f["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
@@ -129,7 +129,7 @@ class CopyAttributesTest( GafferSceneTest.SceneTestCase ) :
 		self.assertIn( bAttributes["out"]["attributes"], pm.allStatistics() )
 		self.assertNotIn( aAttributes["out"]["attributes"], pm.allStatistics() )
 
-	def testCopyFrom( self ) :
+	def testSourceLocation( self ) :
 
 		plane = GafferScene.Plane()
 		sphere = GafferScene.Sphere()
@@ -141,11 +141,11 @@ class CopyAttributesTest( GafferSceneTest.SceneTestCase ) :
 		parent = GafferScene.Parent()
 		parent["parent"].setValue( "/" )
 		parent["in"].setInput( plane["out"] )
-		parent["child"].setInput( sphereAttributes["out"] )
+		parent["children"][0].setInput( sphereAttributes["out"] )
 
 		copyAttributes = GafferScene.CopyAttributes()
-		copyAttributes["in"][0].setInput( parent["out"] )
-		copyAttributes["in"][1].setInput( parent["out"] )
+		copyAttributes["in"].setInput( parent["out"] )
+		copyAttributes["source"].setInput( parent["out"] )
 
 		f = GafferScene.PathFilter()
 		f["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
@@ -156,11 +156,60 @@ class CopyAttributesTest( GafferSceneTest.SceneTestCase ) :
 			parent["out"].attributes( "/plane" )
 		)
 
-		copyAttributes["copyFrom"].setValue( "/sphere" )
+		copyAttributes["sourceLocation"].setValue( "/sphere" )
 		self.assertEqual(
 			copyAttributes["out"].attributes( "/plane" ),
 			parent["out"].attributes( "/sphere" )
 		)
+
+	def testRanges( self ) :
+
+		script = Gaffer.ScriptNode()
+		script["copy"] = GafferScene.CopyAttributes()
+		script["box"] = Gaffer.Box()
+		script["box"]["copy"] = GafferScene.CopyAttributes()
+
+		self.assertEqual(
+			list( GafferScene.CopyAttributes.Range( script ) ),
+			[ script["copy"] ],
+		)
+		self.assertEqual(
+			list( GafferScene.CopyAttributes.RecursiveRange( script ) ),
+			[ script["copy"], script["box"]["copy"] ],
+		)
+
+	def testNonExistentSourceLocation( self ) :
+
+		plane = GafferScene.Plane()
+		sphere = GafferScene.Sphere()
+
+		allFilter = GafferScene.PathFilter()
+		allFilter["paths"].setValue( IECore.StringVectorData( [ "/..." ] ) )
+
+		sphereAttributes = GafferScene.CustomAttributes()
+		sphereAttributes["in"].setInput( sphere["out"] )
+		sphereAttributes["filter"].setInput( allFilter["out"] )
+		sphereAttributes["attributes"].addChild( Gaffer.NameValuePlug( "test", 1 ) )
+
+		copyAttributes = GafferScene.CopyAttributes()
+		copyAttributes["in"].setInput( plane["out"] )
+		copyAttributes["filter"].setInput( allFilter["out"] )
+		copyAttributes["attributes"].setValue( "*" )
+
+		# Default source location does not exist in source
+
+		copyAttributes["source"].setInput( sphereAttributes["out"] )
+		self.assertEqual( copyAttributes["out"].attributes( "/plane" ), IECore.CompoundObject() )
+
+		# Custom source location does not exist in source
+
+		copyAttributes["sourceLocation"].setValue( "/road/to/nowhere" )
+		self.assertEqual( copyAttributes["out"].attributes( "/plane" ), IECore.CompoundObject() )
+
+		# Valid source location
+
+		copyAttributes["sourceLocation"].setValue( "/sphere" )
+		self.assertEqual( copyAttributes["out"].attributes( "/plane" ), sphereAttributes["out"].attributes( "/sphere" ) )
 
 if __name__ == "__main__":
 	unittest.main()

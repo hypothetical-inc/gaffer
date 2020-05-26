@@ -109,6 +109,12 @@ ContextPtr interactiveRenderGetContext( InteractiveRender &r )
 	return r.getContext();
 }
 
+void interactiveRenderSetContext( InteractiveRender &r, Context &context )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	r.setContext( &context );
+}
+
 list rendererTypes()
 {
 	std::vector<IECore::InternedString> t = Renderer::types();
@@ -275,7 +281,7 @@ void GafferSceneModule::bindRender()
 	{
 		scope s = GafferBindings::NodeClass<InteractiveRender>()
 			.def( "getContext", &interactiveRenderGetContext )
-			.def( "setContext", &InteractiveRender::setContext )
+			.def( "setContext", &interactiveRenderSetContext )
 		;
 
 		enum_<InteractiveRender::State>( "State" )
@@ -340,6 +346,7 @@ void GafferSceneModule::bindRender()
 
 			.def( "camera", &Renderer::camera )
 			.def( "light", &Renderer::light )
+			.def( "lightFilter", &Renderer::lightFilter )
 
 			.def( "object", &rendererObject1 )
 			.def( "object", &rendererObject2 )

@@ -321,7 +321,7 @@ class OpDialogue( GafferUI.Dialogue ) :
 			with self.__messageWidget.messageHandler() :
 				result = self.__node.getParameterised()[0]()
 
-		except Exception, e :
+		except Exception as e :
 
 			result = sys.exc_info()
 
@@ -347,7 +347,7 @@ class OpDialogue( GafferUI.Dialogue ) :
 
 			self.__initiateResultDisplay( result )
 
- 			self.opExecutedSignal()( result )
+			self.opExecutedSignal()( result )
 			self.postExecuteSignal()( self, result )
 
 		else :

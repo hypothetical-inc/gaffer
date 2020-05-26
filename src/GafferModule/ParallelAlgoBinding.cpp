@@ -178,9 +178,22 @@ void pushUIThreadCallHandler( boost::python::object handler )
 				boost::python::default_call_policies(),
 				boost::mpl::vector<void>()
 			);
-			(*handlerPtr)( pythonFunction );
+			try
+			{
+				(*handlerPtr)( pythonFunction );
+			}
+			catch( boost::python::error_already_set &e )
+			{
+				IECorePython::ExceptionAlgo::translatePythonException();
+			}
 		}
 	);
+}
+
+void popUIThreadCallHandler()
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	ParallelAlgo::popUIThreadCallHandler();
 }
 
 std::shared_ptr<BackgroundTask> callOnBackgroundThread( const Plug *subject, boost::python::object f )
@@ -256,7 +269,7 @@ void GafferModule::bindParallelAlgo()
 
 	def( "callOnUIThread", &callOnUIThread );
 	def( "pushUIThreadCallHandler", &pushUIThreadCallHandler );
-	def( "popUIThreadCallHandler", &ParallelAlgo::popUIThreadCallHandler );
+	def( "popUIThreadCallHandler", &popUIThreadCallHandler );
 	def( "callOnBackgroundThread", &callOnBackgroundThread );
 
 }

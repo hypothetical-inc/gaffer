@@ -136,9 +136,8 @@ class PlugLayout( GafferUI.Widget ) :
 		scriptNode = self.__node() if isinstance( self.__node(), Gaffer.ScriptNode ) else self.__node().scriptNode()
 		self.setContext( scriptNode.context() if scriptNode is not None else self.__fallbackContext )
 
-		# schedule our first update, which will take place when we become
-		# visible for the first time.
-		self.__updateLazily()
+		# Build the layout
+		self.__update()
 
 	def getReadOnly( self ) :
 
@@ -146,10 +145,10 @@ class PlugLayout( GafferUI.Widget ) :
 
 	def setReadOnly( self, readOnly ) :
 
- 		if readOnly == self.getReadOnly() :
- 			return
+		if readOnly == self.getReadOnly() :
+			return
 
- 		self.__readOnly = readOnly
+		self.__readOnly = readOnly
 		for widget in self.__widgets.values() :
 			self.__applyReadOnly( widget, self.__readOnly )
 
@@ -166,13 +165,9 @@ class PlugLayout( GafferUI.Widget ) :
 			self.__applyContext( widget, context )
 
 	## Returns a PlugValueWidget representing the specified child plug.
-	# Because the layout is built lazily on demand, this might return None due
-	# to the user not having opened up the ui - in this case lazy=False may
-	# be passed to force the creation of the ui.
-	def plugValueWidget( self, childPlug, lazy=True ) :
+	def plugValueWidget( self, childPlug ) :
 
-		if not lazy :
-			self.__updateLazily.flush( self )
+		self.__updateLazily.flush( self )
 
 		w = self.__widgets.get( childPlug, None )
 		if w is None :
@@ -183,13 +178,9 @@ class PlugLayout( GafferUI.Widget ) :
 			return w.plugValueWidget()
 
 	## Returns the custom widget registered with the specified name.
-	# Because the layout is built lazily on demand, this might return None due
-	# to the user not having opened up the ui - in this case lazy=False may
-	# be passed to force the creation of the ui.
-	def customWidget( self, name, lazy=True ) :
+	def customWidget( self, name ) :
 
-		if not lazy :
-			self.__updateLazily.flush( self )
+		self.__updateLazily.flush( self )
 
 		return self.__widgets.get( name )
 
@@ -229,7 +220,7 @@ class PlugLayout( GafferUI.Widget ) :
 		for itemAndIndex in itemsAndIndices :
 			index = cls.__staticItemMetadataValue( itemAndIndex[1], "index", parent, layoutName )
 			if index is not None :
-				index = index if index >= 0 else sys.maxint + index
+				index = index if index >= 0 else sys.maxsize + index
 				itemAndIndex[0] = index
 
 		itemsAndIndices.sort( key = lambda x : x[0] )
@@ -371,7 +362,7 @@ class PlugLayout( GafferUI.Widget ) :
 
 		return result
 
- 	def __createPlugWidget( self, plug ) :
+	def __createPlugWidget( self, plug ) :
 
 		result = GafferUI.PlugValueWidget.create( plug )
 		if result is None :
@@ -384,7 +375,7 @@ class PlugLayout( GafferUI.Widget ) :
 				result._qtWidget().layout().setSizeConstraint( QtWidgets.QLayout.SetDefaultConstraint )
 
 		if isinstance( result, GafferUI.PlugValueWidget ) and not result.hasLabel() and self.__itemMetadataValue( plug, "label" ) != "" :
- 			result = GafferUI.PlugWidget( result )
+			result = GafferUI.PlugWidget( result )
 			if self.__layout.orientation() == GafferUI.ListContainer.Orientation.Horizontal :
 				# undo the annoying fixed size the PlugWidget has applied
 				# to the label.
@@ -400,7 +391,7 @@ class PlugLayout( GafferUI.Widget ) :
 		# in the future to determine if we can reuse the widget.
 		result.__plugValueWidgetType = Gaffer.Metadata.value( plug, "plugValueWidget:type" )
 
- 		return result
+		return result
 
 	def __createCustomWidget( self, name ) :
 

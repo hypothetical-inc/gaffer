@@ -35,6 +35,7 @@
 #
 ##########################################################################
 
+import os
 import sys
 import logging
 import collections
@@ -50,7 +51,7 @@ import IECoreGL
 
 import Gaffer
 import GafferUI
-import _GafferUI
+from . import _GafferUI
 
 import OpenGL.GL as GL
 
@@ -252,8 +253,9 @@ class _GLGraphicsView( QtWidgets.QGraphicsView ) :
 
 			# clear any existing errors that may trigger
 			# error checking code in _resize implementations.
-			while GL.glGetError() :
-				pass
+			if os.name == 'posix':
+				while GL.glGetError() :
+					pass
 
 			owner._makeCurrent()
 

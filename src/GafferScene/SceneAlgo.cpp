@@ -37,13 +37,20 @@
 #include "GafferScene/SceneAlgo.h"
 
 #include "GafferScene/CameraTweaks.h"
+#include "GafferScene/CopyAttributes.h"
 #include "GafferScene/Filter.h"
+#include "GafferScene/FilterProcessor.h"
+#include "GafferScene/LocaliseAttributes.h"
+#include "GafferScene/MergeScenes.h"
+#include "GafferScene/PathFilter.h"
 #include "GafferScene/ScenePlug.h"
 #include "GafferScene/ShaderTweaks.h"
+#include "GafferScene/ShuffleAttributes.h"
 
 #include "Gaffer/Context.h"
 #include "Gaffer/Monitor.h"
 #include "Gaffer/Process.h"
+#include "Gaffer/ScriptNode.h"
 
 #include "IECoreScene/Camera.h"
 #include "IECoreScene/ClippingPlane.h"
@@ -68,49 +75,41 @@ using namespace IECoreScene;
 using namespace Gaffer;
 using namespace GafferScene;
 
-bool GafferScene::SceneAlgo::exists( const ScenePlug *scene, const ScenePlug::ScenePath &path )
-{
-	ScenePlug::PathScope pathScope( Context::current() );
-
-	ScenePlug::ScenePath p; p.reserve( path.size() );
-	for( ScenePlug::ScenePath::const_iterator it = path.begin(), eIt = path.end(); it != eIt; ++it )
-	{
-		pathScope.setPath( p );
-		ConstInternedStringVectorDataPtr childNamesData = scene->childNamesPlug()->getValue();
-		const vector<InternedString> &childNames = childNamesData->readable();
-		if( find( childNames.begin(), childNames.end(), *it ) == childNames.end() )
-		{
-			return false;
-		}
-		p.push_back( *it );
-	}
-
-	return true;
-}
-
-bool GafferScene::SceneAlgo::visible( const ScenePlug *scene, const ScenePlug::ScenePath &path )
-{
-	ScenePlug::PathScope pathScope( Context::current() );
-
-	ScenePlug::ScenePath p; p.reserve( path.size() );
-	for( ScenePlug::ScenePath::const_iterator it = path.begin(), eIt = path.end(); it != eIt; ++it )
-	{
-		p.push_back( *it );
-		pathScope.setPath( p );
-
-		ConstCompoundObjectPtr attributes = scene->attributesPlug()->getValue();
-		const BoolData *visibilityData = attributes->member<BoolData>( "scene:visible" );
-		if( visibilityData && !visibilityData->readable() )
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
+//////////////////////////////////////////////////////////////////////////
+// Filter queries
+//////////////////////////////////////////////////////////////////////////
 
 namespace
 {
+
+void filteredNodesWalk( Plug *filterPlug, std::unordered_set<FilteredSceneProcessor *> &result )
+{
+	for( const auto &o : filterPlug->outputs() )
+	{
+		if( auto filteredSceneProcessor = runTimeCast<FilteredSceneProcessor>( o->node() ) )
+		{
+			if( o == filteredSceneProcessor->filterPlug() )
+			{
+				result.insert( filteredSceneProcessor );
+			}
+		}
+		else if( auto filterProcessor = runTimeCast<FilterProcessor>( o->node() ) )
+		{
+			if( o == filterProcessor->inPlug() || o->parent() == filterProcessor->inPlugs() )
+			{
+				filteredNodesWalk( filterProcessor->outPlug(), result );
+			}
+		}
+		else if( auto pathFilter = runTimeCast<PathFilter>( o->node() ) )
+		{
+			if( o == pathFilter->rootsPlug() )
+			{
+				filteredNodesWalk( pathFilter->outPlug(), result );
+			}
+		}
+		filteredNodesWalk( o, result );
+	}
+}
 
 struct ThreadablePathAccumulator
 {
@@ -130,6 +129,13 @@ struct ThreadablePathAccumulator
 
 } // namespace
 
+std::unordered_set<FilteredSceneProcessor *> GafferScene::SceneAlgo::filteredNodes( Filter *filter )
+{
+	std::unordered_set<FilteredSceneProcessor *> result;
+	filteredNodesWalk( filter->outPlug(), result );
+	return result;
+}
+
 void GafferScene::SceneAlgo::matchingPaths( const Filter *filter, const ScenePlug *scene, PathMatcher &paths )
 {
 	matchingPaths( filter->outPlug(), scene, paths );
@@ -146,6 +152,10 @@ void GafferScene::SceneAlgo::matchingPaths( const PathMatcher &filter, const Sce
 	ThreadablePathAccumulator f( paths );
 	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filter, f );
 }
+
+//////////////////////////////////////////////////////////////////////////
+// Globals
+//////////////////////////////////////////////////////////////////////////
 
 IECore::ConstCompoundObjectPtr GafferScene::SceneAlgo::globalAttributes( const IECore::CompoundObject *globals )
 {
@@ -190,7 +200,7 @@ Imath::V2f GafferScene::SceneAlgo::shutter( const IECore::CompoundObject *global
 		{
 			ScenePlug::ScenePath cameraPath;
 			ScenePlug::stringToPath( cameraOption->readable(), cameraPath );
-			if( SceneAlgo::exists( scene, cameraPath ) )
+			if( scene->exists( cameraPath ) )
 			{
 				camera = runTimeCast< const Camera>( scene->object( cameraPath ).get() );
 			}
@@ -266,34 +276,6 @@ IECore::ConstCompoundDataPtr GafferScene::SceneAlgo::sets( const ScenePlug *scen
 	return result;
 }
 
-Imath::Box3f GafferScene::SceneAlgo::bound( const IECore::Object *object )
-{
-	if( const IECoreScene::VisibleRenderable *renderable = IECore::runTimeCast<const IECoreScene::VisibleRenderable>( object ) )
-	{
-		return renderable->bound();
-	}
-	else if( object->isInstanceOf( IECoreScene::Camera::staticTypeId() ) )
-	{
-		return Imath::Box3f( Imath::V3f( -0.5, -0.5, 0 ), Imath::V3f( 0.5, 0.5, 2.0 ) );
-	}
-	else if( object->isInstanceOf( IECoreScene::CoordinateSystem::staticTypeId() ) )
-	{
-		return Imath::Box3f( Imath::V3f( 0 ), Imath::V3f( 1 ) );
-	}
-	else if( object->isInstanceOf( IECoreScene::ClippingPlane::staticTypeId() ) )
-	{
-		return Imath::Box3f( Imath::V3f( -0.5, -0.5, 0 ), Imath::V3f( 0.5 ) );
-	}
-	else if( !object->isInstanceOf( IECore::NullObject::staticTypeId() ) )
-	{
-		return Imath::Box3f( Imath::V3f( -0.5 ), Imath::V3f( 0.5 ) );
-	}
-	else
-	{
-		return Imath::Box3f();
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////
 // History
 //////////////////////////////////////////////////////////////////////////
@@ -309,6 +291,7 @@ struct CapturedProcess
 
 	InternedString type;
 	ConstPlugPtr plug;
+	ConstPlugPtr destinationPlug;
 	ContextPtr context;
 
 	PtrVector children;
@@ -346,6 +329,7 @@ class CapturingMonitor : public Monitor
 			CapturedProcess::Ptr capturedProcess( new CapturedProcess );
 			capturedProcess->type = process->type();
 			capturedProcess->plug = process->plug();
+			capturedProcess->destinationPlug = process->destinationPlug();
 			capturedProcess->context = new Context( *process->context() );
 
 			Mutex::scoped_lock lock( m_mutex );
@@ -389,27 +373,177 @@ uint64_t g_contextUniquefierValue = 0;
 
 SceneAlgo::History::Ptr historyWalk( const CapturedProcess *process, InternedString scenePlugChildName, SceneAlgo::History *parent )
 {
-	SceneAlgo::History::Ptr history;
-	ScenePlug *scene = const_cast<Plug *>( process->plug.get() )->parent<ScenePlug>();
-	if( scene && process->plug.get() == scene->getChild( scenePlugChildName ) )
+	// Add a history item for each plug in the input chain
+	// between `process->destinationPlug()` and `process->plug()`
+	// (inclusive of each).
+
+	SceneAlgo::History::Ptr result;
+	Plug *plug = const_cast<Plug *>( process->destinationPlug.get() );
+	while( plug )
 	{
-		history = new SceneAlgo::History( scene, process->context );
+		ScenePlug *scene = plug->parent<ScenePlug>();
+		if( scene && plug == scene->getChild( scenePlugChildName ) )
+		{
+			SceneAlgo::History::Ptr history = new SceneAlgo::History( scene, process->context );
+			if( !result )
+			{
+				result = history;
+			};
+			if( parent )
+			{
+				parent->predecessors.push_back( history );
+			}
+			parent = history.get();
+		}
+		plug = plug != process->plug ? plug->getInput() : nullptr;
 	}
 
-	if( parent && history )
-	{
-		parent->predecessors.push_back( history );
-	}
-
-	parent = history ? history.get() : parent;
-	assert( parent );
+	// Add history items for upstream processes.
 
 	for( const auto &p : process->children )
 	{
-		historyWalk( p.get(), scenePlugChildName, parent );
+		// Parents may spawn other processes in support of the requested plug.
+		// We don't want these to show up in history output, so we only include
+		// ones that are directly in service of the requested plug.
+		if( p->plug->parent<ScenePlug>() && p->plug->getName() == scenePlugChildName )
+		{
+			historyWalk( p.get(), scenePlugChildName, parent );
+		}
 	}
 
-	return history;
+	return result;
+}
+
+/// \todo It's error prone to have to use SceneScope like this. Consider
+/// improvements to the FilterPlug so that you're forced to pass a scene
+/// somehow. The use of the context to provide the input scene is questionable
+/// anyway, and we don't tend to cache evaluations for `Filter.out`. So perhaps
+/// Filters shouldn't even be ComputeNodes, and FilterPlug shouldn't be an
+/// IntPlug, and instead we should pass a scene directly to some sort of
+/// `FilterPlug::match( const ScenePlug *scene )` method?
+int filterResult( const FilterPlug *filter, const ScenePlug *scene )
+{
+	FilterPlug::SceneScope scope( Context::current(), scene );
+	return filter->getValue();
+}
+
+void addGenericAttributePredecessors( const SceneAlgo::History::Predecessors &source, SceneAlgo::AttributeHistory *destination )
+{
+	for( auto &h : source )
+	{
+		if( auto ah = SceneAlgo::attributeHistory( h.get(), destination->attributeName ) )
+		{
+			destination->predecessors.push_back( ah );
+		}
+	}
+}
+
+void addCopyAttributesPredecessors( const CopyAttributes *copyAttributes, const SceneAlgo::History::Predecessors &source, SceneAlgo::AttributeHistory *destination )
+{
+	const ScenePlug *sourceScene = copyAttributes->inPlug();
+	if(
+		( filterResult( copyAttributes->filterPlug(), copyAttributes->inPlug() ) & PathMatcher::ExactMatch ) &&
+		StringAlgo::matchMultiple( destination->attributeName, copyAttributes->attributesPlug()->getValue() )
+	)
+	{
+		ConstCompoundObjectPtr sourceAttributes;
+		const std::string sourceLocation = copyAttributes->sourceLocationPlug()->getValue();
+		if( sourceLocation.empty() )
+		{
+			if( copyAttributes->sourcePlug()->exists() )
+			{
+				sourceAttributes = copyAttributes->sourcePlug()->attributesPlug()->getValue();
+			}
+		}
+		else
+		{
+			ScenePlug::ScenePath sourcePath; ScenePlug::stringToPath( sourceLocation, sourcePath );
+			if( copyAttributes->sourcePlug()->exists( sourcePath ) )
+			{
+				sourceAttributes = copyAttributes->sourcePlug()->attributes( sourcePath );
+			}
+		}
+		if( sourceAttributes && sourceAttributes->members().count( destination->attributeName ) )
+		{
+			sourceScene = copyAttributes->sourcePlug();
+		}
+	}
+
+	for( auto &h : source )
+	{
+		if( h->scene == sourceScene )
+		{
+			destination->predecessors.push_back( SceneAlgo::attributeHistory( h.get(), destination->attributeName ) );
+		}
+	}
+}
+
+void addShuffleAttributesPredecessors( const ShuffleAttributes *shuffleAttributes, const SceneAlgo::History::Predecessors &source, SceneAlgo::AttributeHistory *destination )
+{
+	// We have no way of introspecting the operation of a ShufflePlug, so we resort
+	// to shuffling	`name = name, value = name` pairs to figure out where the attribute
+	// has come from.
+
+	InternedString sourceAttributeName = destination->attributeName;
+	if( filterResult( shuffleAttributes->filterPlug(), shuffleAttributes->inPlug() ) & PathMatcher::ExactMatch )
+	{
+		auto inputAttributes = shuffleAttributes->inPlug()->attributesPlug()->getValue();
+		map<InternedString, InternedString> shuffledNames;
+		for( auto &a : inputAttributes->members() )
+		{
+			shuffledNames.insert( { a.first, a.first } );
+		}
+		shuffledNames = shuffleAttributes->shufflesPlug()->shuffle( shuffledNames );
+		sourceAttributeName = shuffledNames[destination->attributeName];
+	}
+
+	assert( source.size() == 1 );
+	destination->predecessors.push_back( SceneAlgo::attributeHistory( source[0].get(), sourceAttributeName ) );
+}
+
+void addLocaliseAttributesPredecessors( const LocaliseAttributes *localiseAttributes, const SceneAlgo::History::Predecessors &source, SceneAlgo::AttributeHistory *destination )
+{
+	// No need to check if the node is filtered to this location.
+	// Filtered or unfiltered, it's all the same : the predecessor
+	// we want is the most local one. i.e. the one with the longest
+	// path.
+
+	int longestPath = -1;
+	SceneAlgo::AttributeHistory::Ptr predecessor;
+	for( auto &h : source )
+	{
+		const auto &sourcePath = h->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+		if( (int)sourcePath.size() <= longestPath )
+		{
+			continue;
+		}
+		if( auto p = attributeHistory( h.get(), destination->attributeName ) )
+		{
+			predecessor = p;
+			longestPath = sourcePath.size();
+		}
+	}
+
+	assert( predecessor );
+	destination->predecessors.push_back( predecessor );
+}
+
+void addMergeScenesPredecessors( const MergeScenes *mergeScenes, const SceneAlgo::History::Predecessors &source, SceneAlgo::AttributeHistory *destination )
+{
+	// MergeScenes only evaluates input locations that exist, and in an order
+	// whereby the last input with the attribute wins.
+
+	SceneAlgo::AttributeHistory::Ptr predecessor;
+	for( auto &h : source )
+	{
+		if( auto p = attributeHistory( h.get(), destination->attributeName ) )
+		{
+			predecessor = p;
+		}
+	}
+
+	assert( predecessor );
+	destination->predecessors.push_back( predecessor );
 }
 
 SceneProcessor *objectTweaksWalk( const SceneAlgo::History *h )
@@ -419,7 +553,7 @@ SceneProcessor *objectTweaksWalk( const SceneAlgo::History *h )
 		if( h->scene == tweaks->outPlug() )
 		{
 			Context::Scope contextScope( h->context.get() );
-			if( tweaks->filterPlug()->getValue() & PathMatcher::ExactMatch )
+			if( filterResult( tweaks->filterPlug(), tweaks->inPlug() ) & PathMatcher::ExactMatch )
 			{
 				return tweaks;
 			}
@@ -437,7 +571,7 @@ SceneProcessor *objectTweaksWalk( const SceneAlgo::History *h )
 	return nullptr;
 }
 
-ShaderTweaks *shaderTweaksWalk( const SceneAlgo::History *h, const IECore::InternedString &attributeName )
+ShaderTweaks *shaderTweaksWalk( const SceneAlgo::AttributeHistory *h )
 {
 	if( auto tweaks = h->scene->parent<ShaderTweaks>() )
 	{
@@ -445,8 +579,8 @@ ShaderTweaks *shaderTweaksWalk( const SceneAlgo::History *h, const IECore::Inter
 		{
 			Context::Scope contextScope( h->context.get() );
 			if(
-				StringAlgo::matchMultiple( attributeName, tweaks->shaderPlug()->getValue() ) &&
-				( tweaks->filterPlug()->getValue() & PathMatcher::ExactMatch )
+				StringAlgo::matchMultiple( h->attributeName, tweaks->shaderPlug()->getValue() ) &&
+				( filterResult( tweaks->filterPlug(), tweaks->inPlug() ) & PathMatcher::ExactMatch )
 			)
 			{
 				return tweaks;
@@ -456,7 +590,7 @@ ShaderTweaks *shaderTweaksWalk( const SceneAlgo::History *h, const IECore::Inter
 
 	for( const auto &p : h->predecessors )
 	{
-		if( auto tweaks = shaderTweaksWalk( p.get(), attributeName ) )
+		if( auto tweaks = shaderTweaksWalk( static_cast<SceneAlgo::AttributeHistory *>( p.get() ) ) )
 		{
 			return tweaks;
 		}
@@ -487,11 +621,69 @@ SceneAlgo::History::Ptr SceneAlgo::history( const Gaffer::ValuePlug *scenePlugCh
 
 	if( monitor->rootProcesses().size() == 0 )
 	{
-		return nullptr;
+		return new History(
+			const_cast<ScenePlug *>( scenePlugChild->parent<ScenePlug>() ),
+			new Context( *Context::current() )
+		);
 	}
 
 	assert( monitor->rootProcesses().size() == 1 );
 	return historyWalk( monitor->rootProcesses().front().get(), scenePlugChild->getName(), nullptr );
+}
+
+SceneAlgo::AttributeHistory::Ptr SceneAlgo::attributeHistory( const SceneAlgo::History *attributesHistory, const IECore::InternedString &attribute )
+{
+	Context::Scope scopedContext( attributesHistory->context.get() );
+	ConstCompoundObjectPtr attributes = attributesHistory->scene->attributesPlug()->getValue();
+	ConstObjectPtr attributeValue = attributes->member<Object>( attribute );
+
+	if( !attributeValue )
+	{
+		return nullptr;
+	}
+
+	SceneAlgo::AttributeHistory::Ptr result = new AttributeHistory(
+		attributesHistory->scene, attributesHistory->context,
+		attribute, attributeValue
+	);
+
+	// Filter the _attributes_ history to include only predecessors which
+	// contribute specifically to our single _attribute_. In the absence of
+	// a SceneNode-level API for querying attribute sources, we resort to
+	// special case code for backtracking through certain node types.
+	/// \todo Consider an official API that allows the nodes themselves to
+	/// take responsibility for this backtracking.
+
+	auto node = runTimeCast<const SceneNode>( attributesHistory->scene->node() );
+	if( node && node->enabledPlug()->getValue() && attributesHistory->scene == node->outPlug() )
+	{
+		if( auto copyAttributes = runTimeCast<const CopyAttributes>( node ) )
+		{
+			addCopyAttributesPredecessors( copyAttributes, attributesHistory->predecessors, result.get() );
+		}
+		else if( auto shuffleAttributes = runTimeCast<const ShuffleAttributes>( node ) )
+		{
+			addShuffleAttributesPredecessors( shuffleAttributes, attributesHistory->predecessors, result.get() );
+		}
+		else if( auto localiseAttributes = runTimeCast<const LocaliseAttributes>( node ) )
+		{
+			addLocaliseAttributesPredecessors( localiseAttributes, attributesHistory->predecessors, result.get() );
+		}
+		else if( auto mergeScenes = runTimeCast<const MergeScenes>( node ) )
+		{
+			addMergeScenesPredecessors( mergeScenes, attributesHistory->predecessors, result.get() );
+		}
+		else
+		{
+			addGenericAttributePredecessors( attributesHistory->predecessors, result.get() );
+		}
+	}
+	else
+	{
+		addGenericAttributePredecessors( attributesHistory->predecessors, result.get() );
+	}
+
+	return result;
 }
 
 ScenePlug *SceneAlgo::source( const ScenePlug *scene, const ScenePlug::ScenePath &path )
@@ -530,16 +722,102 @@ ShaderTweaks *SceneAlgo::shaderTweaks( const ScenePlug *scene, const ScenePlug::
 	ScenePlug::ScenePath inheritancePath = path;
 	while( inheritancePath.size() )
 	{
-		ConstCompoundObjectPtr attributes = scene->attributes( inheritancePath );
-		if( attributes->member<Object>( attributeName ) )
+		History::ConstPtr h = history( scene->attributesPlug(), inheritancePath );
+		if( auto ah = attributeHistory( h.get(), attributeName ) )
 		{
-			History::ConstPtr h = history( scene->attributesPlug(), inheritancePath );
-			if( h )
-			{
-				return shaderTweaksWalk( h.get(), attributeName );
-			}
+			return shaderTweaksWalk( ah.get() );
 		}
 		inheritancePath.pop_back();
 	}
 	return nullptr;
+}
+
+std::string SceneAlgo::sourceSceneName( const GafferImage::ImagePlug *image )
+{
+	if( !image )
+	{
+		return "";
+	}
+
+	// See if the image has the `gaffer:sourceScene` metadata entry that gives
+	// the root-relative path to the source scene plug
+	const ConstCompoundDataPtr metadata = image->metadata();
+	const StringData *plugPathData = metadata->member<StringData>( "gaffer:sourceScene" );
+
+	return plugPathData ? plugPathData->readable() : "";
+}
+
+ScenePlug *SceneAlgo::sourceScene( GafferImage::ImagePlug *image )
+{
+	const std::string path = sourceSceneName( image );
+	if( path.empty() )
+	{
+		return nullptr;
+	}
+
+	ScriptNode *scriptNode = image->source()->node()->scriptNode();
+	if( !scriptNode )
+	{
+		return nullptr;
+	}
+
+	return scriptNode->descendant<ScenePlug>( path );
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Miscellaneous
+//////////////////////////////////////////////////////////////////////////
+
+bool GafferScene::SceneAlgo::exists( const ScenePlug *scene, const ScenePlug::ScenePath &path )
+{
+	return scene->exists( path );
+}
+
+bool GafferScene::SceneAlgo::visible( const ScenePlug *scene, const ScenePlug::ScenePath &path )
+{
+	ScenePlug::PathScope pathScope( Context::current() );
+
+	ScenePlug::ScenePath p; p.reserve( path.size() );
+	for( ScenePlug::ScenePath::const_iterator it = path.begin(), eIt = path.end(); it != eIt; ++it )
+	{
+		p.push_back( *it );
+		pathScope.setPath( p );
+
+		ConstCompoundObjectPtr attributes = scene->attributesPlug()->getValue();
+		const BoolData *visibilityData = attributes->member<BoolData>( "scene:visible" );
+		if( visibilityData && !visibilityData->readable() )
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+Imath::Box3f GafferScene::SceneAlgo::bound( const IECore::Object *object )
+{
+	if( const IECoreScene::VisibleRenderable *renderable = IECore::runTimeCast<const IECoreScene::VisibleRenderable>( object ) )
+	{
+		return renderable->bound();
+	}
+	else if( object->isInstanceOf( IECoreScene::Camera::staticTypeId() ) )
+	{
+		return Imath::Box3f( Imath::V3f( -0.5, -0.5, 0 ), Imath::V3f( 0.5, 0.5, 2.0 ) );
+	}
+	else if( object->isInstanceOf( IECoreScene::CoordinateSystem::staticTypeId() ) )
+	{
+		return Imath::Box3f( Imath::V3f( 0 ), Imath::V3f( 1 ) );
+	}
+	else if( object->isInstanceOf( IECoreScene::ClippingPlane::staticTypeId() ) )
+	{
+		return Imath::Box3f( Imath::V3f( -0.5, -0.5, 0 ), Imath::V3f( 0.5 ) );
+	}
+	else if( !object->isInstanceOf( IECore::NullObject::staticTypeId() ) )
+	{
+		return Imath::Box3f( Imath::V3f( -0.5 ), Imath::V3f( 0.5 ) );
+	}
+	else
+	{
+		return Imath::Box3f();
+	}
 }

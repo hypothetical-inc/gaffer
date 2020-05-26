@@ -36,7 +36,11 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 import unittest
 import glob
 import inspect
@@ -70,8 +74,8 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		)
 		p.wait()
 
-		self.failUnless( "thisScriptDoesNotExist" in "".join( p.stderr.readlines() ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "thisScriptDoesNotExist", "".join( p.stderr.readlines() ) )
+		self.assertTrue( p.returncode )
 
 	def testExecuteTextWriter( self ) :
 
@@ -83,7 +87,7 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		s["fileName"].setValue( self.__scriptFileName )
 		s.save()
 
-		self.failIf( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
+		self.assertFalse( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
 		p = subprocess.Popen(
 			"gaffer execute " + self.__scriptFileName,
 			shell=True,
@@ -92,9 +96,9 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		p.wait()
 
 		error = "".join( p.stderr.readlines() )
-		self.failUnless( error == "" )
-		self.failUnless( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
-		self.failIf( p.returncode )
+		self.assertEqual( error, "" )
+		self.assertTrue( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
+		self.assertFalse( p.returncode )
 
 	def testFramesParameter( self ) :
 
@@ -109,7 +113,7 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 
 		frames = IECore.FrameList.parse( "1-5" )
 		for f in frames.asList() :
-			self.failIf( os.path.exists( self.__outputFileSeq.fileNameForFrame( f ) ) )
+			self.assertFalse( os.path.exists( self.__outputFileSeq.fileNameForFrame( f ) ) )
 
 		p = subprocess.Popen(
 			"gaffer execute " + self.__scriptFileName + " -frames " + str(frames),
@@ -119,10 +123,10 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		p.wait()
 
 		error = "".join( p.stderr.readlines() )
-		self.failUnless( error == "" )
-		self.failIf( p.returncode )
+		self.assertEqual( error, "" )
+		self.assertFalse( p.returncode )
 		for f in frames.asList() :
-			self.failUnless( os.path.exists( self.__outputFileSeq.fileNameForFrame( f ) ) )
+			self.assertTrue( os.path.exists( self.__outputFileSeq.fileNameForFrame( f ) ) )
 
 	def testContextParameter( self ) :
 
@@ -137,7 +141,7 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		s["fileName"].setValue( self.__scriptFileName )
 		s.save()
 
-		self.failIf( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
+		self.assertFalse( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
 		p = subprocess.Popen(
 			"gaffer execute " + self.__scriptFileName + " -context -valueOne 1 -valueTwo 2",
 			shell=True,
@@ -147,8 +151,8 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		self.failUnless( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
+		self.assertFalse( p.returncode )
+		self.assertTrue( os.path.exists( self.__outputFileSeq.fileNameForFrame( 1 ) ) )
 
 		with open( self.__outputFileSeq.fileNameForFrame( 1 ) ) as f :
 			string = f.read()
@@ -170,9 +174,9 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		p.wait()
 
 		error = "".join( p.stderr.readlines() )
-		self.failUnless( "ERROR" in error )
-		self.failUnless( "Context parameter" in error )
-		self.failUnless( p.returncode )
+		self.assertIn( "ERROR", error )
+		self.assertIn( "Context parameter", error )
+		self.assertTrue( p.returncode )
 
 	def testIgnoreScriptLoadErrors( self ) :
 
@@ -229,9 +233,9 @@ class ExecuteApplicationTest( GafferTest.TestCase ) :
 		p.wait()
 
 		error = "".join( p.stderr.readlines() )
-		self.failUnless( "ERROR" in error )
-		self.failUnless( "executing t" in error )
-		self.failUnless( p.returncode )
+		self.assertIn( "ERROR", error )
+		self.assertIn( "executing t", error )
+		self.assertTrue( p.returncode )
 
 	def testSpecialCharactersInScriptFileName( self ) :
 

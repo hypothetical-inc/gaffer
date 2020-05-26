@@ -39,6 +39,7 @@
 
 #include "GafferSceneUI/ContextAlgo.h"
 
+#include "GafferScene/CustomAttributes.h"
 #include "GafferScene/DeleteObject.h"
 #include "GafferScene/Grid.h"
 #include "GafferScene/LightToCamera.h"
@@ -147,6 +148,24 @@ class SceneView::DrawingMode : public boost::signals::trackable
 		DrawingMode( SceneView *view )
 			:	m_view( view )
 		{
+			// We can implement many drawing mode controls via render options.
+			// They simply modify the state used to render existing
+			// renderables. Visualisers however, may generate different
+			// renderables all together and so we need to modify the in-scene
+			// attribute values rather than any renderer option, which will
+			// cause the visualisers to be re-evaluated. We use a general
+			// purpose CustomAttributes preprocessor to set globals attributes
+			// with the desired values.  This allows them to be overridden at
+			// specific locations in the user's graph if desired.
+
+			// Global attributes preprocessor
+
+			m_preprocessor = new CustomAttributes();
+			m_preprocessor->globalPlug()->setValue( true );
+			CompoundDataPlug *attr = m_preprocessor->attributesPlug();
+
+			// View plugs controlling renderer options
+
 			ValuePlugPtr drawingMode = new ValuePlug( "drawingMode" );
 			m_view->addChild( drawingMode );
 
@@ -163,9 +182,69 @@ class SceneView::DrawingMode : public boost::signals::trackable
 			drawingMode->addChild( points );
 			points->addChild( new BoolPlug( "useGLPoints", Plug::In, true ) );
 
+			// View plugs controlling attribute values
+
+			// General :
+
+			ValuePlugPtr visualiser = new ValuePlug( "visualiser" );
+			drawingMode->addChild( visualiser );
+
+			//    gl:visualiser:frustum
+
+			StringPlugPtr frustrumAttrValuePlug = new StringPlug( "value", Plug::In, "whenSelected" );
+
+			NameValuePlugPtr frustumAttrPlug = new Gaffer::NameValuePlug( "gl:visualiser:frustum", frustrumAttrValuePlug, true, "frustum" );
+			attr->addChild( frustumAttrPlug );
+			PlugPtr frustumViewPlug = frustrumAttrValuePlug->createCounterpart( "frustum", Plug::In );
+			visualiser->addChild( frustumViewPlug );
+			frustrumAttrValuePlug->setInput( frustumViewPlug );
+
+			//    gl:visualiser:scale
+
+			FloatPlugPtr visualiserScaleAttrValuePlug = new FloatPlug( "value", Plug::In, 1.0f, 0.01f );
+
+			NameValuePlugPtr visualiserScaleAttrPlug = new Gaffer::NameValuePlug( "gl:visualiser:scale", visualiserScaleAttrValuePlug, true, "scale" );
+			attr->addChild( visualiserScaleAttrPlug );
+			PlugPtr visualiserScaleViewPlug = visualiserScaleAttrValuePlug->createCounterpart( "scale", Plug::In );
+			visualiser->addChild( visualiserScaleViewPlug );
+			visualiserScaleAttrValuePlug->setInput( visualiserScaleViewPlug );
+
+			// Light specific :
+
+			ValuePlugPtr light = new ValuePlug( "light" );
+			drawingMode->addChild( light );
+
+			//    gl:light:drawingMode
+
+			StringPlugPtr lightModeAttrValuePlug = new StringPlug( "value", Plug::In, "texture" );
+
+			NameValuePlugPtr lightModeAttrPlug = new Gaffer::NameValuePlug( "gl:light:drawingMode", lightModeAttrValuePlug, true, "lightDrawingMode" );
+			attr->addChild( lightModeAttrPlug );
+			PlugPtr lightModeViewPlug = lightModeAttrValuePlug->createCounterpart( "drawingMode", Plug::In );
+			light->addChild( lightModeViewPlug );
+			lightModeAttrValuePlug->setInput( lightModeViewPlug );
+
+			//    gl:light:frustumScale
+
+			FloatPlugPtr lightFrustumScaleAttrValuePlug = new FloatPlug( "value", Plug::In , 1.0f, 0.01f );
+
+			NameValuePlugPtr lightFrustumScaleAttrPlug = new Gaffer::NameValuePlug( "gl:light:frustumScale", lightFrustumScaleAttrValuePlug, true, "lightFrustumScale" );
+			attr->addChild( lightFrustumScaleAttrPlug );
+			PlugPtr lightFrustumScaleViewPlug = lightFrustumScaleAttrValuePlug->createCounterpart( "frustumScale", Plug::In );
+			light->addChild( lightFrustumScaleViewPlug );
+			lightFrustumScaleAttrValuePlug->setInput( lightFrustumScaleViewPlug );
+
+			// Initialise renderer and event tracking
+
 			updateOpenGLOptions();
 
 			view->plugSetSignal().connect( boost::bind( &DrawingMode::plugSet, this, ::_1 ) );
+		}
+
+		/// @see SceneProcessor::preprocessor
+		SceneProcessor *preprocessor()
+		{
+			return m_preprocessor.get();
 		}
 
 	private :
@@ -210,6 +289,8 @@ class SceneView::DrawingMode : public boost::signals::trackable
 
 			sceneGadget()->setOpenGLOptions( options.get() );
 		}
+
+		CustomAttributesPtr m_preprocessor;
 
 		SceneView *m_view;
 
@@ -674,8 +755,6 @@ class SceneView::Gnomon : public boost::signals::trackable
 namespace
 {
 
-/// \todo If we made CropWindowTool::Rectangle public, we
-/// could ditch this class.
 class CameraOverlay : public GafferUI::Gadget
 {
 
@@ -738,6 +817,22 @@ class CameraOverlay : public GafferUI::Gadget
 		const Box2f &getCropWindow() const
 		{
 			return m_cropWindow;
+		}
+
+		// left, top, right, bottom
+		void setOverscan( const V4f &overscan )
+		{
+			if( overscan == m_overscan )
+			{
+				return;
+			}
+			m_overscan = overscan;
+			requestRender();
+		}
+
+		const V4f &getOverscan() const
+		{
+			return m_overscan;
 		}
 
 		void setCaption( const std::string &caption )
@@ -843,6 +938,26 @@ class CameraOverlay : public GafferUI::Gadget
 				glColor4f( 0, 0.25, 0, 1.0f );
 				style->renderRectangle( m_resolutionGate );
 
+				if( m_overscan[0] != 0.0f || m_overscan[1] != 0.0f || m_overscan[2] != 0.0f || m_overscan[3] != 0.0f )
+				{
+					glLineStipple( 2, 0x3333 );
+					glEnable( GL_LINE_STIPPLE );
+
+					const V2f gateSize = m_resolutionGate.size();
+					style->renderRectangle( Box2f(
+						V2f(
+							m_resolutionGate.min.x - ( m_overscan[0] * gateSize.x ),
+							m_resolutionGate.min.y - ( m_overscan[1] * gateSize.y )
+						),
+						V2f(
+							m_resolutionGate.max.x + ( m_overscan[2] * gateSize.x ),
+							m_resolutionGate.max.y + ( m_overscan[3] * gateSize.y )
+						)
+					) );
+
+					glDisable( GL_LINE_STIPPLE );
+				}
+
 				if( !m_icon.empty() )
 				{
 					IECoreGL::ConstTexturePtr texture = ImageGadget::loadTexture( m_icon );
@@ -878,6 +993,7 @@ class CameraOverlay : public GafferUI::Gadget
 		Box2f m_resolutionGate;
 		Box2f m_apertureGate;
 		Box2f m_cropWindow;
+		V4f m_overscan;
 		std::string m_caption;
 		std::string m_icon;
 
@@ -921,7 +1037,7 @@ class SceneView::Camera : public boost::signals::trackable
 			plug->addChild(
 				new Gaffer::V2fPlug(
 					"clippingPlanes", Plug::In,
-					V2f( 0.01, 100000 ),
+					V2f( 0.1, 100000 ),
 					V2f( 0.0001 ),
 					V2f( Imath::limits<float>::max() ),
 					Plug::Default & ~Plug::AcceptsInputs
@@ -1180,7 +1296,7 @@ class SceneView::Camera : public boost::signals::trackable
 				{
 					ScenePlug::ScenePath cameraPath;
 					ScenePlug::stringToPath( cameraPathString, cameraPath );
-					if( !SceneAlgo::exists( scenePlug(), cameraPath ) )
+					if( !scenePlug()->exists( cameraPath ) )
 					{
 						throw IECore::Exception( "Camera \"" + cameraPathString + "\" does not exist" );
 					}
@@ -1248,6 +1364,18 @@ class SceneView::Camera : public boost::signals::trackable
 			else
 			{
 				m_overlay->setCropWindow( Box2f( V2f( 0 ), V2f( 1 ) ) );
+			}
+			if( isCamera && m_lookThroughCamera->getOverscan() )
+			{
+				const float left = m_lookThroughCamera->getOverscanLeft();
+				const float top = m_lookThroughCamera->getOverscanTop();
+				const float right = m_lookThroughCamera->getOverscanRight();
+				const float bottom = m_lookThroughCamera->getOverscanBottom();
+				m_overlay->setOverscan( V4f( left, top, right, bottom ) );
+			}
+			else
+			{
+				m_overlay->setOverscan( V4f( 0.0f ) );
 			}
 
 			if( errorMessage.empty() )
@@ -1483,11 +1611,16 @@ SceneView::SceneView( const std::string &name )
 	preprocessor->addChild( m_shadingMode->preprocessor() );
 	m_shadingMode->preprocessor()->inPlug()->setInput( deleteObject->outPlug() );
 
+	// add in the node from the DrawingMode
+
+	preprocessor->addChild( m_drawingMode->preprocessor() );
+	m_drawingMode->preprocessor()->inPlug()->setInput( m_shadingMode->preprocessor()->outPlug() );
+
 	// make the output for the preprocessor
 
 	ScenePlugPtr preprocessorOutput = new ScenePlug( "out", Plug::Out );
 	preprocessor->addChild( preprocessorOutput );
-	preprocessorOutput->setInput( m_shadingMode->preprocessor()->outPlug() );
+	preprocessorOutput->setInput( m_drawingMode->preprocessor()->outPlug() );
 
 	setPreprocessor( preprocessor );
 

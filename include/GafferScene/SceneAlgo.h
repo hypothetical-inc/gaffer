@@ -40,6 +40,8 @@
 #include "GafferScene/Filter.h"
 #include "GafferScene/ScenePlug.h"
 
+#include "GafferImage/ImagePlug.h"
+
 #include "Gaffer/NumericPlug.h"
 
 #include "IECore/Export.h"
@@ -48,6 +50,8 @@ IECORE_PUSH_DEFAULT_VISIBILITY
 #include "OpenEXR/ImathVec.h"
 IECORE_POP_DEFAULT_VISIBILITY
 
+#include <unordered_set>
+
 namespace IECore
 {
 
@@ -55,32 +59,22 @@ IE_CORE_FORWARDDECLARE( CompoundData )
 
 } // namespace IECore
 
-namespace IECoreScene
-{
-
-IE_CORE_FORWARDDECLARE( Transform )
-IE_CORE_FORWARDDECLARE( Camera )
-
-} // namespace IECoreScene
-
 namespace GafferScene
 {
 
 class SceneProcessor;
+class FilteredSceneProcessor;
 class ShaderTweaks;
 
 namespace SceneAlgo
 {
 
-/// Returns true if the specified location exists within the scene, and false otherwise.
-/// This operates by traversing the path from the root, ensuring that each location includes
-/// the next path element within its child names.
-GAFFERSCENE_API bool exists( const ScenePlug *scene, const ScenePlug::ScenePath &path );
+/// Filter queries
+/// ==============
 
-/// Returns true if the specified location is visible, and false otherwise.
-/// This operates by traversing the path from the root, terminating if
-/// the "scene:visible" attribute is false.
-GAFFERSCENE_API bool visible( const ScenePlug *scene, const ScenePlug::ScenePath &path );
+/// Returns all the nodes which are filtered by the specified filter,
+/// whether directly or indirectly via an intermediate filter.
+GAFFERSCENE_API std::unordered_set<FilteredSceneProcessor *> filteredNodes( Filter *filter );
 
 /// Finds all the paths in the scene that are matched by the filter, and adds them into the PathMatcher.
 GAFFERSCENE_API void matchingPaths( const Filter *filter, const ScenePlug *scene, IECore::PathMatcher &paths );
@@ -89,6 +83,9 @@ GAFFERSCENE_API void matchingPaths( const Filter *filter, const ScenePlug *scene
 GAFFERSCENE_API void matchingPaths( const Gaffer::IntPlug *filterPlug, const ScenePlug *scene, IECore::PathMatcher &paths );
 /// As above, but specifying the filter as a PathMatcher.
 GAFFERSCENE_API void matchingPaths( const IECore::PathMatcher &filter, const ScenePlug *scene, IECore::PathMatcher &paths );
+
+/// Parallel scene traversal
+/// ========================
 
 /// Invokes the ThreadableFunctor at every location in the scene,
 /// visiting parent locations before their children, but
@@ -137,11 +134,17 @@ void filteredParallelTraverse( const ScenePlug *scene, const Gaffer::IntPlug *fi
 template <class ThreadableFunctor>
 void filteredParallelTraverse( const ScenePlug *scene, const IECore::PathMatcher &filter, ThreadableFunctor &f );
 
+/// Globals
+/// =======
+
 /// Returns just the global attributes from the globals (everything prefixed with "attribute:").
 GAFFERSCENE_API IECore::ConstCompoundObjectPtr globalAttributes( const IECore::CompoundObject *globals );
 
 /// Calculates the shutter specified by the globals ( potentially overridden by a camera )
 GAFFERSCENE_API Imath::V2f shutter( const IECore::CompoundObject *globals, const ScenePlug *scene );
+
+/// Sets
+/// ====
 
 /// Returns true if the specified set exists within the scene, and false otherwise.
 /// This simply searches for the set name in the result of scene->setNamesPlug()->getValue().
@@ -152,11 +155,6 @@ GAFFERSCENE_API bool setExists( const ScenePlug *scene, const IECore::InternedSt
 GAFFERSCENE_API IECore::ConstCompoundDataPtr sets( const ScenePlug *scene );
 /// As above, but returning only the requested sets.
 GAFFERSCENE_API IECore::ConstCompoundDataPtr sets( const ScenePlug *scene, const std::vector<IECore::InternedString> &setNames );
-
-/// Returns a bounding box for the specified object. Typically
-/// this is provided by the VisibleRenderable::bound() method, but
-/// for other object types we must return a synthetic bound.
-GAFFERSCENE_API Imath::Box3f bound( const IECore::Object *object );
 
 /// History
 /// =======
@@ -177,9 +175,27 @@ struct History : public IECore::RefCounted
 	Predecessors predecessors;
 };
 
-/// Returns a nullptr if no history is available (eg: no computes would be
-/// performed to produce the plug's value).
 GAFFERSCENE_API History::Ptr history( const Gaffer::ValuePlug *scenePlugChild, const ScenePlug::ScenePath &path );
+
+/// Extends History to provide information on the history of a specific attribute.
+/// Attributes may be renamed by ShuffleAttributes nodes and this is reflected
+/// in the `attributeName` field.
+struct AttributeHistory : public History
+{
+	IE_CORE_DECLAREMEMBERPTR( AttributeHistory )
+	AttributeHistory(
+		const ScenePlugPtr &scene, const Gaffer::ContextPtr &context,
+		const IECore::InternedString &attributeName, const IECore::ConstObjectPtr &attributeValue
+	) :	History( scene, context ), attributeName( attributeName ), attributeValue( attributeValue ) {}
+	IECore::InternedString attributeName;
+	IECore::ConstObjectPtr attributeValue;
+};
+
+/// Filters `attributesHistory` and returns a history for the specific `attribute`.
+/// `attributesHistory` should have been obtained from a previous call to
+/// `history( scene->attributesPlug(), path )`. If the attribute doesn't exist then
+/// null is returned.
+GAFFERSCENE_API AttributeHistory::Ptr attributeHistory( const History *attributesHistory, const IECore::InternedString &attribute );
 
 /// Returns the upstream scene originally responsible for generating the specified location.
 GAFFERSCENE_API ScenePlug *source( const ScenePlug *scene, const ScenePlug::ScenePath &path );
@@ -192,6 +208,43 @@ GAFFERSCENE_API SceneProcessor *objectTweaks( const ScenePlug *scene, const Scen
 
 /// Returns the last ShaderTweaks node to edit the specified attribute.
 GAFFERSCENE_API ShaderTweaks *shaderTweaks( const ScenePlug *scene, const ScenePlug::ScenePath &path, const IECore::InternedString &attributeName );
+
+/// Render Metadata
+/// ===============
+///
+/// Methods to determine information about the scene that produced an image.
+/// Gaffer's output code adds the name of the source ScenePlug into the image
+/// headers for renders, this metadata (or equivalent) must be present for
+/// these methods to function.
+/// NOTE: No attempts are made to track renaming or re-connections, so if the
+/// graph topology has changed since the image was rendered, results may vary.
+
+/// Returns the script-relative name of the source ScenePlug referenced by the
+/// supplied image. Note: this is the exact plug that was rendered so may
+/// include internal processing nodes not visible in the user-land node graph.
+/// If no metadata is present, and empty string is returned.
+GAFFERSCENE_API std::string sourceSceneName( const GafferImage::ImagePlug *image );
+
+/// Returns the source ScenePlug for the supplied image as per
+/// SceneAlgo::sourceSceneName or a nullptr if no metadata exists or the plug
+/// can't be found.
+GAFFERSCENE_API ScenePlug *sourceScene( GafferImage::ImagePlug *image );
+
+/// Miscellaneous
+/// =============
+
+/// \deprecated Use `ScenePlug::exists()` instead.
+GAFFERSCENE_API bool exists( const ScenePlug *scene, const ScenePlug::ScenePath &path );
+
+/// Returns true if the specified location is visible, and false otherwise.
+/// This operates by traversing the path from the root, terminating if
+/// the "scene:visible" attribute is false.
+GAFFERSCENE_API bool visible( const ScenePlug *scene, const ScenePlug::ScenePath &path );
+
+/// Returns a bounding box for the specified object. Typically
+/// this is provided by the VisibleRenderable::bound() method, but
+/// for other object types we must return a synthetic bound.
+GAFFERSCENE_API Imath::Box3f bound( const IECore::Object *object );
 
 } // namespace SceneAlgo
 

@@ -49,6 +49,7 @@ static Registry &registry()
 	if( !r.size() )
 	{
 		// register standard pointers
+		r["move"] = new Pointer( "move.png", Imath::V2i( 10, 10 ) );
 		r["moveDiagonallyUp"] = new Pointer( "moveDiagonallyUp.png", Imath::V2i( 7 ) );
 		r["moveDiagonallyDown"] = new Pointer( "moveDiagonallyDown.png", Imath::V2i( 7 ) );
 		r["moveHorizontally"] = new Pointer( "moveHorizontally.png", Imath::V2i( 9, 5 ) );
@@ -62,6 +63,8 @@ static Registry &registry()
 		r["contextMenu"] = new Pointer( "pointerContextMenu.png", Imath::V2i( 1 ) );
 		r["tab"] = new Pointer( "pointerTab.png", Imath::V2i( 12, 15 ) );
 		r["detachedPanel"] = new Pointer( "pointerDetachedPanel.png", Imath::V2i( 12, 15 ) );
+		r["target"] = new Pointer( "pointerTarget.png", Imath::V2i( 12, 12 ) );
+		r["crossHair"] = new Pointer( "pointerCrossHair.png", Imath::V2i( 8, 8 ) );
 	}
 	return r;
 }

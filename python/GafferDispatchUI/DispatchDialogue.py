@@ -232,7 +232,7 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 					self.__currentDispatcher.dispatch( self.__tasks )
 					result = 0
 
-		except Exception, e :
+		except Exception as e :
 
 			result = sys.exc_info()
 
@@ -259,7 +259,11 @@ class DispatchDialogue( GafferUI.Dialogue ) :
 		)
 
 		# this works for RuntimeError, but is this safe for all exceptions?
-		userFriendlyException = exceptionInfo[1].args[0].strip( "\n" ).split( "\n" )[-1]
+		excType, excValue, excTrace = exceptionInfo
+		if excValue and excValue.message:
+			userFriendlyException = excValue.message.strip( "\n" ).split( "\n" )[-1]
+		else:
+			userFriendlyException = str( excType.__name__ )
 		userFriendlyException += "\nSee DEBUG messages for more information."
 		self.__messageWidget.messageHandler().handle(
 			IECore.Msg.Level.Error,

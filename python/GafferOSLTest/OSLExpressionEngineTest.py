@@ -40,6 +40,7 @@ import math
 import os
 import imath
 import re
+import six
 
 import IECore
 
@@ -152,7 +153,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s["n"]["user"]["o"] = Gaffer.ObjectPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic, defaultValue = IECore.NullObject.defaultNullObject() )
 
 		s["e"] = Gaffer.Expression()
-		self.assertRaisesRegexp(
+		six.assertRaisesRegex( self,
 			RuntimeError, "Unsupported plug type \"Gaffer::ObjectPlug\"",
 			s["e"].setExpression,
 			"parent.n.user.o = 1",
@@ -182,6 +183,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s["n"]["user"]["c"] = Gaffer.Color3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		s["n"]["user"]["v"] = Gaffer.V3fPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 		s["n"]["user"]["s"] = Gaffer.StringPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+		s["n"]["user"]["b"] = Gaffer.BoolPlug( flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 
 		s["e"] = Gaffer.Expression()
 		s["e"].setExpression(
@@ -192,6 +194,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 				parent.n.user.c = context( "c", color( 1, 2, 3 ) );
 				parent.n.user.v = context( "v", vector( 0, 1, 2 ) );
 				parent.n.user.s = context( "s", "default" );
+				parent.n.user.b = context( "b", 0 );
 				"""
 			),
 			"OSL"
@@ -204,18 +207,21 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 			self.assertEqual( s["n"]["user"]["c"].getValue(), imath.Color3f( 1, 2, 3 ) )
 			self.assertEqual( s["n"]["user"]["v"].getValue(), imath.V3f( 0, 1, 2 ) )
 			self.assertEqual( s["n"]["user"]["s"].getValue(), "default" )
+			self.assertEqual( s["n"]["user"]["b"].getValue(), False )
 
 			c["f"] = 10
 			c["i"] = 11
 			c["c"] = imath.Color3f( 4, 5, 6 )
 			c["v"] = imath.V3f( 1, 2, 3 )
 			c["s"] = "non-default"
+			c["b"] = IECore.BoolData( True )
 
 			self.assertEqual( s["n"]["user"]["f"].getValue(), 10 )
 			self.assertEqual( s["n"]["user"]["i"].getValue(), 11 )
 			self.assertEqual( s["n"]["user"]["c"].getValue(), imath.Color3f( 4, 5, 6 ) )
 			self.assertEqual( s["n"]["user"]["v"].getValue(), imath.V3f( 1, 2, 3 ) )
 			self.assertEqual( s["n"]["user"]["s"].getValue(), "non-default" )
+			self.assertEqual( s["n"]["user"]["b"].getValue(), True )
 
 	def testDefaultExpression( self ) :
 
@@ -334,7 +340,7 @@ class OSLExpressionEngineTest( GafferOSLTest.OSLTestCase ) :
 		s = Gaffer.ScriptNode()
 
 		s["e"] = Gaffer.Expression()
-		self.assertRaisesRegexp( RuntimeError, ".*does not exist.*", s["e"].setExpression, 'parent.notANode.notAPlug = 2;', "OSL" )
+		six.assertRaisesRegex( self, RuntimeError, ".*does not exist.*", s["e"].setExpression, 'parent.notANode.notAPlug = 2;', "OSL" )
 
 	def testNoSemiColon( self ) :
 

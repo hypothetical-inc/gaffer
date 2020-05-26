@@ -50,7 +50,7 @@ GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Resize );
 size_t Resize::g_firstPlugIndex = 0;
 
 Resize::Resize( const std::string &name )
-	:   ImageProcessor( name )
+	:   FlatImageProcessor( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
@@ -77,7 +77,6 @@ Resize::Resize( const std::string &name )
 
 	outPlug()->metadataPlug()->setInput( inPlug()->metadataPlug() );
 	outPlug()->channelNamesPlug()->setInput( inPlug()->channelNamesPlug() );
-
 }
 
 Resize::~Resize()
@@ -136,7 +135,7 @@ const ImagePlug *Resize::resampledInPlug() const
 
 void Resize::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
-	ImageProcessor::affects( input, outputs );
+	FlatImageProcessor::affects( input, outputs );
 
 	if(
 		formatPlug()->isAncestorOf( input ) ||
@@ -172,7 +171,7 @@ void Resize::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs
 
 void Resize::hash( const ValuePlug *output, const Context *context, IECore::MurmurHash &h ) const
 {
-	ImageProcessor::hash( output, context, h );
+	FlatImageProcessor::hash( output, context, h );
 
 	if( output == matrixPlug() )
 	{
@@ -194,20 +193,26 @@ void Resize::compute( ValuePlug *output, const Context *context ) const
 		const V2f outSize( outFormat.width(), outFormat.height() );
 		const V2f formatScale = outSize / inSize;
 
-		V2f scale( 1 );
-		switch( (FitMode)fitModePlug()->getValue() )
+		const float pixelAspectScale = outFormat.getPixelAspect() / inFormat.getPixelAspect();
+
+		FitMode fitMode = (FitMode)fitModePlug()->getValue();
+		if( fitMode == Fit )
+		{
+			fitMode = formatScale.x * pixelAspectScale < formatScale.y ? Horizontal : Vertical;
+		}
+		else if( fitMode == Fill )
+		{
+			fitMode = formatScale.x * pixelAspectScale < formatScale.y ? Vertical : Horizontal;
+		}
+
+		V2f scale;
+		switch( fitMode )
 		{
 			case Horizontal :
-				scale = V2f( formatScale.x );
+				scale = V2f( formatScale.x, formatScale.x * pixelAspectScale );
 				break;
 			case Vertical :
-				scale = V2f( formatScale.y );
-				break;
-			case Fit :
-				scale = V2f( std::min( formatScale.x, formatScale.y ) );
-				break;
-			case Fill :
-				scale = V2f( std::max( formatScale.x, formatScale.y ) );
+				scale = V2f( formatScale.y / pixelAspectScale, formatScale.y );
 				break;
 			case Distort :
 			default :
@@ -224,7 +229,7 @@ void Resize::compute( ValuePlug *output, const Context *context ) const
 		static_cast<M33fPlug *>( output )->setValue( matrix );
 	}
 
-	ImageProcessor::compute( output, context );
+	FlatImageProcessor::compute( output, context );
 }
 
 void Resize::hashFormat( const GafferImage::ImagePlug *parent, const Gaffer::Context *context, IECore::MurmurHash &h ) const

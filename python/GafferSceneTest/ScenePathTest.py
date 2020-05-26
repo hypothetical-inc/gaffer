@@ -36,6 +36,7 @@
 
 import os
 import unittest
+import six
 
 import Gaffer
 import GafferTest
@@ -200,7 +201,7 @@ class ScenePathTest( GafferSceneTest.SceneTestCase ) :
 		plane = GafferScene.Plane()
 		parent = GafferScene.Parent()
 		parent["in"].setInput( camera["out"] )
-		parent["child"].setInput( plane["out"] )
+		parent["children"][0].setInput( plane["out"] )
 		parent["parent"].setValue( "/" )
 
 		path = GafferScene.ScenePath( parent["out"], Gaffer.Context(), "/" )
@@ -213,10 +214,10 @@ class ScenePathTest( GafferSceneTest.SceneTestCase ) :
 
 		plane = GafferScene.Plane()
 
-		with self.assertRaisesRegexp( Exception, "Python argument types" ) :
+		with six.assertRaisesRegex( self, Exception, "Python argument types" ) :
 			GafferScene.ScenePath( None, Gaffer.Context() )
 
-		with self.assertRaisesRegexp( Exception, "Python argument types" ) :
+		with six.assertRaisesRegex( self, Exception, "Python argument types" ) :
 			GafferScene.ScenePath( plane["out"], None )
 
 if __name__ == "__main__":

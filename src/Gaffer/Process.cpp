@@ -49,11 +49,32 @@
 using namespace Gaffer;
 
 //////////////////////////////////////////////////////////////////////////
+// Internal utilities
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+std::string prefixedWhat( const IECore::Exception &e )
+{
+	std::string s = std::string( e.type() );
+	if( s == "Exception" )
+	{
+		// Prefixing with type wouldn't add any useful information.
+		return e.what();
+	}
+	s += " : "; s += e.what();
+	return s;
+}
+
+} // namespace
+
+//////////////////////////////////////////////////////////////////////////
 // Process
 //////////////////////////////////////////////////////////////////////////
 
-Process::Process( const IECore::InternedString &type, const Plug *plug, const Plug *downstream )
-	:	m_type( type ), m_plug( plug ), m_downstream( downstream ? downstream : plug )
+Process::Process( const IECore::InternedString &type, const Plug *plug, const Plug *destinationPlug )
+	:	m_type( type ), m_plug( plug ), m_destinationPlug( destinationPlug ? destinationPlug : plug )
 {
 	IECore::Canceller::check( context()->canceller() );
 	m_parent = m_threadState->m_process;
@@ -97,6 +118,15 @@ void Process::handleException()
 		emitError( e.what(), e.plug() );
 		throw;
 	}
+	catch( const IECore::Exception &e )
+	{
+		emitError( prefixedWhat( e ) );
+		// Wrap in a ProcessException. This allows us to correctly
+		// transport the source plug up the call chain, and also
+		// provides a more useful error message to the unlucky
+		// recipient.
+		ProcessException::wrapCurrentException( *this );
+	}
 	catch( const std::exception &e )
 	{
 		emitError( e.what() );
@@ -115,7 +145,7 @@ void Process::handleException()
 
 void Process::emitError( const std::string &error, const Plug *source ) const
 {
-	const Plug *plug = m_downstream;
+	const Plug *plug = m_destinationPlug;
 	while( plug )
 	{
 		if( plug->direction() == Plug::Out )
@@ -177,6 +207,11 @@ void ProcessException::wrapCurrentException( const ConstPlugPtr &plug, const Con
 	catch( const ProcessException &e )
 	{
 		throw;
+	}
+	catch( const IECore::Exception &e )
+	{
+		const std::string w = prefixedWhat( e );
+		throw ProcessException( plug, context, processType, std::current_exception(), w.c_str() );
 	}
 	catch( const std::exception &e )
 	{

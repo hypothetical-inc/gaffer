@@ -38,6 +38,7 @@
 #ifndef GAFFERUI_TRANSLATEHANDLE_H
 #define GAFFERUI_TRANSLATEHANDLE_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 namespace GafferUI
@@ -67,7 +68,7 @@ class GAFFERUI_API TranslateHandle : public Handle
 		// > The use of a non-zero raster scale may make it appear
 		// > that a handle has no scaling applied, but that scaling
 		// > will still affect the results of `translation()`.
-		Imath::V3f translation( const DragDropEvent &event ) const;
+		Imath::V3f translation( const DragDropEvent &event );
 
 	protected :
 

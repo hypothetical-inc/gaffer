@@ -181,8 +181,8 @@ class Viewer( GafferUI.NodeSetEditor ) :
 
 		node = self._lastAddedNode()
 		if node :
-			for plug in node.children( Gaffer.Plug ) :
-				if plug.direction() == Gaffer.Plug.Direction.Out and not plug.getName().startswith( "__" ) :
+			for plug in Gaffer.Plug.RecursiveOutputRange( node ) :
+				if not plug.getName().startswith( "__" ) :
 					# try to reuse an existing view
 					for view in self.__views :
 						if view["in"].acceptsInput( plug ) :
@@ -340,7 +340,9 @@ class _ToolChooser( GafferUI.Frame ) :
 			self.primaryToolChangedSignal = Gaffer.Signal0()
 
 			if len( self.tools ) :
-				self.tools[0]["active"].setValue( True )
+				autoActivate = Gaffer.Metadata.value( self.tools[0], "viewer:shouldAutoActivate" )
+				if autoActivate is None or autoActivate :
+					self.tools[0]["active"].setValue( True )
 
 		def __toolPlugSet( self, plug ) :
 

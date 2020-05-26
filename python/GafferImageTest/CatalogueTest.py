@@ -37,6 +37,8 @@
 import os
 import threading
 import stat
+import shutil
+import six
 import imath
 
 import IECore
@@ -51,17 +53,16 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 	@staticmethod
 	def sendImage( image, catalogue, extraParameters = {}, waitForSave = True, close = True ) :
 
-		if catalogue["directory"].getValue() and waitForSave :
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as h :
+			result = GafferImageTest.DisplayTest.Driver.sendImage( image, GafferImage.Catalogue.displayDriverServer().portNumber(), extraParameters, close = close )
+			if catalogue["directory"].getValue() and waitForSave :
+				# When the image has been received, the Catalogue will
+				# save it to disk on a background thread, and we need
+				# to wait for that to complete.
+				h.assertCalled()
+				h.assertDone()
 
-			# When the image has been received, the Catalogue will
-			# save it to disk on a background thread, and we need
-			# to wait for that to complete.
-			with GafferTest.ParallelAlgoTest.ExpectedUIThreadCall() :
-				return GafferImageTest.DisplayTest.Driver.sendImage( image, GafferImage.Catalogue.displayDriverServer().portNumber(), extraParameters, close = close )
-
-		else :
-
-			return GafferImageTest.DisplayTest.Driver.sendImage( image, GafferImage.Catalogue.displayDriverServer().portNumber(), extraParameters, close = close )
+		return result
 
 	def testImages( self ) :
 
@@ -76,13 +77,13 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		for image in images :
 			c["images"].addChild( image )
-			self.assertImagesEqual( readers[0]["out"], c["out"], ignoreMetadata = True )
+			self.assertImagesEqual( readers[0]["out"], c["out"] )
 
 		def assertExpectedImages() :
 
 			for i, reader in enumerate( readers ) :
 				c["imageIndex"].setValue( i )
-				self.assertImagesEqual( readers[i]["out"], c["out"], ignoreMetadata = True )
+				self.assertImagesEqual( readers[i]["out"], c["out"] )
 
 		assertExpectedImages()
 
@@ -95,7 +96,7 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		c = GafferImage.Catalogue()
 		c["images"].addChild( c.Image.load( "${GAFFER_ROOT}/python/GafferImageTest/images/blurRange.exr" ) )
-		self.assertEqual( c["out"]["metadata"].getValue()["ImageDescription"].value, "" )
+		self.assertNotIn( "ImageDescription", c["out"]["metadata"].getValue() )
 
 		c["images"][-1]["description"].setValue( "ddd" )
 		self.assertEqual( c["out"]["metadata"].getValue()["ImageDescription"].value, "ddd" )
@@ -116,8 +117,10 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		r = GafferImage.ImageReader()
 		r["fileName"].setValue( w["fileName"].getValue() )
 
-		i = GafferImage.Catalogue.Image.load( w["fileName"].getValue() )
-		self.assertEqual( i["description"].getValue(), "i am a description" )
+		c = GafferImage.Catalogue()
+		c["images"].addChild( GafferImage.Catalogue.Image.load( w["fileName"].getValue() ) )
+		self.assertEqual( c["images"][0]["description"].getValue(), "" )
+		self.assertEqual( c["out"]["metadata"].getValue()["ImageDescription"].value, "i am a description" )
 
 	def testSerialisation( self ) :
 
@@ -187,7 +190,7 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( c["images"][0]["fileName"].getValue(), "" )
 		self.assertEqual( c["imageIndex"].getValue(), 0 )
 
-		self.assertImagesEqual( r["out"], c["out"], ignoreMetadata = True )
+		self.assertImagesEqual( r["out"], c["out"] )
 
 		r["fileName"].setValue( "${GAFFER_ROOT}/python/GafferImageTest/images/blurRange.exr" )
 		self.sendImage( r["out"], c )
@@ -195,7 +198,7 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( len( c["images"] ), 2 )
 		self.assertEqual( c["images"][1]["fileName"].getValue(), "" )
 		self.assertEqual( c["imageIndex"].getValue(), 1 )
-		self.assertImagesEqual( r["out"], c["out"], ignoreMetadata = True )
+		self.assertImagesEqual( r["out"], c["out"] )
 
 	def testDisplayDriverAOVGrouping( self ) :
 
@@ -273,8 +276,8 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( len( c1["images"] ), 1 )
 		self.assertEqual( len( c2["images"] ), 1 )
 
-		self.assertImagesEqual( c1["out"], constant1["out"], ignoreMetadata = True )
-		self.assertImagesEqual( c2["out"], constant2["out"], ignoreMetadata = True )
+		self.assertImagesEqual( c1["out"], constant1["out"] )
+		self.assertImagesEqual( c2["out"], constant2["out"] )
 
 	def testDontSerialiseUnsavedRenders( self ) :
 
@@ -313,25 +316,25 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		for image in images :
 			promotedImages.addChild( image )
-			self.assertImagesEqual( readers[0]["out"], promotedOut, ignoreMetadata = True )
+			self.assertImagesEqual( readers[0]["out"], promotedOut )
 
 		for i, reader in enumerate( readers ) :
 			promotedImageIndex.setValue( i )
-			self.assertImagesEqual( readers[i]["out"], promotedOut, ignoreMetadata = True )
+			self.assertImagesEqual( readers[i]["out"], promotedOut )
 
 		s2 = Gaffer.ScriptNode()
 		s2.execute( s.serialise() )
 
 		for i, reader in enumerate( readers ) :
 			s2["b"]["imageIndex"].setValue( i )
-			self.assertImagesEqual( readers[i]["out"], s2["b"]["out"], ignoreMetadata = True )
+			self.assertImagesEqual( readers[i]["out"], s2["b"]["out"] )
 
 		s3 = Gaffer.ScriptNode()
 		s3.execute( s.serialise() )
 
 		for i, reader in enumerate( readers ) :
 			s3["b"]["imageIndex"].setValue( i )
-			self.assertImagesEqual( readers[i]["out"], s3["b"]["out"], ignoreMetadata = True )
+			self.assertImagesEqual( readers[i]["out"], s3["b"]["out"] )
 
 	def testDisplayDriverAndPromotion( self ) :
 
@@ -416,7 +419,7 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 			self.assertEqual( len( s["c"]["images"] ), 2 )
 			self.assertEqual( s["c"]["imageIndex"].getValue(), 1 )
-			self.assertImagesEqual( s["c"]["out"], r["out"], ignoreMetadata = True )
+			self.assertImagesEqual( s["c"]["out"], r["out"] )
 
 		assertPostConditions()
 
@@ -542,7 +545,7 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		r = GafferImage.ImageReader()
 		r["fileName"].setValue( "${GAFFER_ROOT}/python/GafferImageTest/images/checker.exr" )
 
-		with GafferTest.ParallelAlgoTest.ExpectedUIThreadCall() :
+		with GafferTest.ParallelAlgoTest.UIThreadCallHandler() as h :
 			self.sendImage( r["out"], c, waitForSave = False )
 			del c
 
@@ -606,8 +609,8 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( mh.messages[0].level, IECore.Msg.Level.Error )
 		self.assertIn( "Permission denied", mh.messages[0].message )
 
-		with self.assertRaisesRegexp( RuntimeError, "Could not open file" ) :
-			s["c"]["out"].image()
+		with six.assertRaisesRegex( self, RuntimeError, "Could not open file" ) :
+			GafferImage.ImageAlgo.image( s["c"]["out"] )
 
 	def testDeleteKeepsOrder( self ) :
 
@@ -711,6 +714,21 @@ class CatalogueTest( GafferImageTest.ImageTestCase ) :
 
 		script.undo()
 		assertPreconditions()
+
+	def testLoadWithInvalidNames( self ) :
+
+		sourceFile = os.path.join( os.path.dirname( __file__ ), "images", "blurRange.exr" )
+
+		for name, expectedName in [
+			( "0", "_0" ),
+			( "[]", "__" ),
+			( "(", "_" ),
+			( "%", "_" ),
+		] :
+
+			fileName = os.path.join( self.temporaryDirectory(), name + ".exr" )
+			shutil.copyfile( sourceFile, fileName )
+			GafferImage.Catalogue.Image.load( fileName )
 
 if __name__ == "__main__":
 	unittest.main()

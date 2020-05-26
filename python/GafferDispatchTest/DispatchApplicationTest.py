@@ -35,7 +35,11 @@
 ##########################################################################
 
 import os
-import subprocess32 as subprocess
+import sys
+if os.name == 'posix' and sys.version_info[0] < 3:
+	import subprocess32 as subprocess
+else:
+	import subprocess
 import unittest
 
 import Gaffer
@@ -62,8 +66,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		s["test"]["text"].setValue( "its a test" )
 		s.save()
 
-		self.failUnless( os.path.exists( self.__scriptFileName ) )
-		self.failIf( os.path.exists( self.__outputTextFile ) )
+		self.assertTrue( os.path.exists( self.__scriptFileName ) )
+		self.assertFalse( os.path.exists( self.__outputTextFile ) )
 
 		return s
 
@@ -84,85 +88,85 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 
 		# no tasks
 		p = self.waitForCommand( "gaffer dispatch" )
-		self.failUnless( "No task nodes were specified" in "".join( p.stderr.readlines() ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "No task nodes were specified", "".join( p.stderr.readlines() ) )
+		self.assertTrue( p.returncode )
 
 		# bad tasks
 		p = self.waitForCommand( "gaffer dispatch -tasks Gaffer" )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "Gaffer" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "Gaffer", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad tasks in a module
 		p = self.waitForCommand( "gaffer dispatch -tasks Gaffer.NotANode" )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "NotANode" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "NotANode", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# no namespace
 		p = self.waitForCommand( "gaffer dispatch -tasks TextWriter" )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "TextWriter" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "TextWriter", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad dispatcher
 		p = self.waitForCommand( "gaffer dispatch -tasks GafferDispatchTest.TextWriter -dispatcher NotADispatcher" )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "NotADispatcher" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "NotADispatcher", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# invalid script
 		p = self.waitForCommand( "gaffer dispatch -script thisScriptDoesNotExist -tasks GafferDispatch.SystemCommand" )
-		self.failUnless( "thisScriptDoesNotExist" in "".join( p.stderr.readlines() ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "thisScriptDoesNotExist", "".join( p.stderr.readlines() ) )
+		self.assertTrue( p.returncode )
 
 		self.writeSimpleScript()
 
 		# tasks not in script
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks notANode".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "notANode" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "notANode", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# nodesToShow not in script
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks test -show notANode".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "notANode" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "notANode", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad plugs
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks test -settings -test.notAPlug 1".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "notAPlug" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "notAPlug", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad values (text is a string so needs quotations)
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks test -settings -test.text 1".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "test.text" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "test.text", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad dispatcher plugs
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks test -settings -LocalDispatcher.notAPlug 1".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "notAPlug" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "notAPlug", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 		# bad dispatcher values
 		p = self.waitForCommand( "gaffer dispatch -script {script} -tasks test -settings -LocalDispatcher.executeInBackground '\"its a bool\"'".format( script = self.__scriptFileName ) )
 		error = p.stderr.readlines()
-		self.failUnless( "gaffer dispatch" in "".join( error ) )
-		self.failUnless( "executeInBackground" in "".join( error ) )
-		self.failUnless( p.returncode )
+		self.assertIn( "gaffer dispatch", "".join( error ) )
+		self.assertIn( "executeInBackground", "".join( error ) )
+		self.assertTrue( p.returncode )
 
 	def testScript( self ) :
 
@@ -176,8 +180,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
 
 	def testScriptLoadErrors( self ) :
@@ -200,7 +204,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		self.assertTrue( "KeyError: \"'badPlug'" in error )
 		self.assertFalse( "Traceback" in error )
 		self.assertNotEqual( p.returncode, 0 )
-		self.failIf( os.path.exists( self.__outputTextFile ) )
+		self.assertFalse( os.path.exists( self.__outputTextFile ) )
 
 		p = self.waitForCommand(
 			"gaffer dispatch -ignoreScriptLoadErrors -script {script} -tasks {task}".format(
@@ -212,7 +216,7 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		self.assertTrue( "KeyError: \"'badPlug'" in error )
 		self.assertFalse( "Traceback" in error )
 		self.assertEqual( p.returncode, 0 )
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
 
 	def testNodesWithoutScript( self ) :
@@ -226,8 +230,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "command line test" ] )
 
 	def testApplyUserDefaults( self ) :
@@ -241,9 +245,9 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
+		self.assertFalse( p.returncode )
 		jobDir = self.temporaryDirectory() + "/dispatcher/local/000000"
-		with file( self.__outputTextFile, "r" ) as f :
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "userDefault test {jobDir}".format( jobDir = jobDir ) ] )
 
 	def testDispatcherOverrides( self ) :
@@ -265,8 +269,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ str(x)+"\n" for x in range( 1, 101 ) ] )
 
 	def testContextVariables( self ) :
@@ -280,8 +284,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "context 1.25 test" ] )
 
 	def testBox( self ) :
@@ -301,8 +305,8 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "test inside a box" ] )
 
 	def testMultipleNodes( self ) :
@@ -322,10 +326,10 @@ class DispatchApplicationTest( GafferTest.TestCase ) :
 		)
 		error = "".join( p.stderr.readlines() )
 		self.assertEqual( error, "" )
-		self.failIf( p.returncode )
-		with file( self.__outputTextFile, "r" ) as f :
+		self.assertFalse( p.returncode )
+		with open( self.__outputTextFile, "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a test" ] )
-		with file( self.__outputTextFile + ".2", "r" ) as f :
+		with open( self.__outputTextFile + ".2", "r" ) as f :
 			self.assertEqual( f.readlines(), [ "its a 2nd test" ] )
 
 if __name__ == "__main__":

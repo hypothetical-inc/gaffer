@@ -44,9 +44,12 @@ Gaffer.Metadata.registerNode(
 
 	"description",
 	"""
-	Forms a series of image layers by repeatedly evaluating the input with different contexts.
+	Forms a series of image layers by repeatedly evaluating the input with different Contexts.
 	Useful for networks that need to dynamically build an unknown number of image layers.
 	""",
+
+	"ui:spreadsheet:activeRowNamesConnection", "rootLayers",
+	"ui:spreadsheet:selectorContextVariablePlug", "layerVariable",
 
 	plugs = {
 
@@ -72,7 +75,7 @@ Gaffer.Metadata.registerNode(
 
 			"description",
 			"""
-			This context variable will be set with the current layer name when evaluating the in plug.
+			This Context Variable will be set with the current layer name when evaluating the in plug.
 			This allows you to vary the upstream processing for each new layer.
 			""",
 

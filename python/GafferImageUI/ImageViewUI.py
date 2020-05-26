@@ -67,6 +67,10 @@ Gaffer.Metadata.registerNode(
 	"toolbarLayout:customWidget:RightSpacer:section", "Top",
 	"toolbarLayout:customWidget:RightSpacer:index", -2,
 
+	"toolbarLayout:customWidget:BottomRightSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
+	"toolbarLayout:customWidget:BottomRightSpacer:section", "Bottom",
+	"toolbarLayout:customWidget:BottomRightSpacer:index", 2,
+
 	plugs = {
 
 		"clipping" : [
@@ -130,6 +134,7 @@ Gaffer.Metadata.registerNode(
 			"plugValueWidget:type", "GafferImageUI.ImageViewUI._ColorInspectorPlugValueWidget",
 			"label", "",
 			"toolbarLayout:section", "Bottom",
+			"toolbarLayout:index", 1,
 
 		],
 
@@ -142,6 +147,7 @@ Gaffer.Metadata.registerNode(
 
 			"plugValueWidget:type", "GafferImageUI.RGBAChannelsPlugValueWidget",
 			"toolbarLayout:index", 1,
+			"toolbarLayout:width", 175,
 			"label", "",
 
 		],
@@ -248,6 +254,8 @@ class _ColorInspectorPlugValueWidget( GafferUI.PlugValueWidget ) :
 
 			with GafferUI.ListContainer( GafferUI.ListContainer.Orientation.Horizontal, spacing = 4 ) :
 
+				GafferUI.Spacer( imath.V2i( 10 ), imath.V2i( 10 ) )
+
 				self.__positionLabel = GafferUI.Label()
 				self.__positionLabel._qtWidget().setFixedWidth( 90 )
 
@@ -262,6 +270,8 @@ class _ColorInspectorPlugValueWidget( GafferUI.PlugValueWidget ) :
 				GafferUI.Spacer( imath.V2i( 20, 10 ), imath.V2i( 20, 10 ) )
 
 				self.__hsvLabel = GafferUI.Label()
+
+				GafferUI.Spacer( imath.V2i( 10 ), imath.V2i( 10 ) )
 
 		self.__pixel = imath.V2f( 0 )
 
@@ -462,8 +472,11 @@ class _Spacer( GafferUI.Spacer ) :
 
 	def __init__( self, imageView, **kw ) :
 
-		GafferUI.Spacer.__init__( self, size = imath.V2i( 0 ) )
+		GafferUI.Spacer.__init__( self, size = imath.V2i( 0, 25 ) )
 
+## \todo This widget is basically the same as the SceneView and UVView ones. Perhaps the
+# View base class should provide standard functionality for pausing and state, and we could
+# use one standard widget for everything.
 class _StateWidget( GafferUI.Widget ) :
 
 	def __init__( self, imageView, **kw ) :
@@ -496,5 +509,6 @@ class _StateWidget( GafferUI.Widget ) :
 	def __update( self ) :
 
 		paused = self.__imageGadget.getPaused()
-		self.__button.setImage( "timelinePause.png" if not paused else "timelinePlay.png" )
+		self.__button.setImage( "viewPause.png" if not paused else "viewPaused.png" )
 		self.__busyWidget.setBusy( self.__imageGadget.state() == self.__imageGadget.State.Running )
+		self.__button.setToolTip( "Viewer updates suspended, click to resume" if paused else "Click to suspend viewer updates [esc]" )

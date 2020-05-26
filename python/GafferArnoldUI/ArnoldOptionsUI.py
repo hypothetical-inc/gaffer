@@ -49,7 +49,7 @@ def __renderingSummary( plug ) :
 	if plug["bucketScanning"]["enabled"].getValue() :
 		info.append( "Bucket Scanning %s" % plug["bucketScanning"]["value"].getValue().capitalize() )
 	if plug["parallelNodeInit"]["enabled"].getValue() :
-		info.append( "Parallel Init %s" % plug["parallelNodeInit"]["value"].getValue() )
+		info.append( "Parallel Init %s" % ( "On" if plug["parallelNodeInit"]["value"].getValue() else "Off" ) )
 	if plug["threads"]["enabled"].getValue() :
 		info.append( "Threads %d" % plug["threads"]["value"].getValue() )
 	return ", ".join( info )
@@ -59,6 +59,8 @@ def __samplingSummary( plug ) :
 	info = []
 	if plug["aaSamples"]["enabled"].getValue() :
 		info.append( "AA %d" % plug["aaSamples"]["value"].getValue() )
+	if plug["progressiveMinAASamples"]["enabled"].getValue() :
+		info.append( "Min AA %d" % plug["progressiveMinAASamples"]["value"].getValue() )
 	if plug["giDiffuseSamples"]["enabled"].getValue() :
 		info.append( "Diffuse %d" % plug["giDiffuseSamples"]["value"].getValue() )
 	if plug["giSpecularSamples"]["enabled"].getValue() :
@@ -75,6 +77,10 @@ def __samplingSummary( plug ) :
 		info.append( "Clamp {0}".format( GafferUI.NumericWidget.valueToString( plug["aaSampleClamp"]["value"].getValue() ) ) )
 	if plug["aaSampleClampAffectsAOVs"]["enabled"].getValue() :
 		info.append( "Clamp AOVs {0}".format( "On" if plug["aaSampleClampAffectsAOVs"]["value"].getValue() else "Off" ) )
+	if plug["indirectSampleClamp"]["enabled"].getValue() :
+		info.append( "Indirect Clamp {0}".format( GafferUI.NumericWidget.valueToString( plug["indirectSampleClamp"]["value"].getValue() ) ) )
+	if plug["lowLightThreshold"]["enabled"].getValue() :
+		info.append( "Low Light {0}".format( GafferUI.NumericWidget.valueToString( plug["lowLightThreshold"]["value"].getValue() ) ) )
 	return ", ".join( info )
 
 def __adaptiveSamplingSummary( plug ) :
@@ -85,7 +91,7 @@ def __adaptiveSamplingSummary( plug ) :
 	if plug["aaSamplesMax"]["enabled"].getValue() :
 		info.append( "AA Max %d" % plug["aaSamplesMax"]["value"].getValue() )
 	if plug["aaAdaptiveThreshold"]["enabled"].getValue() :
-		info.append( "Threshold %d" % plug["aaAdaptiveThreshold"]["value"].getValue() )
+		info.append( "Threshold %s" % GafferUI.NumericWidget.valueToString( plug["aaAdaptiveThreshold"]["value"].getValue() ) )
 	return ", ".join( info )
 
 def __rayDepthSummary( plug ) :
@@ -109,6 +115,12 @@ def __subdivisionSummary( plug ) :
 	info = []
 	if plug["maxSubdivisions"]["enabled"].getValue():
 		info.append( "Max Subdivisions  %d" % plug["maxSubdivisions"]["value"].getValue() )
+	if plug["subdivDicingCamera"]["enabled"].getValue():
+		info.append( "Dicing Camera %s" % plug["subdivDicingCamera"]["value"].getValue() )
+	if plug["subdivFrustumCulling"]["enabled"].getValue():
+		info.append( "Frustum Culling %s" % ( "On" if plug["subdivFrustumCulling"]["value"].getValue() else "Off" ) )
+	if plug["subdivFrustumPadding"]["enabled"].getValue():
+		info.append( "Frustum Padding %s" % GafferUI.NumericWidget.valueToString( plug["subdivFrustumPadding"]["value"].getValue() ) )
 	return ", ".join( info )
 
 def __texturingSummary( plug ) :
@@ -176,7 +188,9 @@ def __statisticsSummary( plug ) :
 
 	info = []
 	if plug["statisticsFileName"]["enabled"].getValue() :
-		info.append( "File name: " + plug["statisticsFileName"]["value"].getValue() )
+		info.append( "Stats File: " + plug["statisticsFileName"]["value"].getValue() )
+	if plug["profileFileName"]["enabled"].getValue() :
+		info.append( "Profile File: " + plug["profileFileName"]["value"].getValue() )
 
 	return ", ".join( info )
 
@@ -320,6 +334,22 @@ Gaffer.Metadata.registerNode(
 
 			"layout:section", "Sampling",
 			"label", "AA Samples",
+
+		],
+
+		"options.progressiveMinAASamples" : [
+
+			"description",
+			"""
+			Controls the number of rays per pixel
+			for the first low quality pass of
+			progressive rendering.  -4 will start
+			with large squares, 1 will start one
+			sample for every pixel.
+			""",
+
+			"layout:section", "Sampling",
+			"label", "Progressive Min AA Samples",
 
 		],
 
@@ -605,6 +635,53 @@ Gaffer.Metadata.registerNode(
 
 			"layout:section", "Subdivision",
 			"label", "Max Subdivisions",
+		],
+
+		"options.subdivDicingCamera" : [
+
+			"description",
+			"""
+			If specified, adaptive subdivision will be performed
+			relative to this camera, instead of the render camera.
+			""",
+
+			"layout:section", "Subdivision",
+			"label", "Subdiv Dicing Camera",
+		],
+
+		"options.subdivDicingCamera.value" : [
+			"plugValueWidget:type", "GafferSceneUI.ScenePathPlugValueWidget",
+			"path:valid", True,
+			"scenePathPlugValueWidget:setNames", IECore.StringVectorData( [ "__cameras" ] ),
+			"scenePathPlugValueWidget:setsLabel", "Show only cameras",
+		],
+
+		"options.subdivFrustumCulling" : [
+
+			"description",
+			"""
+			Disable subdivision of polygons outside the camera frustum.
+			( Uses dicing camera if one has been set ).
+			Saves performance, at the cost of inaccurate reflections
+			and shadows.
+			""",
+
+			"layout:section", "Subdivision",
+			"label", "Subdiv Frustum Culling",
+		],
+
+		"options.subdivFrustumPadding" : [
+
+			"description",
+			"""
+			When using subdivFrustumCulling, adds a world space bound
+			around the frustum where subdivision still occurs.  Can be
+			used to improve shadows, reflections, and objects the motion
+			blur into frame.
+			""",
+
+			"layout:section", "Subdivision",
+			"label", "Subdiv Frustum Padding",
 		],
 
 		# Texturing
@@ -915,7 +992,21 @@ Gaffer.Metadata.registerNode(
 			""",
 
 			"layout:section", "Statistics",
-			"label", "File Name",
+			"label", "Statistics File",
+
+		],
+
+		"options.profileFileName" : [
+
+			"description",
+			"""
+			The name of a profile json file where Arnold will store a
+			detailed node performance graph. Use chrome://tracing to
+			view the profile.
+			""",
+
+			"layout:section", "Statistics",
+			"label", "Profile File",
 
 		],
 

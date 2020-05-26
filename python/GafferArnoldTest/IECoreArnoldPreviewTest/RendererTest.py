@@ -53,23 +53,10 @@ import GafferScene
 class RendererTest( GafferTest.TestCase ) :
 
 	def assertReferSameNode( self, a, b ):
-		if not arnold.AiCheckAPIVersion( "5", "2", "0" ):
-			self.assertEqual( a, b )
-		else:
-			self.assertEqual( arnold.addressof( a.contents ), arnold.addressof( b.contents ) )
+		self.assertEqual( arnold.addressof( a.contents ), arnold.addressof( b.contents ) )
 
 	def assertReferDifferentNode( self, a, b ):
-		if not arnold.AiCheckAPIVersion( "5", "2", "0" ):
-			self.assertNotEqual( a, b )
-		else:
-			self.assertNotEqual( arnold.addressof( a.contents ), arnold.addressof( b.contents ) )
-
-	# \todo - delete all calls to this once we no longer need to support Arnold < 5.2
-	def arnoldCompat( self, a ):
-		if not arnold.AiCheckAPIVersion( "5", "2", "0" ):
-			return arnold.AtNode.from_address( a )
-		else:
-			return a
+		self.assertNotEqual( arnold.addressof( a.contents ), arnold.addressof( b.contents ) )
 
 	def testFactory( self ) :
 
@@ -320,11 +307,11 @@ class RendererTest( GafferTest.TestCase ) :
 		with IECoreArnold.UniverseBlock( writable = True ) :
 			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
 
-			target = self.arnoldCompat( arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "testPlane_scalarColor" ), "shader" ) )
+			target = arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "testPlane_scalarColor" ), "shader" )
 			source = arnold.AiNodeGetLink( target, "Kd_color" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( source ) ), "image" )
 
-			target = self.arnoldCompat( arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "testPlane_arrayColor" ), "shader" ) )
+			target = arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "testPlane_arrayColor" ), "shader" )
 			source = arnold.AiNodeGetLink( target, "color[0]" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( source ) ), "image" )
 
@@ -366,7 +353,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
 
-			outputNode = self.arnoldCompat( arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "test" ), "shader" ) )
+			outputNode = arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "test" ), "shader" )
 
 			componentIndex = ctypes.c_int()
 			sourceR = arnold.AiNodeGetLink( outputNode, "color.r", componentIndex )
@@ -422,7 +409,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
 
-			outputNode = self.arnoldCompat( arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "test" ), "shader" ) )
+			outputNode = arnold.AiNodeGetPtr( arnold.AiNodeLookUpByName( "test" ), "shader" )
 
 			pack = arnold.AiNodeGetLink( outputNode, "param_a" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( pack ) ), "osl" )
@@ -1328,8 +1315,8 @@ class RendererTest( GafferTest.TestCase ) :
 			self.assertReferSameNode( arnold.AiNodeGetPtr( plane1, "node" ), arnold.AiNodeGetPtr( plane2, "node" ) )
 			self.assertReferDifferentNode( arnold.AiNodeGetPtr( plane2, "node" ), arnold.AiNodeGetPtr( plane3, "node" ) )
 
-			polymesh1 = self.arnoldCompat( arnold.AiNodeGetPtr( plane1, "node" ) )
-			polymesh2 = self.arnoldCompat( arnold.AiNodeGetPtr( plane3, "node" ) )
+			polymesh1 = arnold.AiNodeGetPtr( plane1, "node" )
+			polymesh2 = arnold.AiNodeGetPtr( plane3, "node" )
 
 			self.assertTrue( arnold.AiNodeIs( polymesh1, "polymesh" ) )
 			self.assertTrue( arnold.AiNodeIs( polymesh2, "polymesh" ) )
@@ -1383,7 +1370,7 @@ class RendererTest( GafferTest.TestCase ) :
 					instance = arnold.AiNodeLookUpByName( interpolation + "-" + str( subdividePolygons ) )
 					self.assertTrue( arnold.AiNodeIs( instance, "ginstance" ) )
 
-					mesh = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+					mesh = arnold.AiNodeGetPtr( instance, "node" )
 					self.assertTrue( arnold.AiNodeIs( mesh, "polymesh" ) )
 
 					if subdividePolygons and interpolation == "linear" :
@@ -1425,7 +1412,7 @@ class RendererTest( GafferTest.TestCase ) :
 				instance = arnold.AiNodeLookUpByName( "mesh-" + ( uvSmoothing or "default" ) )
 				self.assertTrue( arnold.AiNodeIs( instance, "ginstance" ) )
 
-				mesh = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+				mesh = arnold.AiNodeGetPtr( instance, "node" )
 				self.assertTrue( arnold.AiNodeIs( mesh, "polymesh" ) )
 
 				self.assertEqual( arnold.AiNodeGetStr( mesh, "subdiv_uv_smoothing" ), uvSmoothing or "pin_corners" )
@@ -1461,19 +1448,14 @@ class RendererTest( GafferTest.TestCase ) :
 
 			instance = arnold.AiNodeLookUpByName( "myLight" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( instance ) ), "ginstance" )
-			mesh = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+			mesh = arnold.AiNodeGetPtr( instance, "node" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( mesh ) ), "polymesh" )
 
 			lights = self.__allNodes( type = arnold.AI_NODE_LIGHT )
 			self.assertEqual( len( lights ), 1 )
 			light = lights[0]
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( light ) ), "mesh_light" )
-			if not arnold.AiCheckAPIVersion( "5", "2", "0" ):
-				# \todo : We're comparing a raw pointer to a node reference, so we need to convert.
-				# After Arnold 5.2, AiNodeGetPtr returns a reference the same as everything else
-				self.assertEqual( arnold.AiNodeGetPtr( light, "mesh" ), ctypes.addressof( instance.contents ) )
-			else:
-				self.assertReferSameNode( arnold.AiNodeGetPtr( light, "mesh" ), instance )
+			self.assertReferSameNode( arnold.AiNodeGetPtr( light, "mesh" ), instance )
 
 	def testMeshLightsWithSharedShaders( self ) :
 
@@ -1529,7 +1511,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			self.assertReferSameNode( arnold.AiNodeGetPtr( instance1, "node" ), arnold.AiNodeGetPtr( instance2, "node" ) )
 
-			mesh = self.arnoldCompat( arnold.AiNodeGetPtr( instance1, "node" ) )
+			mesh = arnold.AiNodeGetPtr( instance1, "node" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( mesh ) ), "polymesh" )
 
 			lights = self.__allNodes( type = arnold.AI_NODE_LIGHT )
@@ -1602,7 +1584,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			n = arnold.AiNodeLookUpByName( "testPlane" )
 
-			add = self.arnoldCompat( arnold.AiNodeGetPtr( n, "shader" ) )
+			add = arnold.AiNodeGetPtr( n, "shader" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( add ) ), "add" )
 
 			spline = arnold.AiNodeGetLink( add, "input1" )
@@ -1655,7 +1637,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			n = arnold.AiNodeLookUpByName( "testPlane" )
 
-			noise = self.arnoldCompat( arnold.AiNodeGetPtr( n, "shader" ) )
+			noise = arnold.AiNodeGetPtr( n, "shader" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( noise ) ), "osl" )
 			self.assertEqual( arnold.AiNodeGetStr( noise, "shadername" ), "Pattern/Noise" )
 
@@ -1700,7 +1682,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			n = arnold.AiNodeLookUpByName( "testPlane" )
 
-			floatToColor = self.arnoldCompat( arnold.AiNodeGetPtr( n, "shader" ) )
+			floatToColor = arnold.AiNodeGetPtr( n, "shader" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( floatToColor ) ), "osl" )
 			self.assertEqual( arnold.AiNodeGetStr( floatToColor, "shadername" ), "Conversion/FloatToColor" )
 
@@ -1834,8 +1816,8 @@ class RendererTest( GafferTest.TestCase ) :
 			numInstances = len( [ s for s in shapes if arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( s ) ) == "ginstance" ] )
 			numCurves = len( [ s for s in shapes if arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( s ) ) == "curves" ] )
 
-			self.assertEqual( numInstances, 7 )
-			self.assertEqual( numCurves, 4 )
+			self.assertEqual( numInstances, 4 ) # Can't instance when min_pixel_width != 0
+			self.assertEqual( numCurves, 5 )
 
 			self.__assertInstanced(
 				"default",
@@ -1843,12 +1825,13 @@ class RendererTest( GafferTest.TestCase ) :
 				"pixelWidth0ModeRibbon",
 			)
 
-			self.__assertInstanced(
+			self.__assertNotInstanced(
 				"pixelWidth1",
 				"pixelWidth1Duplicate",
+				"pixelWidth2",
 			)
 
-			for name in ( "pixelWidth2", "modeRibbon", "modeThick" ) :
+			for name in ( "modeRibbon", "modeThick" ) :
 				self.__assertInstanced( name )
 
 			for name, minPixelWidth, mode in (
@@ -1861,10 +1844,12 @@ class RendererTest( GafferTest.TestCase ) :
 				( "pixelWidth0ModeRibbon", 0, "ribbon" ),
 			) :
 
-				instance = arnold.AiNodeLookUpByName( name )
-				self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( instance ) ), "ginstance" )
+				node = arnold.AiNodeLookUpByName( name )
+				if arnold.AiNodeIs( node, "ginstance" ) :
+					shape = arnold.AiNodeGetPtr( node, "node" )
+				else :
+					shape = node
 
-				shape = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
 				self.assertEqual( arnold.AiNodeGetFlt( shape, "min_pixel_width" ), minPixelWidth )
 				self.assertEqual( arnold.AiNodeGetStr( shape, "mode" ), mode )
 
@@ -2024,7 +2009,7 @@ class RendererTest( GafferTest.TestCase ) :
 				for an, a in attributes.items() :
 
 					instance = arnold.AiNodeLookUpByName( pn + "_" + an )
-					shape = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+					shape = arnold.AiNodeGetPtr( instance, "node" )
 
 					stepSize = a.get( "ai:shape:step_size" )
 					stepSize = stepSize.value if stepSize is not None else 0
@@ -2124,7 +2109,7 @@ class RendererTest( GafferTest.TestCase ) :
 				for an, a in attributes.items() :
 
 					instance = arnold.AiNodeLookUpByName( pn + "_" + an )
-					shape = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+					shape = arnold.AiNodeGetPtr( instance, "node" )
 
 					volumePadding = a.get( "ai:shape:volume_padding" )
 					volumePadding = volumePadding.value if volumePadding is not None else 0
@@ -2178,7 +2163,7 @@ class RendererTest( GafferTest.TestCase ) :
 			instance = arnold.AiNodeLookUpByName( "test" )
 			self.assertTrue( arnold.AiNodeIs( instance, "ginstance" ) )
 
-			shape = self.arnoldCompat( arnold.AiNodeGetPtr( instance, "node" ) )
+			shape = arnold.AiNodeGetPtr( instance, "node" )
 			self.assertTrue( arnold.AiNodeIs( shape, "volume" ) )
 			self.assertEqual( arnold.AiNodeGetFlt( shape, "step_size" ), 0.25 )
 
@@ -2281,6 +2266,8 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.option( "ai:log:filename", IECore.StringData( self.temporaryDirectory() + "/test/test_log.txt" ) )
 		r.option( "ai:statisticsFileName", IECore.StringData( self.temporaryDirectory() + "/test/test_stats.json" ) )
+		r.option( "ai:profileFileName", IECore.StringData( self.temporaryDirectory() + "/test/test_profile.json" ) )
+
 		c = r.camera(
 			"testCamera",
 			IECoreScene.Camera(
@@ -2304,21 +2291,24 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.render()
 
+		# required to flush the profile json
+		del r
+
 		with open( self.temporaryDirectory() + "/test/test_log.txt", "r" ) as logHandle:
 			self.assertNotEqual( logHandle.read().find( "rendering image at 640 x 480" ), -1 )
 
 		with open( self.temporaryDirectory() + "/test/test_stats.json", "r" ) as statsHandle:
 			stats = json.load( statsHandle )["render 0000"]
-			if arnold.AiCheckAPIVersion( "5", "2", "2" ) :
-				self.assertTrue( "microseconds" in stats["scene creation time"] )
-				self.assertTrue( "microseconds" in stats["frame time"] )
-				self.assertTrue( "peak CPU memory used" in stats )
-			else:
-				self.assertTrue( "scene creation time microseconds" in stats )
-				self.assertTrue( "frame time microseconds" in stats )
-				self.assertTrue( "memory consumed MB" in stats )
+			self.assertTrue( "microseconds" in stats["scene creation time"] )
+			self.assertTrue( "microseconds" in stats["frame time"] )
+			self.assertTrue( "peak CPU memory used" in stats )
 
 			self.assertTrue( "ray counts" in stats )
+
+		with open( self.temporaryDirectory() + "/test/test_profile.json", "r" ) as profileHandle :
+			stats = json.load( profileHandle )["traceEvents"]
+			driverEvents = [ x for x in stats if x["name"] == "ieCoreArnold:display:testBeauty" ]
+			self.assertEqual( driverEvents[0]["cat"], "driver_exr" )
 
 	def testProcedural( self ) :
 
@@ -2443,7 +2433,7 @@ class RendererTest( GafferTest.TestCase ) :
 			IECoreScene.ShaderNetwork( { "output" : IECoreScene.Shader( "atmosphere_volume", "ai:shader" ) }, output = "output" )
 		)
 
-		shader = self.arnoldCompat( arnold.AiNodeGetPtr( options, "atmosphere" ) )
+		shader = arnold.AiNodeGetPtr( options, "atmosphere" )
 		self.assertEqual(
 			arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( shader ) ),
 			"atmosphere_volume",
@@ -2467,7 +2457,7 @@ class RendererTest( GafferTest.TestCase ) :
 			IECoreScene.ShaderNetwork( { "output" : IECoreScene.Shader( "flat", "ai:shader" ) }, output = "output" )
 		)
 
-		shader = self.arnoldCompat( arnold.AiNodeGetPtr( options, "background" ) )
+		shader = arnold.AiNodeGetPtr( options, "background" )
 		self.assertEqual(
 			arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( shader ) ),
 			"flat",
@@ -2475,6 +2465,91 @@ class RendererTest( GafferTest.TestCase ) :
 
 		r.option( "ai:background", None )
 		self.assertEqual( arnold.AiNodeGetPtr( options, "background" ), None )
+
+	def testColorManager( self ) :
+
+		r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+			"Arnold",
+			GafferScene.Private.IECoreScenePreview.Renderer.RenderType.Interactive
+		)
+
+		options = arnold.AiUniverseGetOptions()
+		self.assertEqual( arnold.AiNodeGetPtr( options, "color_manager" ), None )
+
+		r.option(
+			"ai:color_manager",
+			IECoreScene.ShaderNetwork(
+				{
+					"output" : IECoreScene.Shader(
+						"color_manager_ocio", "ai:color_manager",
+						{
+							"config" : "something.ocio",
+							"color_space_narrow" : "narrow",
+							"color_space_linear" : "linear",
+						}
+					)
+				},
+				output = "output"
+			)
+		)
+
+		colorManager = arnold.AiNodeGetPtr( options, "color_manager" )
+		self.assertEqual(
+			arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( colorManager ) ),
+			"color_manager_ocio",
+		)
+
+		self.assertEqual( arnold.AiNodeGetStr( colorManager, "config" ), "something.ocio" )
+		self.assertEqual( arnold.AiNodeGetStr( colorManager, "color_space_narrow" ), "narrow" )
+		self.assertEqual( arnold.AiNodeGetStr( colorManager, "color_space_linear" ), "linear" )
+
+		r.option( "ai:color_manager", None )
+		self.assertEqual( arnold.AiNodeGetPtr( options, "color_manager" ), None )
+
+	def testBlockerMotionBlur( self ) :
+
+		r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+			"Arnold",
+			GafferScene.Private.IECoreScenePreview.Renderer.RenderType.SceneDescription,
+			self.temporaryDirectory() + "/test.ass"
+		)
+
+		o = r.lightFilter(
+			"/lightFilter", IECore.NullObject(),
+			r.attributes( IECore.CompoundObject( {
+				"ai:lightFilter:filter" : IECoreScene.ShaderNetwork(
+					shaders = {
+						"filter" : IECoreScene.Shader( "light_blocker", "ai:lightFilter" ),
+					},
+					output = "filter"
+				)
+			} ) )
+		)
+
+		# Ask for transform motion blur
+
+		o.transform(
+			[ imath.M44f().translate( imath.V3f( 1, 0, 0 ) ), imath.M44f().translate( imath.V3f( 2, 0, 0 ) ) ],
+			[ 0, 1 ]
+		)
+
+		r.render()
+
+		del o
+		del r
+
+		with IECoreArnold.UniverseBlock( writable = True ) :
+
+			arnold.AiASSLoad( self.temporaryDirectory() + "/test.ass" )
+
+			# Since Arnold's `light_blocker` node doesn't support transform blur,
+			# we just expect a single matrix with the first transform sample.
+
+			node = arnold.AiNodeLookUpByName( "lightFilter:/lightFilter" )
+			self.assertEqual(
+				self.__m44f( arnold.AiNodeGetMatrix( node, "geometry_matrix" ) ),
+				imath.M44f().translate( imath.V3f( 1, 0, 0 ) )
+			)
 
 	def __testVDB( self, stepSize = None, stepScale = 1.0, expectedSize = 0.0, expectedScale = 1.0 ) :
 
@@ -2533,7 +2608,7 @@ class RendererTest( GafferTest.TestCase ) :
 			self.assertEqual( numVDBs, 1 )
 
 			vdbInstance = arnold.AiNodeLookUpByName( "test_vdb" )
-			vdbShape = self.arnoldCompat( arnold.AiNodeGetPtr( vdbInstance, "node" ) )
+			vdbShape = arnold.AiNodeGetPtr( vdbInstance, "node" )
 
 			self.assertEqual( arnold.AiNodeGetFlt( vdbShape, "velocity_scale" ), 10 )
 			self.assertEqual( arnold.AiNodeGetFlt( vdbShape, "velocity_fps" ), 25 )
@@ -2595,6 +2670,62 @@ class RendererTest( GafferTest.TestCase ) :
 			uvRemapNode =  arnold.AiNodeGetLink( cameraNode, "uv_remap" )
 			self.assertEqual( arnold.AiNodeEntryGetName( arnold.AiNodeGetNodeEntry( uvRemapNode ) ), "flat" )
 
+	def testCantEditQuadLightColor( self ) :
+
+		r = GafferScene.Private.IECoreScenePreview.Renderer.create(
+			"Arnold",
+			GafferScene.Private.IECoreScenePreview.Renderer.RenderType.Interactive,
+		)
+
+		lightParameters = { "color" : IECore.Color3fData( imath.Color3f(1,0,0) ), "exposure" : IECore.FloatData( 1 ) }
+		lightParametersChanged = { "color" : IECore.Color3fData( imath.Color3f(0,1,0) ), "exposure" : IECore.FloatData( 2 ) }
+		texParameters = { "multiply" : IECore.Color3fData( imath.Color3f(1,0,0) ) }
+		texParametersChanged = { "multiply" : IECore.Color3fData( imath.Color3f(0,1,0) ) }
+
+		skydomeLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "skydome_light", "ai:light", lightParameters ), }, output = "light" )
+		skydomeLight = r.light(
+			"skydomeLight",
+			None,
+			r.attributes(
+				IECore.CompoundObject( {
+					"ai:light" : skydomeLightShader
+				} )
+			)
+		)
+
+		quadLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "quad_light", "ai:light", lightParameters ), }, output = "light" )
+		quadLight = r.light(
+			"quadLight",
+			None,
+			r.attributes(
+				IECore.CompoundObject( {
+					"ai:light" : quadLightShader
+				} )
+			)
+		)
+
+		# All edits of the skydome light should succeed ( The bug we're hacking around only affects quad_light )
+		skydomeLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "skydome_light", "ai:light", lightParametersChanged), }, output = "light" )
+		self.assertTrue( skydomeLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : skydomeLightShader } ) ) ) )
+		skydomeLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "skydome_light", "ai:light", lightParameters), "tex" : IECoreScene.Shader( "image", "ai:shader", texParameters) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertTrue( skydomeLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : skydomeLightShader } ) ) ) )
+		skydomeLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "skydome_light", "ai:light", lightParametersChanged), "tex" : IECoreScene.Shader( "image", "ai:shader", texParameters) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertTrue( skydomeLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : skydomeLightShader } ) ) ) )
+		skydomeLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "skydome_light", "ai:light", lightParametersChanged), "tex" : IECoreScene.Shader( "image", "ai:shader", texParametersChanged) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertTrue( skydomeLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : skydomeLightShader } ) ) ) )
+
+		# Most edits of the quad lights should succeed
+		quadLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "quad_light", "ai:light", lightParametersChanged), }, output = "light" )
+		self.assertTrue( quadLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : quadLightShader } ) ) ) )
+		quadLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "quad_light", "ai:light", lightParameters), "tex" : IECoreScene.Shader( "image", "ai:shader", texParameters) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertTrue( quadLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : quadLightShader } ) ) ) )
+		quadLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "quad_light", "ai:light", lightParametersChanged), "tex" : IECoreScene.Shader( "image", "ai:shader", texParameters) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertTrue( quadLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : quadLightShader } ) ) ) )
+
+		# The one exception is changing a parameter of a shader upstream of the color parameter
+		quadLightShader = IECoreScene.ShaderNetwork( { "light" : IECoreScene.Shader( "quad_light", "ai:light", lightParametersChanged), "tex" : IECoreScene.Shader( "image", "ai:shader", texParametersChanged) }, [(("tex", ""), ("light", "color"))], output = "light" )
+		self.assertFalse( quadLight.attributes( r.attributes( IECore.CompoundObject( { "ai:light" : quadLightShader } ) ) ) )
+
 	@staticmethod
 	def __m44f( m ) :
 
@@ -2624,7 +2755,7 @@ class RendererTest( GafferTest.TestCase ) :
 
 			nodePtr = arnold.AiNodeGetPtr( instanceNode, "node" )
 			self.assertReferSameNode( nodePtr, arnold.AiNodeGetPtr( firstInstanceNode, "node" ) )
-			self.assertEqual( arnold.AiNodeGetByte( self.arnoldCompat( nodePtr ), "visibility" ), 0 )
+			self.assertEqual( arnold.AiNodeGetByte( nodePtr, "visibility" ), 0 )
 
 	def __assertNotInstanced( self, *names ) :
 

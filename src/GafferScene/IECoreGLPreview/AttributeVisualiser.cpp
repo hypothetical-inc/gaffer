@@ -62,28 +62,20 @@ AttributeVisualiser::~AttributeVisualiser()
 {
 }
 
-IECoreGL::ConstRenderablePtr AttributeVisualiser::allVisualisations( const IECore::CompoundObject *attributes,
-	IECoreGL::ConstStatePtr &state )
-{
+Visualisations AttributeVisualiser::allVisualisations( const IECore::CompoundObject *attributes, IECoreGL::ConstStatePtr &state ) {
 	const AttributeVisualisers &v = visualisers();
 
-	IECoreGL::GroupPtr resultGroup = nullptr;
+	Visualisations resultVis;
 	IECoreGL::StatePtr resultState = nullptr;
 
 	for( unsigned int i = 0; i < v.size(); i++ )
 	{
 		IECoreGL::ConstStatePtr curState = nullptr;
-		IECoreGL::ConstRenderablePtr curVis = v[i]->visualise( attributes, curState );
+		const Visualisations curVis = v[i]->visualise( attributes, curState );
 
-		if( curVis )
+		if( !curVis.empty() )
 		{
-			if( !resultGroup )
-			{
-				resultGroup = new IECoreGL::Group();
-			}
-			// resultGroup will be returned as const, so const-casting the children in order to add them
-			// is safe
-			resultGroup->addChild( const_cast<IECoreGL::Renderable*>( curVis.get() ) );
+			resultVis.insert( resultVis.end(), curVis.begin(), curVis.end() );
 		}
 
 		if( curState )
@@ -97,7 +89,7 @@ IECoreGL::ConstRenderablePtr AttributeVisualiser::allVisualisations( const IECor
 	}
 
 	state = resultState;
-	return resultGroup;
+	return resultVis;
 }
 
 void AttributeVisualiser::registerVisualiser( ConstAttributeVisualiserPtr visualiser )

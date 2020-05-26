@@ -38,6 +38,8 @@
 #ifndef GAFFER_STRINGPLUG_H
 #define GAFFER_STRINGPLUG_H
 
+#include "IECore/StringAlgo.h"
+
 #include "Gaffer/Context.h"
 #include "Gaffer/ValuePlug.h"
 
@@ -93,7 +95,7 @@ class GAFFER_API StringPlug : public ValuePlug
 			Direction direction=In,
 			const std::string &defaultValue = "",
 			unsigned flags = Default,
-			unsigned substitutions = Context::AllSubstitutions
+			unsigned substitutions = IECore::StringAlgo::AllSubstitutions
 		);
 		~StringPlug() override;
 
@@ -110,7 +112,7 @@ class GAFFER_API StringPlug : public ValuePlug
 		/// Returns the value. See comments in TypedObjectPlug::getValue()
 		/// for details of the optional precomputedHash argument - and use
 		/// with care!
-		std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
+		virtual std::string getValue( const IECore::MurmurHash *precomputedHash = nullptr ) const;
 
 		void setFrom( const ValuePlug *other ) override;
 

@@ -37,6 +37,7 @@
 import os
 import shutil
 import unittest
+import six
 import imath
 
 import IECore
@@ -48,12 +49,16 @@ import GafferImageTest
 
 class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 
-	fileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/circles.exr" )
-	colorSpaceFileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/circles_as_cineon.exr" )
-	offsetDataWindowFileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/rgb.100x100.exr" )
-	jpgFileName = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/circles.jpg" )
-
 	def setUp( self ) :
+		if os.name == "nt":
+			gaffer_root = os.path.expandvars( "%GAFFER_ROOT%" )
+		else:
+			gaffer_root = os.path.expandvars( "$GAFFER_ROOT" )
+
+		self.fileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles.exr" )
+		self.colorSpaceFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles_as_cineon.exr" )
+		self.offsetDataWindowFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/rgb.100x100.exr" )
+		self.jpgFileName = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/circles.jpg" )
 
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageReader.getDefaultColorSpaceFunction()
@@ -74,8 +79,10 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( n["out"]["format"].getValue(), oiio["out"]["format"].getValue() )
 		self.assertEqual( n["out"]["dataWindow"].getValue(), oiio["out"]["dataWindow"].getValue() )
 		self.assertEqual( n["out"]["metadata"].getValue(), oiio["out"]["metadata"].getValue() )
+		self.assertEqual( n["out"]["deep"].getValue(), oiio["out"]["deep"].getValue() )
 		self.assertEqual( n["out"]["channelNames"].getValue(), oiio["out"]["channelNames"].getValue() )
-		self.assertEqual( n["out"].channelData( "R", imath.V2i( 0 ) ),oiio["out"].channelData( "R", imath.V2i( 0 ) ) )
+		self.assertEqual( n["out"].sampleOffsets( imath.V2i( 0 ) ), oiio["out"].sampleOffsets( imath.V2i( 0 ) ) )
+		self.assertEqual( n["out"].channelData( "R", imath.V2i( 0 ) ), oiio["out"].channelData( "R", imath.V2i( 0 ) ) )
 		self.assertImagesEqual( n["out"], oiio["out"] )
 
 	def testUnspecifiedFilename( self ) :
@@ -129,28 +136,28 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 
 		reader = GafferImage.ImageReader()
 		reader["fileName"].setValue( testFile )
-		image1 = reader["out"].image()
+		image1 = GafferImage.ImageAlgo.image( reader["out"] )
 
 		# even though we've change the image on disk, gaffer will
 		# still have the old one in its cache.
 		shutil.copyfile( self.jpgFileName, testFile )
-		self.assertEqual( reader["out"].image(), image1 )
+		self.assertEqual( GafferImage.ImageAlgo.image( reader["out"] ), image1 )
 
 		# until we force a refresh
 		reader["refreshCount"].setValue( reader["refreshCount"].getValue() + 1 )
-		self.assertNotEqual( reader["out"].image(), image1 )
+		self.assertNotEqual( GafferImage.ImageAlgo.image( reader["out"] ), image1 )
 
 	def testNonexistentFiles( self ) :
 
 		reader = GafferImage.ImageReader()
 		reader["fileName"].setValue( "wellIDontExist.exr" )
 
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"].image )
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["format"].getValue )
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["dataWindow"].getValue )
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["metadata"].getValue )
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["channelNames"].getValue )
-		self.assertRaisesRegexp( RuntimeError, ".*wellIDontExist.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["format"].getValue )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["dataWindow"].getValue )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["metadata"].getValue )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", reader["out"]["channelNames"].getValue )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
+		six.assertRaisesRegex( self, RuntimeError, ".*wellIDontExist.exr.*", GafferImage.ImageAlgo.image, reader["out"] )
 
 	def testMissingFrameMode( self ) :
 
@@ -184,12 +191,12 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 		# everything throws
 		reader["missingFrameMode"].setValue( GafferImage.ImageReader.MissingFrameMode.Error )
 		with context :
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].image )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["dataWindow"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["metadata"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["channelNames"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["dataWindow"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["metadata"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["channelNames"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", GafferImage.ImageAlgo.image, reader["out"] )
 
 		# Hold mode matches OpenImageIOReader
 		reader["missingFrameMode"].setValue( GafferImage.ImageReader.MissingFrameMode.Hold )
@@ -237,18 +244,18 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 		reader["fileName"].setValue( testSequence.fileNameForFrame( 0 ) )
 		reader["missingFrameMode"].setValue( GafferImage.OpenImageIOReader.MissingFrameMode.Hold )
 		with context :
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].image )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["dataWindow"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["metadata"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["channelNames"].getValue )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", GafferImage.ImageAlgo.image, reader["out"] )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["dataWindow"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["metadata"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["channelNames"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].channelData, "R", imath.V2i( 0 ) )
 
 		reader["missingFrameMode"].setValue( GafferImage.OpenImageIOReader.MissingFrameMode.Black )
 		oiio["missingFrameMode"].setValue( GafferImage.OpenImageIOReader.MissingFrameMode.Black )
 		with context :
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"].image )
-			self.assertRaisesRegexp( RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", GafferImage.ImageAlgo.image, reader["out"] )
+			six.assertRaisesRegex( self, RuntimeError, ".*incompleteSequence.*.exr.*", reader["out"]["format"].getValue )
 			self.assertEqual( reader["out"]["dataWindow"].getValue(), oiio["out"]["dataWindow"].getValue() )
 			self.assertEqual( reader["out"]["metadata"].getValue(), oiio["out"]["metadata"].getValue() )
 			self.assertEqual( reader["out"]["channelNames"].getValue(), oiio["out"]["channelNames"].getValue() )
@@ -286,7 +293,7 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 			# format and data window still match
 			self.assertEqual( reader["out"]["format"].getValue(), oiio["out"]["format"].getValue() )
 			self.assertEqual( reader["out"]["dataWindow"].getValue(), oiio["out"]["dataWindow"].getValue() )
-			self.assertNotEqual( reader["out"].image(), oiio["out"].image() )
+			self.assertNotEqual( GafferImage.ImageAlgo.image( reader["out"] ), GafferImage.ImageAlgo.image( oiio["out"] ) )
 			# the metadata and channel names are at the defaults
 			self.assertEqual( reader["out"]["metadata"].getValue(), reader["out"]["metadata"].defaultValue() )
 			self.assertEqual( reader["out"]["channelNames"].getValue(), reader["out"]["channelNames"].defaultValue() )
@@ -307,7 +314,7 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 			context = Gaffer.Context()
 			context.setFrame( holdFrame )
 			with context :
-				holdImage = reader["out"].image()
+				holdImage = GafferImage.ImageAlgo.image( reader["out"] )
 				holdFormat = reader["out"]["format"].getValue()
 				holdDataWindow = reader["out"]["dataWindow"].getValue()
 				holdMetadata = reader["out"]["metadata"].getValue()
@@ -319,7 +326,7 @@ class ImageReaderTest( GafferImageTest.ImageTestCase ) :
 			self.assertEqual( reader["out"]["metadata"].getValue(), holdMetadata )
 			self.assertEqual( reader["out"]["channelNames"].getValue(), holdChannelNames )
 			self.assertEqual( reader["out"].channelData( "R", imath.V2i( 0 ) ), holdTile )
-			self.assertEqual( reader["out"].image(), holdImage )
+			self.assertEqual( GafferImage.ImageAlgo.image( reader["out"] ), holdImage )
 
 		reader["start"]["frame"].setValue( 4 )
 		reader["end"]["frame"].setValue( 7 )

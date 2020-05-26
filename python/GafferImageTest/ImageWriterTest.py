@@ -40,6 +40,7 @@ import unittest
 import shutil
 import functools
 import datetime
+import six
 import imath
 
 import IECore
@@ -52,14 +53,20 @@ import GafferImageTest
 
 class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
-	__largeFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/large.exr" )
-	__rgbFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/rgb.100x100" )
-	__negativeDataWindowFilePath = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/checkerWithNegativeDataWindow.200x150" )
-	__defaultFormatFile = os.path.expandvars( "$GAFFER_ROOT/python/GafferImageTest/images/defaultNegativeDisplayWindow.exr" )
-
 	longMessage = True
 
 	def setUp( self ) :
+
+		if os.name == "nt":
+			gaffer_root = os.path.expandvars( "%GAFFER_ROOT%" )
+		else:
+			gaffer_root = os.path.expandvars( "$GAFFER_ROOT" )
+
+		self.__largeFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/large.exr" )
+		self.__rgbFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/rgb.100x100" )
+		self.__negativeDataWindowFilePath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/checkerWithNegativeDataWindow.200x150" )
+		self.__representativeDeepPath = os.path.abspath( gaffer_root + "/python/GafferImageTest/images/representativeDeepImage.exr" )
+
 
 		GafferImageTest.ImageTestCase.setUp( self )
 		self.__defaultColorSpaceFunction = GafferImage.ImageWriter.getDefaultColorSpaceFunction()
@@ -76,7 +83,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		r["fileName"].setValue( self.__rgbFilePath+".exr" )
 
 		testFile = self.__testFile( "default", "RB", "exr" )
-		self.failIf( os.path.exists( testFile ) )
+		self.assertFalse( os.path.exists( testFile ) )
 
 		w = GafferImage.ImageWriter()
 		w["in"].setInput( r["out"] )
@@ -89,10 +96,10 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		writerOutput["fileName"].setValue( testFile )
 
 		channelNames = writerOutput["out"]["channelNames"].getValue()
-		self.failUnless( "R" in channelNames )
-		self.failUnless( not "G" in channelNames )
-		self.failUnless( "B" in channelNames )
-		self.failUnless( not "A" in channelNames )
+		self.assertIn( "R", channelNames )
+		self.assertNotIn( "G", channelNames )
+		self.assertIn( "B", channelNames )
+		self.assertNotIn( "A", channelNames )
 
 	def testWriteModePlugCompatibility( self ) :
 		w = GafferImage.ImageWriter()
@@ -116,13 +123,13 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		w = GafferImage.ImageWriter()
 		p = GafferImage.ImagePlug( direction = Gaffer.Plug.Direction.Out )
 
-		self.failIf( w["preTasks"][0].acceptsInput( p ) )
-		self.failUnless( w["in"].acceptsInput( p ) )
+		self.assertFalse( w["preTasks"][0].acceptsInput( p ) )
+		self.assertTrue( w["in"].acceptsInput( p ) )
 
 	def testTiffWrite( self ) :
 
 		options = {}
-		options['maxError'] = 0.003
+		options['maxError'] = 0.0032
 		options['metadata'] = { 'compression' : IECore.StringData( "zip" ), 'tiff:Compression' : IECore.IntData( 8 ) }
 		options['plugs'] = {}
 		options['plugs']['mode'] = [
@@ -281,52 +288,26 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 	def testDefaultFormatWrite( self ) :
 
 		s = Gaffer.ScriptNode()
-		w1 = GafferImage.ImageWriter()
-		w2 = GafferImage.ImageWriter()
-		g = GafferImage.Grade()
-
-		s.addChild( g )
-		s.addChild( w2 )
-
-		testScanlineFile = self.temporaryDirectory() + "/test.defaultFormat.scanline.exr"
-		testTileFile = self.temporaryDirectory() + "/test.defaultFormat.tile.exr"
-		self.failIf( os.path.exists( testScanlineFile ) )
-		self.failIf( os.path.exists( testTileFile ) )
+		s["c"] = GafferImage.Constant()
+		s["w"] = GafferImage.ImageWriter()
+		s["r"] = GafferImage.ImageReader()
 
 		GafferImage.FormatPlug.acquireDefaultFormatPlug( s ).setValue(
 			GafferImage.Format( imath.Box2i( imath.V2i( -7, -2 ), imath.V2i( 23, 25 ) ), 1. )
 		)
 
-		w1["in"].setInput( g["out"] )
-		w1["fileName"].setValue( testScanlineFile )
-		w1["channels"].setValue( "*" )
-		w1["openexr"]["mode"].setValue( GafferImage.ImageWriter.Mode.Scanline )
+		s["w"]["in"].setInput( s["c"]["out"] )
+		s["w"]["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.exr" ) )
+		s["r"]["fileName"].setInput( s["w"]["fileName"] )
 
-		w2["in"].setInput( g["out"] )
-		w2["fileName"].setValue( testTileFile )
-		w2["channels"].setValue( "*" )
-		w2["openexr"]["mode"].setValue( GafferImage.ImageWriter.Mode.Tile )
+		for mode in ( GafferImage.ImageWriter.Mode.Scanline, GafferImage.ImageWriter.Mode.Tile ) :
 
-		# Try to execute. In older versions of the ImageWriter this would throw an exception.
-		with s.context() :
-			w1["task"].execute()
-			w2["task"].execute()
-		self.failUnless( os.path.exists( testScanlineFile ) )
-		self.failUnless( os.path.exists( testTileFile ) )
+			s["r"]["refreshCount"].setValue( s["r"]["refreshCount"].getValue() + 1 )
 
-		# Check the output.
-		expectedFile = self.__defaultFormatFile
-		expectedOutput = IECore.Reader.create( expectedFile ).read()
-		expectedOutput.blindData().clear()
-
-		writerScanlineOutput = IECore.Reader.create( testScanlineFile ).read()
-		writerScanlineOutput.blindData().clear()
-
-		writerTileOutput = IECore.Reader.create( testTileFile ).read()
-		writerTileOutput.blindData().clear()
-
-		self.assertEqual( writerScanlineOutput, expectedOutput )
-		self.assertEqual( writerTileOutput, expectedOutput )
+			s["w"]["openexr"]["mode"].setValue( mode )
+			with s.context() :
+				s["w"]["task"].execute()
+				self.assertImagesEqual( s["c"]["out"], s["r"]["out"], ignoreMetadata = True )
 
 	def testDefaultFormatOptionPlugValues( self ) :
 		w = GafferImage.ImageWriter()
@@ -363,6 +344,82 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		self.assertEqual( w["webp"]["compressionQuality"].getValue(), 100 )
 
+	def testDeepWrite( self ) :
+
+		r = GafferImage.ImageReader()
+		r["fileName"].setValue( self.__representativeDeepPath )
+
+		c = GafferImage.Crop()
+		c["in"].setInput( r["out"] )
+		c["area"].setValue( imath.Box2i( imath.V2i( 0 ), imath.V2i( 64 ) ) )
+
+		o = GafferImage.Offset()
+		o["in"].setInput( c["out"] )
+
+		testFile = self.__testFile( "deep", "RGBA", "exr" )
+
+		w = GafferImage.ImageWriter()
+		w['fileName'].setValue( testFile )
+		w['in'].setInput( o['out'] )
+
+		reRead = GafferImage.ImageReader()
+		reRead["fileName"].setValue( testFile )
+
+		# We don't currently have an explicit way of trimming to the dataWindow - any nodes that process the
+		# data should do it, but crop may be passing through.  In order to be able to do an exact compare with
+		# the round tripped data, we can do a little hack by offsetting back and forth by a pixel, to force
+		# processing, which will trim to the dataWindow
+		trimToDataWindowStage1 = GafferImage.Offset()
+		trimToDataWindowStage1["in"].setInput( o["out"] )
+		trimToDataWindowStage1["offset"].setValue( imath.V2i( 1, 0 ) )
+
+		trimToDataWindowStage2 = GafferImage.Offset()
+		trimToDataWindowStage2["in"].setInput( trimToDataWindowStage1["out"] )
+		trimToDataWindowStage2["offset"].setValue( imath.V2i( -1, 0 ) )
+
+		for mode in [ GafferImage.ImageWriter.Mode.Scanline, GafferImage.ImageWriter.Mode.Tile]:
+
+			w["openexr"]["mode"].setValue( mode )
+
+			for area, affectDisplayWindow in [
+					( imath.Box2i( imath.V2i( 0 ), imath.V2i( 64 ) ), True ),
+					( imath.Box2i( imath.V2i( 0 ), imath.V2i( 63 ) ), True ),
+					( imath.Box2i( imath.V2i( 0 ), imath.V2i( 65 ) ), True ),
+					( imath.Box2i( imath.V2i( 0 ), imath.V2i( 150, 100 ) ), True ),
+					( imath.Box2i( imath.V2i( 37, 21 ), imath.V2i( 96, 43 ) ), False ),
+					( imath.Box2i( imath.V2i( 0 ), imath.V2i( 0 ) ), False )
+				]:
+				c["area"].setValue( area )
+				c["affectDisplayWindow"].setValue( affectDisplayWindow )
+
+				for offset in [
+						imath.V2i( 0, 0 ),
+						imath.V2i( 13, 17 ),
+						imath.V2i( -13, -17 ),
+						imath.V2i( -233, 431 ),
+						imath.V2i( -GafferImage.ImagePlug.tileSize(), 2 * GafferImage.ImagePlug.tileSize() ),
+						imath.V2i( 106, 28 )
+					]:
+
+					with Gaffer.Context() :
+						w["task"].execute()
+
+					reRead["refreshCount"].setValue( reRead["refreshCount"].getValue() + 1 )
+					if area.size() != imath.V2i( 0 ):
+						self.assertImagesEqual( reRead["out"], trimToDataWindowStage2["out"], ignoreMetadata = True )
+					else:
+						# We have to write one pixel to file, since OpenEXR doesn't permit empty dataWindow
+						onePixelDataWindow = imath.Box2i( imath.V2i( 0, 99 ), imath.V2i( 1, 100 ) )
+						self.assertEqual( reRead["out"].dataWindow(), onePixelDataWindow )
+
+						emptyPixelData = IECore.CompoundData( dict( [
+							( key,  IECore.CompoundData( {
+								"0, 64" : IECore.FloatVectorData() if key != "sampleOffsets"
+									else GafferImage.ImagePlug.emptyTileSampleOffsets()
+							} ) ) for key in [ "sampleOffsets", "R", "G","B", "A", "Z", "ZBack" ]
+						] ) )
+						self.assertEqual( GafferImage.ImageAlgo.tiles( reRead["out"] ), emptyPixelData )
+
 	# Write an RGBA image that has a data window to various supported formats and in both scanline and tile modes.
 	def __testExtension( self, ext, formatName, options = {}, metadataToIgnore = [] ) :
 
@@ -370,11 +427,24 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		r["fileName"].setValue( self.__rgbFilePath+".exr" )
 		expectedFile = "{base}.{ext}".format( base=self.__rgbFilePath, ext=ext )
 
-		tests = [ {
-			'name': "default",
-			'plugs': {},
-			'metadata': options.get( "metadata", {} ),
-			'maxError': options.get( "maxError", 0.0 ) } ]
+		tests = [
+			{
+				'name': "default",
+				'plugs': {},
+				'metadata': options.get( "metadata", {} ),
+				'maxError': options.get( "maxError", 0.0 )
+			},
+			{
+				'name': "defaultNoAlpha",
+				'removeAlpha': True,
+				'plugs': {},
+				'metadata': options.get( "metadata", {} ),
+				# The expected images were written out with an alpha.  Removing two unpremults/premults from the
+				# color space processing chain produces slightly different results ( in low precision file formats,
+				# like PNG, this error accumulates to be a bit large )
+				'maxError': 0.011
+			}
+		]
 
 		for optPlugName in options['plugs'] :
 			for optPlugVal in options['plugs'][optPlugName] :
@@ -393,14 +463,15 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 			maxError = test['maxError']
 			overrideMetadata = test['metadata']
 			testFile = self.__testFile( name, "RGBA", ext )
+			removeAlpha = "removeAlpha" in test
 
-			self.failIf( os.path.exists( testFile ), "Temporary file already exists : {}".format( testFile ) )
+			self.assertFalse( os.path.exists( testFile ), "Temporary file already exists : {}".format( testFile ) )
 
 			# Setup the writer.
 			w = GafferImage.ImageWriter()
 			w["in"].setInput( r["out"] )
 			w["fileName"].setValue( testFile )
-			w["channels"].setValue( "*" )
+			w["channels"].setValue( "[RGB]" if removeAlpha else "*" )
 
 			for opt in test['plugs']:
 				w[formatName][opt].setValue( test['plugs'][opt] )
@@ -408,7 +479,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 			# Execute
 			with Gaffer.Context() :
 				w["task"].execute()
-			self.failUnless( os.path.exists( testFile ), "Failed to create file : {} ({}) : {}".format( ext, name, testFile ) )
+			self.assertTrue( os.path.exists( testFile ), "Failed to create file : {} ({}) : {}".format( ext, name, testFile ) )
 
 			# Check the output.
 			expectedOutput = GafferImage.ImageReader()
@@ -427,7 +498,11 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 			# the writer adds several standard attributes that aren't in the original file
 			expectedMetadata["Software"] = IECore.StringData( "Gaffer " + Gaffer.About.versionString() )
 			expectedMetadata["HostComputer"] = IECore.StringData( platform.node() )
-			expectedMetadata["Artist"] = IECore.StringData( os.environ["USER"] )
+			if os.name == "nt":
+				user_key = "username"
+			else:
+				user_key = "USER"
+			expectedMetadata["Artist"] = IECore.StringData( os.environ[user_key] )
 			expectedMetadata["DocumentName"] = IECore.StringData( "untitled" )
 
 			for key in overrideMetadata :
@@ -446,7 +521,14 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 				self.assertTrue( metaName in writerMetadata.keys(), "Writer Metadata missing expected key \"{}\" set to \"{}\" : {} ({})".format(metaName, str(expectedMetadata[metaName]), ext, name) )
 				self.assertEqual( expectedMetadata[metaName], writerMetadata[metaName], "Metadata does not match for key \"{}\" : {} ({})".format(metaName, ext, name) )
 
-			self.assertImagesEqual( expectedOutput["out"], writerOutput["out"], maxDifference = maxError, ignoreMetadata = True )
+			if not removeAlpha:
+				self.assertImagesEqual( expectedOutput["out"], writerOutput["out"], maxDifference = maxError, ignoreMetadata = True )
+			else:
+				deleteChannels = GafferImage.DeleteChannels()
+				deleteChannels["channels"].setValue( "A" )
+				deleteChannels["in"].setInput( expectedOutput["out"] )
+
+				self.assertImagesEqual( deleteChannels["out"], writerOutput["out"], maxDifference = maxError, ignoreMetadata = True )
 
 	def __addExpectedIPTCMetadata( self, metadata, expectedMetadata ) :
 
@@ -488,7 +570,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		testFile = self.__testFile( os.path.basename(filePath), "RGBA", ext )
 		expectedFile = filePath+"."+ext
 
-		self.failIf( os.path.exists( testFile ), "Temporary file already exists : {}".format( testFile ) )
+		self.assertFalse( os.path.exists( testFile ), "Temporary file already exists : {}".format( testFile ) )
 
 		# Setup the writer.
 		w["in"].setInput( r["out"] )
@@ -498,7 +580,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		# Execute
 		with Gaffer.Context() :
 			w["task"].execute()
-		self.failUnless( os.path.exists( testFile ), "Failed to create file : {} : {}".format( ext, testFile ) )
+		self.assertTrue( os.path.exists( testFile ), "Failed to create file : {} : {}".format( ext, testFile ) )
 
 		# Check the output.
 		expectedOutput = GafferImage.ImageReader()
@@ -522,7 +604,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		w["task"].execute()
 
-		self.failUnless( os.path.exists( testFile ) )
+		self.assertTrue( os.path.exists( testFile ) )
 		i = IECore.Reader.create( testFile ).read()
 
 		# Cortex uses the EXR convention, which differs
@@ -580,8 +662,8 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		s["w"]["in"].setInput( s["c"]["out"] )
 
 		with s.context() :
-			ci = s["c"]["out"].image()
-			wi = s["w"]["out"].image()
+			ci = GafferImage.ImageAlgo.image( s["c"]["out"] )
+			wi = GafferImage.ImageAlgo.image( s["w"]["out"] )
 
 		self.assertEqual( ci, wi )
 
@@ -600,14 +682,14 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		w = GafferImage.ImageWriter()
 
 		testFile = self.__testFile( "metadataTest", "RGBA", "exr" )
-		self.failIf( os.path.exists( testFile ) )
+		self.assertFalse( os.path.exists( testFile ) )
 
 		w["in"].setInput( r["out"] )
 		w["fileName"].setValue( testFile )
 
 		with Gaffer.Context() :
 			w["task"].execute()
-		self.failUnless( os.path.exists( testFile ) )
+		self.assertTrue( os.path.exists( testFile ) )
 
 		result = GafferImage.ImageReader()
 		result["fileName"].setValue( testFile )
@@ -664,12 +746,12 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		regularWriter = GafferImage.ImageWriter()
 		regularWriter["in"].setInput( regularMetadata["out"] )
 		regularWriter["fileName"].setValue( self.__testFile( "regularMetadata", "RGBA", ext ) )
-		self.failIf( os.path.exists( regularWriter["fileName"].getValue() ) )
+		self.assertFalse( os.path.exists( regularWriter["fileName"].getValue() ) )
 
 		misledWriter = GafferImage.ImageWriter()
 		misledWriter["in"].setInput( misleadingMetadata["out"] )
 		misledWriter["fileName"].setValue( self.__testFile( "misleadingMetadata", "RGBA", ext ) )
-		self.failIf( os.path.exists( misledWriter["fileName"].getValue() ) )
+		self.assertFalse( os.path.exists( misledWriter["fileName"].getValue() ) )
 
 		# Check that the writer is indeed being given misleading metadata.
 
@@ -685,8 +767,8 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		regularWriter["task"].execute()
 		misledWriter["task"].execute()
 
-		self.failUnless( os.path.exists( regularWriter["fileName"].getValue() ) )
-		self.failUnless( os.path.exists( misledWriter["fileName"].getValue() ) )
+		self.assertTrue( os.path.exists( regularWriter["fileName"].getValue() ) )
+		self.assertTrue( os.path.exists( misledWriter["fileName"].getValue() ) )
 
 		# Make readers to read back what we wrote out
 
@@ -715,7 +797,11 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		expectedMetadata["DateTime"] = regularReaderMetadata["DateTime"]
 		expectedMetadata["Software"] = IECore.StringData( "Gaffer " + Gaffer.About.versionString() )
 		expectedMetadata["HostComputer"] = IECore.StringData( platform.node() )
-		expectedMetadata["Artist"] = IECore.StringData( os.environ["USER"] )
+		if os.name == "nt":
+			user_key = "username"
+		else:
+			user_key = "USER"
+		expectedMetadata["Artist"] = IECore.StringData( os.environ[user_key] )
 		expectedMetadata["DocumentName"] = IECore.StringData( "untitled" )
 		expectedMetadata["fileFormat"] = regularReaderMetadata["fileFormat"]
 		expectedMetadata["dataType"] = regularReaderMetadata["dataType"]
@@ -784,7 +870,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		c["in"].setInput( overscanCrop["out"] )
 
 		testFile = self.__testFile( "emptyImage", "RGBA", "exr" )
-		self.failIf( os.path.exists( testFile ) )
+		self.assertFalse( os.path.exists( testFile ) )
 
 		w = GafferImage.ImageWriter()
 		w["in"].setInput( c["out"] )
@@ -792,7 +878,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		with Gaffer.Context():
 			w["task"].execute()
-		self.failUnless( os.path.exists( testFile ) )
+		self.assertTrue( os.path.exists( testFile ) )
 
 		after = GafferImage.ImageReader()
 		after["fileName"].setValue( testFile )
@@ -812,7 +898,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		c["in"].setInput( i["out"] )
 
 		testFile = self.__testFile( "emptyImage", "RGBA", "exr" )
-		self.failIf( os.path.exists( testFile ) )
+		self.assertFalse( os.path.exists( testFile ) )
 
 		w = GafferImage.ImageWriter()
 		w["in"].setInput( c["out"] )
@@ -820,7 +906,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		with Gaffer.Context():
 			w["task"].execute()
-		self.failUnless( os.path.exists( testFile ) )
+		self.assertTrue( os.path.exists( testFile ) )
 
 		after = GafferImage.ImageReader()
 		after["fileName"].setValue( testFile )
@@ -843,7 +929,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		self.assertEqual( r["out"]["metadata"].getValue()["PixelAspectRatio"], IECore.FloatData( 1 ) )
 
 		testFile = self.__testFile( "pixelAspectFromFormat", "RGBA", "exr" )
-		self.failIf( os.path.exists( testFile ) )
+		self.assertFalse( os.path.exists( testFile ) )
 
 		w = GafferImage.ImageWriter()
 		w["in"].setInput( f["out"] )
@@ -852,7 +938,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		with Gaffer.Context() :
 			w["task"].execute()
-		self.failUnless( os.path.exists( testFile ) )
+		self.assertTrue( os.path.exists( testFile ) )
 
 		after = GafferImage.ImageReader()
 		after["fileName"].setValue( testFile )
@@ -914,7 +1000,13 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		with context :
 			s["w"]["task"].execute()
 
-		self.assertTrue( os.path.isfile( self.temporaryDirectory() + "/test.tif" ) )
+		self.assertTrue( os.path.isfile( os.path.join( self.temporaryDirectory(), "test.tif" ) ) )
+
+		s["w"]["fileName"].setValue( self.temporaryDirectory() + "/test.#.tif" )
+		context.setFrame( 5 )
+		with context :
+			s["w"]["task"].execute()
+		self.assertTrue( os.path.isfile( os.path.join( self.temporaryDirectory(), "test.5.tif" ) ) )
 
 	def testErrorMessages( self ) :
 
@@ -927,13 +1019,13 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 		with s.context() :
 
-			self.assertRaisesRegexp( RuntimeError, "could not find a format writer for", s["w"].execute )
+			six.assertRaisesRegex( self, RuntimeError, "could not find a format writer for", s["w"].execute )
 
 			s["w"]["fileName"].setValue( self.temporaryDirectory() + "/test.tif" )
 			s["w"]["task"].execute()
 
 			os.chmod( self.temporaryDirectory() + "/test.tif", 0o444 )
-			self.assertRaisesRegexp( RuntimeError, "Could not open", s["w"]["task"].execute )
+			six.assertRaisesRegex( self, RuntimeError, "Could not open", s["w"]["task"].execute )
 
 	def testWriteIntermediateFile( self ) :
 
@@ -1001,7 +1093,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 				GafferImage.ImageWriter.__init__( self, name )
 
-				self["copyFileName"] = Gaffer.StringPlug()
+				self["copyFileName"] = Gaffer.FileSystemPathPlug()
 
 			def execute( self ) :
 
@@ -1043,7 +1135,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 	def __testFile( self, mode, channels, ext ) :
 
-		return self.temporaryDirectory() + "/test." + channels + "." + str( mode ) + "." + str( ext )
+		return os.path.join(self.temporaryDirectory(), "test." + channels + "." + str( mode ) + "." + str( ext ))
 
 	def testJpgChroma( self ):
 
@@ -1058,7 +1150,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		chromaSubSamplings = ( "4:4:4", "4:2:2", "4:2:0", "4:1:1", "" )
 		for chromaSubSampling in chromaSubSamplings:
 
-			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling ) )
+			testFile = os.path.join( self.temporaryDirectory(), "chromaSubSampling.{0}.jpg".format( chromaSubSampling.replace(":", ".") ) )
 
 			w["fileName"].setValue( testFile )
 			w["jpeg"]["chromaSubSampling"].setValue( chromaSubSampling )
@@ -1066,7 +1158,7 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 			with Gaffer.Context() :
 				w["task"].execute()
 
-			self.failUnless( os.path.exists( testFile ), "Failed to create file : {} : {}".format( chromaSubSampling, testFile ) )
+			self.assertTrue( os.path.exists( testFile ), "Failed to create file : {} : {}".format( chromaSubSampling, testFile ) )
 
 			result["fileName"].setValue( testFile )
 
@@ -1191,10 +1283,10 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 
 			writer["task"].execute()
 
-			self.failUnless( os.path.exists( writer["fileName"].getValue() ), "Failed to create file : {}".format( writer["fileName"].getValue() ) )
+			self.assertTrue( os.path.exists( writer["fileName"].getValue() ), "Failed to create file : {}".format( writer["fileName"].getValue() ) )
 
 			resultReader["colorSpace"].setValue( colorSpace )
-			self.assertImagesEqual( resultReader["out"], reader["out"], ignoreMetadata=True, maxDifference=0.0007 )
+			self.assertImagesEqual( resultReader["out"], reader["out"], ignoreMetadata=True, maxDifference=0.0008 )
 
 	def testDependencyNode( self ) :
 
@@ -1231,6 +1323,20 @@ class ImageWriterTest( GafferImageTest.ImageTestCase ) :
 		cleanOutput["in"].setInput( writer["in"] )
 		cleanOutput["channels"].setValue( "A" )
 		self.assertImagesEqual( reader["out"], cleanOutput["out"], ignoreMetadata=True, ignoreDataWindow=True, maxDifference=0.05 )
+
+	def testThrowsForEmptyChannels( self ) :
+
+		constant = GafferImage.Constant()
+
+		writer = GafferImage.ImageWriter()
+		writer["in"].setInput( constant["out"] )
+		writer["fileName"].setValue( os.path.join( self.temporaryDirectory(), "test.exr" ) )
+		writer["channels"].setValue( "diffuse.[RGB]" )
+
+		with six.assertRaisesRegex( self, Gaffer.ProcessException, "No channels to write" ) :
+			writer["task"].execute()
+
+		self.assertFalse( os.path.exists( writer["fileName"].getValue() ) )
 
 if __name__ == "__main__":
 	unittest.main()

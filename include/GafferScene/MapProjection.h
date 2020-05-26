@@ -37,7 +37,8 @@
 #ifndef GAFFERSCENE_MAPPROJECTION_H
 #define GAFFERSCENE_MAPPROJECTION_H
 
-#include "GafferScene/SceneElementProcessor.h"
+#include "GafferScene/Export.h"
+#include "GafferScene/ObjectProcessor.h"
 
 namespace Gaffer
 {
@@ -50,7 +51,7 @@ namespace GafferScene
 {
 
 /// Applies texture coordinates via a camera projection.
-class GAFFERSCENE_API MapProjection : public SceneElementProcessor
+class GAFFERSCENE_API MapProjection : public ObjectProcessor
 {
 
 	public :
@@ -58,7 +59,7 @@ class GAFFERSCENE_API MapProjection : public SceneElementProcessor
 		MapProjection( const std::string &name=defaultName<MapProjection>() );
 		~MapProjection() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MapProjection, MapProjectionTypeId, SceneElementProcessor );
+		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MapProjection, MapProjectionTypeId, ObjectProcessor );
 
 		Gaffer::StringPlug *cameraPlug();
 		const Gaffer::StringPlug *cameraPlug() const;
@@ -66,13 +67,11 @@ class GAFFERSCENE_API MapProjection : public SceneElementProcessor
 		Gaffer::StringPlug *uvSetPlug();
 		const Gaffer::StringPlug *uvSetPlug() const;
 
-		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
-
 	protected :
 
-		bool processesObject() const override;
+		bool affectsProcessedObject( const Gaffer::Plug *input ) const override;
 		void hashProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
-		IECore::ConstObjectPtr computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::ConstObjectPtr inputObject ) const override;
+		IECore::ConstObjectPtr computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, const IECore::Object *inputObject ) const override;
 
 	private :
 

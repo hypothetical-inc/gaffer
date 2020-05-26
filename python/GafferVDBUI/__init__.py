@@ -34,11 +34,12 @@
 #
 ##########################################################################
 
-from _GafferVDBUI import *
+from ._GafferVDBUI import *
 
-import LevelSetToMeshUI
-import MeshToLevelSetUI
-import LevelSetOffsetUI
-import PointsGridToPointsUI
+from . import LevelSetToMeshUI
+from . import MeshToLevelSetUI
+from . import LevelSetOffsetUI
+from . import PointsGridToPointsUI
+from . import SphereLevelSetUI
 
 __import__( "IECore" ).loadConfig( "GAFFER_STARTUP_PATHS", subdirectory = "GafferVDBUI" )

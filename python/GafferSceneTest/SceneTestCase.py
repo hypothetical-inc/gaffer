@@ -68,7 +68,7 @@ class SceneTestCase( GafferTest.TestCase ) :
 
 			o = scenePlug.object( scenePath, _copy = False )
 			if isinstance( o, IECoreScene.VisibleRenderable ) :
-				 if not IECore.BoxAlgo.contains( thisBound, o.bound() ) :
+				if not IECore.BoxAlgo.contains( thisBound, o.bound() ) :
 					self.fail( "Bound %s does not contain object %s at %s" % ( thisBound, o.bound(), scenePath ) )
 			if isinstance( o, IECoreScene.Primitive ) :
 				if "P" in o :
@@ -79,9 +79,10 @@ class SceneTestCase( GafferTest.TestCase ) :
 				if not o.arePrimitiveVariablesValid() :
 					self.fail( "Object %s has invalid primitive variables" % scenePath )
 
+			childNames = scenePlug.childNames( scenePath, _copy = False )
+			self.assertEqual( len( childNames ), len( set( childNames ) ) )
 
 			unionOfTransformedChildBounds = imath.Box3f()
-			childNames = scenePlug.childNames( scenePath, _copy = False )
 			for childName in childNames :
 
 				childPath = IECore.InternedStringVectorData( scenePath )
@@ -114,15 +115,15 @@ class SceneTestCase( GafferTest.TestCase ) :
 	def assertPathExists( self, scenePlug, path ) :
 
 		if isinstance( path, str ) :
-			path = path.strip( "/" ).split( "/" )
+			path = GafferScene.ScenePlug.stringToPath( path )
 
 		for i in range( 0, len( path ) ) :
 			self.assertTrue(
-				path[i] in scenePlug.childNames( "/" + "/".join( path[:i] ) ),
+				path[i] in scenePlug.childNames( path[:i] ),
 				"\"{childName}\" in {scene}.childNames( \"{location}\" )".format(
 					childName = path[i],
 					scene = scenePlug.relativeName( scenePlug.ancestor( Gaffer.ScriptNode ) ),
-					location =  "/" + "/".join( path[:i] )
+					location =  GafferScene.ScenePlug.pathToString( path[:i] )
 				)
 			)
 
@@ -211,7 +212,7 @@ class SceneTestCase( GafferTest.TestCase ) :
 		scenePath1 = IECore.InternedStringVectorData()
 		scenePath2 = IECore.InternedStringVectorData()
 		if scenePlug2PathPrefix :
-			scenePath2.extend( IECore.InternedStringVectorData( scenePlug2PathPrefix[1:].split( "/" ) ) )
+			scenePath2.extend( GafferScene.ScenePlug.stringToPath( scenePlug2PathPrefix ) )
 
 		walkScene( scenePath1, scenePath2 )
 
@@ -276,7 +277,7 @@ class SceneTestCase( GafferTest.TestCase ) :
 		scenePath1 = IECore.InternedStringVectorData()
 		scenePath2 = IECore.InternedStringVectorData()
 		if scenePlug2PathPrefix :
-			scenePath2.extend( IECore.InternedStringVectorData( scenePlug2PathPrefix[1:].split( "/" ) ) )
+			scenePath2.extend( GafferScene.ScenePlug.stringToPath( scenePlug2PathPrefix ) )
 
 		walkScene( scenePath1, scenePath2 )
 
@@ -315,7 +316,7 @@ class SceneTestCase( GafferTest.TestCase ) :
 		scenePath1 = IECore.InternedStringVectorData()
 		scenePath2 = IECore.InternedStringVectorData()
 		if scenePlug2PathPrefix :
-			scenePath2.extend( IECore.InternedStringVectorData( scenePlug2PathPrefix[1:].split( "/" ) ) )
+			scenePath2.extend( GafferScene.ScenePlug.stringToPath( scenePlug2PathPrefix ) )
 
 		walkScene( scenePath1, scenePath2 )
 

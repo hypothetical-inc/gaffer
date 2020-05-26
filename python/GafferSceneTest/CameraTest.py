@@ -69,7 +69,7 @@ class CameraTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( p["out"].childNames( "/camera" ), IECore.InternedStringVectorData() )
 
 		o = p["out"].object( "/camera" )
-		self.failUnless( isinstance( o, IECoreScene.Camera ) )
+		self.assertIsInstance( o, IECoreScene.Camera )
 		self.assertEqual( o.getProjection(), "perspective" )
 
 		self.assertEqual( o.getAperture(), imath.V2f( 1.0 ) )
@@ -77,11 +77,43 @@ class CameraTest( GafferSceneTest.SceneTestCase ) :
 
 		self.assertSceneValid( p["out"] )
 
+	def testAttributes( self ) :
+
+		c = GafferScene.Camera()
+		path = "/%s" % c["name"].getValue()
+
+		a = c["out"].attributes( path )
+		self.assertFalse( "gl:visualiser:frustum" in a )
+		self.assertFalse( "gl:visualiser:scale" in a )
+
+		c["visualiserAttributes"]["frustum"]["enabled"].setValue( True )
+
+		a = c["out"].attributes( path )
+		self.assertEqual( a["gl:visualiser:frustum"], IECore.StringData( "whenSelected" ) )
+		self.assertFalse( "gl:visualiser:scale" in a )
+
+		c["visualiserAttributes"]["scale"]["enabled"].setValue( True )
+		a = c["out"].attributes( path )
+
+		self.assertEqual( a["gl:visualiser:frustum"], IECore.StringData( "whenSelected" ) )
+		self.assertEqual( a["gl:visualiser:scale"], IECore.FloatData( 1.0 ) )
+
+		c["visualiserAttributes"]["frustum"]["value"].setValue( "off" )
+		c["visualiserAttributes"]["scale"]["value"].setValue( 12.1 )
+
+		a = c["out"].attributes( path )
+		self.assertEqual( a["gl:visualiser:frustum"], IECore.StringData( "off" ) )
+		self.assertEqual( a["gl:visualiser:scale"], IECore.FloatData( 12.1 ) )
+
 	def testHashes( self ) :
 
 		p = GafferScene.Camera()
 		p["projection"].setValue( "perspective" )
 		p["fieldOfView"].setValue( 45 )
+
+		# Disabled by default, enabled for hash testing
+		p['visualiserAttributes']['frustum']['enabled'].setValue( True )
+		p['visualiserAttributes']['scale']['enabled'].setValue( True )
 
 		for i in p['renderSettingOverrides']:
 			i["enabled"].setValue( True )
@@ -92,8 +124,8 @@ class CameraTest( GafferSceneTest.SceneTestCase ) :
 			# We ignore the enabled and sets plugs because they aren't hashed (instead
 			# their values are used to decide how the hash should be computed). We ignore
 			# the transform plug because it isn't affected by any inputs when the path is "/".
-			# We ignore the set plug because that needs a different context - we test that below.
-			self.assertHashesValid( p, inputsToIgnore = [ p["enabled"], p["sets"] ], outputsToIgnore = [ p["out"]["transform"], p["out"]["set"] ] )
+			# We ignore the set plug + attr because they needs a different context - we test that below.
+			self.assertHashesValid( p, inputsToIgnore = [ p["enabled"], p["sets"] ], outputsToIgnore = [ p["out"]["transform"], p["out"]["set"], p["out"]["attributes"] ])
 
 			c["scene:path"] = IECore.InternedStringVectorData( [ "camera" ] )
 			# We ignore the childNames because it doesn't use any inputs to compute when
@@ -112,8 +144,8 @@ class CameraTest( GafferSceneTest.SceneTestCase ) :
 		p["projection"].setValue( "perspective" )
 		p["fieldOfView"].setValue( 45 )
 
-		self.failIf( p["out"].bound( "/" ).isEmpty() )
-		self.failIf( p["out"].bound( "/camera" ).isEmpty() )
+		self.assertFalse( p["out"].bound( "/" ).isEmpty() )
+		self.assertFalse( p["out"].bound( "/camera" ).isEmpty() )
 
 	def testClippingPlanes( self ) :
 
@@ -162,27 +194,27 @@ class CameraTest( GafferSceneTest.SceneTestCase ) :
 
 		dirtied = GafferTest.CapturingSlot( c.plugDirtiedSignal() )
 		c["transform"]["translate"]["x"].setValue( 10 )
-		self.failUnless( c["out"]["transform"] in [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["transform"], [ p[0] for p in dirtied ] )
 
 		dirtied = GafferTest.CapturingSlot( c.plugDirtiedSignal() )
 		c["name"].setValue( "renderCam" )
-		self.failUnless( c["out"]["childNames"] in [ p[0] for p in dirtied ] )
-		self.failUnless( c["out"]["set"] in [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["childNames"], [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["set"], [ p[0] for p in dirtied ] )
 
 		dirtied = GafferTest.CapturingSlot( c.plugDirtiedSignal() )
 		c["projection"].setValue( "orthographic" )
-		self.failUnless( c["out"]["object"] in [ p[0] for p in dirtied ] )
-		self.failUnless( c["out"]["bound"] in [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["object"], [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["bound"], [ p[0] for p in dirtied ] )
 
 		dirtied = GafferTest.CapturingSlot( c.plugDirtiedSignal() )
 		c["fieldOfView"].setValue( 100 )
-		self.failUnless( c["out"]["object"] in [ p[0] for p in dirtied ] )
-		self.failUnless( c["out"]["bound"] in [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["object"], [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["bound"], [ p[0] for p in dirtied ] )
 
 		dirtied = GafferTest.CapturingSlot( c.plugDirtiedSignal() )
 		c["clippingPlanes"]["x"].setValue( 100 )
-		self.failUnless( c["out"]["object"] in [ p[0] for p in dirtied ] )
-		self.failUnless( c["out"]["bound"] in [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["object"], [ p[0] for p in dirtied ] )
+		self.assertIn( c["out"]["bound"], [ p[0] for p in dirtied ] )
 
 	def testFrustum( self ) :
 

@@ -39,6 +39,7 @@
 #include "GafferSceneUI/SceneView.h"
 #include "GafferSceneUI/ContextAlgo.h"
 
+#include "GafferScene/EditScopeAlgo.h"
 #include "GafferScene/Group.h"
 #include "GafferScene/ObjectSource.h"
 #include "GafferScene/SceneAlgo.h"
@@ -49,6 +50,9 @@
 #include "Gaffer/Metadata.h"
 #include "Gaffer/MetadataAlgo.h"
 #include "Gaffer/ScriptNode.h"
+#include "Gaffer/Spreadsheet.h"
+
+#include "IECore/AngleConversion.h"
 
 #include "OpenEXR/ImathMatrixAlgo.h"
 
@@ -74,6 +78,12 @@ using namespace GafferSceneUI;
 namespace
 {
 
+int filterResult( const FilterPlug *filter, const ScenePlug *scene )
+{
+	FilterPlug::SceneScope scope( Context::current(), scene );
+	return filter->getValue();
+}
+
 bool ancestorMakesChildNodesReadOnly( const Node *node )
 {
 	node = node->parent<Node>();
@@ -88,102 +98,44 @@ bool ancestorMakesChildNodesReadOnly( const Node *node )
 	return false;
 }
 
-bool updateSelection( const SceneAlgo::History *history, TransformTool::Selection &selection )
+// Similar to `plug->source()`, but able to traverse through
+// Spreadsheet outputs to find the appropriate input row.
+V3fPlug *spreadsheetAwareSource( V3fPlug *plug, std::string &failureReason )
 {
-	const SceneNode *node = runTimeCast<const SceneNode>( history->scene->node() );
-	if( !node )
+	plug = plug->source<V3fPlug>();
+	if( !plug )
 	{
-		return false;
+		// Source is not a V3fPlug. Not much we can do about that.
+		failureReason = "Plug input is not a V3fPlug";
+		return nullptr;
 	}
 
-	Context::Scope scopedContext( history->context.get() );
-	if( !node->enabledPlug()->getValue() )
+	auto *spreadsheet = runTimeCast<Spreadsheet>( plug->node() );
+	if( !spreadsheet )
 	{
-		return false;
+		return plug;
 	}
 
-	if( const ObjectSource *objectSource = runTimeCast<const ObjectSource>( node ) )
+	if( !spreadsheet->outPlug()->isAncestorOf( plug ) )
 	{
-		selection.transformPlug = const_cast<TransformPlug *>( objectSource->transformPlug() );
-		selection.transformSpace = M44f();
-	}
-	else if( const Group *group = runTimeCast<const Group>( node ) )
-	{
-		const ScenePlug::ScenePath &path = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-		if( path.size() == 1 )
-		{
-			selection.transformPlug = const_cast<TransformPlug *>( group->transformPlug() );
-			selection.transformSpace = M44f();
-		}
-	}
-	else if( const GafferScene::Transform *transform = runTimeCast<const GafferScene::Transform>( node ) )
-	{
-		if( transform->filterPlug()->getValue() & PathMatcher::ExactMatch )
-		{
-			selection.transformPlug = const_cast<TransformPlug *>( transform->transformPlug() );
-			ScenePlug::ScenePath spacePath = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-			switch( (GafferScene::Transform::Space)transform->spacePlug()->getValue() )
-			{
-				case GafferScene::Transform::Local :
-					break;
-				case GafferScene::Transform::Parent :
-				case GafferScene::Transform::ResetLocal :
-					spacePath.pop_back();
-					break;
-				case GafferScene::Transform::World :
-				case GafferScene::Transform::ResetWorld :
-					spacePath.clear();
-					break;
-			}
-			selection.transformSpace = transform->inPlug()->fullTransform( spacePath );
-		}
-	}
-	else if( const GafferScene::SceneReader *sceneReader = runTimeCast<const GafferScene::SceneReader>( node ) )
-	{
-		const ScenePlug::ScenePath &path = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-		if( path.size() == 1 )
-		{
-			selection.transformPlug = const_cast<TransformPlug *>( sceneReader->transformPlug() );
-			selection.transformSpace = M44f();
-		}
+		return plug;
 	}
 
-	if( selection.transformPlug )
+	plug = static_cast<V3fPlug *>( spreadsheet->activeInPlug( plug ) );
+	if( plug->ancestor<Spreadsheet::RowPlug>() == spreadsheet->rowsPlug()->defaultRow() )
 	{
-		selection.transformPlug = selection.transformPlug->source<TransformPlug>();
-		if( ancestorMakesChildNodesReadOnly( selection.transformPlug->node() ) )
-		{
-			// Inside a Reference node or similar. Unlike a regular read-only
-			// status, the user has no chance of unlocking this node, so don't
-			// tease them with an unusable selection.
-			selection.transformPlug = nullptr;
-			return false;
-		}
-		selection.upstreamScene = history->scene;
-		selection.upstreamPath = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
-		selection.upstreamContext = history->context;
-		return true;
+		// Default spreadsheet row. Editing this could affect any number
+		// of unrelated objects, so don't allow that.
+		failureReason = "Cannot edit default spreadsheet row";
+		return nullptr;
 	}
 
-	return false;
+	return plug->source<V3fPlug>();
 }
 
-bool updateSelectionWalk( const SceneAlgo::History *history, TransformTool::Selection &selection )
+GraphComponent *editTargetOrNull( const TransformTool::Selection &selection )
 {
-	if( updateSelection( history, selection ) )
-	{
-		return true;
-	}
-
-	for( const auto &p : history->predecessors )
-	{
-		if( updateSelectionWalk( p.get(), selection ) )
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return selection.editable() ? selection.editTarget() : nullptr;
 }
 
 class HandlesGadget : public Gadget
@@ -232,49 +184,418 @@ class HandlesGadget : public Gadget
 //////////////////////////////////////////////////////////////////////////
 
 TransformTool::Selection::Selection()
+	:	m_editable( false )
 {
 }
 
 TransformTool::Selection::Selection(
 	const GafferScene::ConstScenePlugPtr scene,
 	const GafferScene::ScenePlug::ScenePath &path,
-	const Gaffer::ConstContextPtr &context
+	const Gaffer::ConstContextPtr &context,
+	const Gaffer::EditScopePtr &editScope
 )
-	:	scene( scene ), path( path ), context( context )
+	:	m_scene( scene ), m_path( path ), m_context( context ), m_editable( false ), m_editScope( editScope )
 {
 	Context::Scope scopedContext( context.get() );
-	if( path.empty() || !SceneAlgo::exists( scene.get(), path ) )
+	if( path.empty() )
+	{
+		m_warning = "Cannot edit root transform";
+		return;
+	}
+	else if( !scene->exists( path ) )
+	{
+		m_warning = "Location does not exist";
+		return;
+	}
+
+	// We disallow editing of any locations that have zero scale at any point in the
+	// hierarchy. This causes untold trouble in all sorts of places.
+	// We use this somewhat long winded detection approach to ensure we'll hit the same
+	// failure cases as we would do later on using imath with the same matrices.
+	const M44f fullTransform = scene->fullTransform( path );
+	V3f unusedScale;
+	if( !extractScaling( fullTransform, unusedScale, false ) )
+	{
+		m_warning = "Location has zero scale";
+		return;
+	}
+
+	bool editScopeFound = false;
+	while( m_path.size() )
+	{
+		SceneAlgo::History::Ptr history = SceneAlgo::history( scene->transformPlug(), m_path );
+		initWalk( history.get(), editScopeFound );
+		if( editable() )
+		{
+			break;
+		}
+		m_path.pop_back();
+	}
+
+	if( !editable() && m_path.size() != path.size() )
+	{
+		// Attempts to edit a parent path failed. Reset to
+		// the original path so we don't confuse client code.
+		m_path = path;
+	}
+
+	if( editScope && !editScopeFound )
+	{
+		m_warning = "EditScope not in history";
+		m_editable = false;
+		return;
+	}
+
+	if( m_path.size() != path.size() )
+	{
+		m_warning = "Editing parent location";
+	}
+}
+
+void TransformTool::Selection::initFromSceneNode( const GafferScene::SceneAlgo::History *history )
+{
+	const SceneNode *node = runTimeCast<const SceneNode>( history->scene->node() );
+	if( !node )
 	{
 		return;
 	}
 
-	SceneAlgo::History::Ptr history = SceneAlgo::history( scene->transformPlug(), path );
-	if( history )
+	Context::Scope scopedContext( history->context.get() );
+	if( !node->enabledPlug()->getValue() )
 	{
-		updateSelectionWalk( history.get(), *this );
+		return;
+	}
+
+	TransformPlug *transformPlug = nullptr;
+	if( const ObjectSource *objectSource = runTimeCast<const ObjectSource>( node ) )
+	{
+		if( history->scene == objectSource->outPlug() )
+		{
+			transformPlug = const_cast<TransformPlug *>( objectSource->transformPlug() );
+			m_transformSpace = M44f();
+		}
+	}
+	else if( const Group *group = runTimeCast<const Group>( node ) )
+	{
+		const ScenePlug::ScenePath &path = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+		if( history->scene == group->outPlug() && path.size() == 1 )
+		{
+			transformPlug = const_cast<TransformPlug *>( group->transformPlug() );
+			m_transformSpace = M44f();
+		}
+	}
+	else if( const GafferScene::Transform *transform = runTimeCast<const GafferScene::Transform>( node ) )
+	{
+		if(
+			history->scene == transform->outPlug() &&
+			( filterResult( transform->filterPlug(), transform->inPlug() ) & PathMatcher::ExactMatch )
+		)
+		{
+			transformPlug = const_cast<TransformPlug *>( transform->transformPlug() );
+			ScenePlug::ScenePath spacePath = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+			switch( (GafferScene::Transform::Space)transform->spacePlug()->getValue() )
+			{
+				case GafferScene::Transform::Local :
+					m_transformSpace = transform->inPlug()->fullTransform( spacePath );
+					break;
+				case GafferScene::Transform::Parent :
+				case GafferScene::Transform::ResetLocal :
+					spacePath.pop_back();
+					// We pull from `outPlug()` rather than `inPlug()` because the Transform
+					// node may also be editing the parent transform.
+					m_transformSpace = transform->outPlug()->fullTransform( spacePath );
+					break;
+				case GafferScene::Transform::World :
+				case GafferScene::Transform::ResetWorld :
+					m_transformSpace = M44f();
+					break;
+			}
+		}
+	}
+	else if( const GafferScene::SceneReader *sceneReader = runTimeCast<const GafferScene::SceneReader>( node ) )
+	{
+		const ScenePlug::ScenePath &path = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+		if( history->scene == sceneReader->outPlug() && path.size() == 1 )
+		{
+			transformPlug = const_cast<TransformPlug *>( sceneReader->transformPlug() );
+			m_transformSpace = M44f();
+		}
+	}
+
+	if( !transformPlug )
+	{
+		return;
+	}
+
+	// We found the TransformPlug and the upstream scene which authors the transform.
+	// Recording this will terminate the search in `initWalk()`.
+
+	m_upstreamScene = history->scene;
+	m_upstreamPath = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+	m_upstreamContext = history->context;
+
+	// Now figure out if we're allowed to edit the transform, and set ourselves up
+	// for editing if we are.
+
+	TransformEdit transformEdit(
+		spreadsheetAwareSource( transformPlug->translatePlug(), m_warning ),
+		spreadsheetAwareSource( transformPlug->rotatePlug(), m_warning ),
+		spreadsheetAwareSource( transformPlug->scalePlug(), m_warning ),
+		spreadsheetAwareSource( transformPlug->pivotPlug(), m_warning )
+	);
+
+	if( !transformEdit.translate || !transformEdit.rotate || !transformEdit.scale || !transformEdit.pivot )
+	{
+		// `spreadsheetAwareSource()` will have assigned to `m_warning` already.
+		return;
+	}
+
+	if(
+		ancestorMakesChildNodesReadOnly( transformEdit.translate->node() ) ||
+		ancestorMakesChildNodesReadOnly( transformEdit.rotate->node() ) ||
+		ancestorMakesChildNodesReadOnly( transformEdit.scale->node() ) ||
+		ancestorMakesChildNodesReadOnly( transformEdit.pivot->node() )
+	)
+	{
+		// Inside a Reference node or similar. Unlike a regular read-only
+		// status, the user has no chance of unlocking this node to edit it.
+		m_warning = "Transform is authored by a read-only node";
+		return;
+	}
+
+	m_editable = true;
+	m_transformEdit = transformEdit;
+}
+
+void TransformTool::Selection::initWalk( const GafferScene::SceneAlgo::History *history, bool &editScopeFound )
+{
+	// See if we're at the EditScope. We look for this even after
+	// `initFromSceneNode()` has succeeded, so we can differentiate between
+	// the EditScope not being in the history at all, or it being
+	// overridden downstream.
+	Node *node = history->scene->node();
+	if( !editScopeFound && node == m_editScope && history->scene == m_editScope->outPlug() )
+	{
+		editScopeFound = true;
+		if( !m_upstreamScene )
+		{
+			m_upstreamScene = history->scene;
+			m_upstreamPath = history->context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName );
+			m_upstreamContext = history->context;
+			m_transformEdit = EditScopeAlgo::acquireTransformEdit( m_editScope.get(), m_upstreamPath, /* createIfNecessary = */ false );
+			Context::Scope scopedContext( history->context.get() );
+			if( m_editScope->enabledPlug()->getValue() )
+			{
+				m_editable = true;
+			}
+			else
+			{
+				m_warning = "EditScope disabled";
+			}
+
+			ScenePlug::ScenePath spacePath = m_upstreamPath;
+			spacePath.pop_back();
+			m_transformSpace = m_upstreamScene->fullTransform( spacePath );
+		}
+		else
+		{
+			m_editable = false;
+			m_warning = "EditScope overridden downstream";
+		}
+		return;
+	}
+
+	// See if there's an editable SceneNode here. We only
+	// look for these if we haven't already found the node
+	// that authored the transform.
+	if( !m_upstreamScene )
+	{
+		initFromSceneNode( history );
+	}
+
+	// Keep looking upstream.
+	for( const auto &p : history->predecessors )
+	{
+		initWalk( p.get(), editScopeFound );
+	}
+}
+
+const GafferScene::ScenePlug *TransformTool::Selection::scene() const
+{
+	return m_scene.get();
+}
+
+const GafferScene::ScenePlug::ScenePath &TransformTool::Selection::path() const
+{
+	return m_path;
+}
+
+const Gaffer::Context *TransformTool::Selection::context() const
+{
+	return m_context.get();
+}
+
+const GafferScene::ScenePlug *TransformTool::Selection::upstreamScene() const
+{
+	return m_upstreamScene.get();
+}
+
+const GafferScene::ScenePlug::ScenePath &TransformTool::Selection::upstreamPath() const
+{
+	return m_upstreamPath;
+}
+
+const Gaffer::Context *TransformTool::Selection::upstreamContext() const
+{
+	return m_upstreamContext.get();
+}
+
+bool TransformTool::Selection::editable() const
+{
+	return m_editable;
+}
+
+const std::string &TransformTool::Selection::warning() const
+{
+	return m_warning;
+}
+
+boost::optional<TransformTool::Selection::TransformEdit> TransformTool::Selection::acquireTransformEdit( bool createIfNecessary ) const
+{
+	throwIfNotEditable();
+	if( !m_transformEdit && createIfNecessary )
+	{
+		assert( m_editScope );
+		V3f translate, rotate, scale, pivot;
+		transform( translate, rotate, scale, pivot );
+
+		m_transformEdit = EditScopeAlgo::acquireTransformEdit( m_editScope.get(), upstreamPath() );
+		m_transformEdit->translate->setValue( translate );
+		m_transformEdit->rotate->setValue( rotate );
+		m_transformEdit->scale->setValue( scale );
+		m_transformEdit->pivot->setValue( pivot );
+	}
+	return m_transformEdit;
+}
+
+const EditScope *TransformTool::Selection::editScope() const
+{
+	return m_editScope.get();
+}
+
+Gaffer::GraphComponent *TransformTool::Selection::editTarget() const
+{
+	throwIfNotEditable();
+	if( m_editScope )
+	{
+		return m_editScope.get();
+	}
+	else
+	{
+		assert( m_transformEdit );
+		if( auto a = m_transformEdit->translate->ancestor<TransformPlug>() )
+		{
+			return a;
+		}
+		else if( auto a = m_transformEdit->translate->ancestor<Spreadsheet::RowPlug>() )
+		{
+			return a;
+		}
+		else
+		{
+			return m_transformEdit->translate->node();
+		}
+	}
+}
+
+const Imath::M44f &TransformTool::Selection::transformSpace() const
+{
+	throwIfNotEditable();
+	return m_transformSpace;
+}
+
+void TransformTool::Selection::throwIfNotEditable() const
+{
+	if( !editable() )
+	{
+		throw IECore::Exception( "Selection is not editable" );
+	}
+}
+
+Imath::M44f TransformTool::Selection::transform( Imath::V3f &translate, Imath::V3f &rotate, Imath::V3f &scale, Imath::V3f &pivot ) const
+{
+	throwIfNotEditable();
+
+	Context::Scope upstreamScope( upstreamContext() );
+
+	if( m_transformEdit )
+	{
+		translate = m_transformEdit->translate->getValue();
+		rotate = m_transformEdit->rotate->getValue();
+		scale = m_transformEdit->scale->getValue();
+		pivot = m_transformEdit->pivot->getValue();
+		return m_transformEdit->matrix();
+	}
+	else
+	{
+		// We're targeting an EditScope but haven't created the transform
+		// plug yet (and don't want to until the user asks). Figure out the
+		// values we'll use when we do create that plug.
+		const M44f m = m_upstreamScene->transformPlug()->getValue();
+		V3f shear;
+		extractSHRT( m, scale, shear, rotate, translate );
+		M44f result;
+		result.translate( pivot + translate );
+		result.rotate( rotate );
+		result.scale( scale );
+		result.translate( -pivot );
+		pivot = V3f( 0 );
+		rotate = IECore::radiansToDegrees( rotate );
+		return result;
 	}
 }
 
 Imath::M44f TransformTool::Selection::sceneToTransformSpace() const
 {
+	throwIfNotEditable();
+
+	// The scenes produced by `scene()` and `upstreamScene()` may
+	// be completely different :
+	//
+	// - The hierarchies may be different, often due to something like
+	//   a Group node inserted between the two.
+	// - The parent transforms of `path()` and `upstreamPath()` may
+	//   be different, either due to a Group or an intermediate edit
+	//   to the parent location.
+	//
+	// To account for this we align the two scenes by finding the
+	// difference between the parent transforms of `path()` and
+	// `upstreamPath()`.
+
 	M44f downstreamMatrix;
+	if( path().size() )
 	{
-		Context::Scope scopedContext( context.get() );
-		downstreamMatrix = scene->fullTransform( path );
+		ScenePlug::ScenePath parentPath = path(); parentPath.pop_back();
+		Context::Scope scopedContext( context() );
+		downstreamMatrix = scene()->fullTransform( parentPath );
 	}
 
 	M44f upstreamMatrix;
+	if( upstreamPath().size() )
 	{
-		Context::Scope scopedContext( upstreamContext.get() );
-		upstreamMatrix = upstreamScene->fullTransform( upstreamPath );
+		ScenePlug::ScenePath upstreamParentPath = upstreamPath(); upstreamParentPath.pop_back();
+		Context::Scope scopedContext( upstreamContext() );
+		upstreamMatrix = upstreamScene()->fullTransform( upstreamParentPath );
 	}
 
-	return downstreamMatrix.inverse() * upstreamMatrix * transformSpace.inverse();
+	return downstreamMatrix.inverse() * upstreamMatrix * transformSpace().inverse();
 }
 
 Imath::M44f TransformTool::Selection::orientedTransform( Orientation orientation ) const
 {
-	Context::Scope scopedContext( context.get() );
+	throwIfNotEditable();
+
+	Context::Scope scopedContext( context() );
 
 	// Get a matrix with the orientation we want
 
@@ -283,13 +604,13 @@ Imath::M44f TransformTool::Selection::orientedTransform( Orientation orientation
 		switch( orientation )
 		{
 			case Local :
-				result = scene->fullTransform( path );
+				result = scene()->fullTransform( path() );
 				break;
 			case Parent :
-				if( path.size() )
+				if( path().size() )
 				{
-					const ScenePlug::ScenePath parentPath( path.begin(), path.end() - 1 );
-					result = scene->fullTransform( parentPath );
+					const ScenePlug::ScenePath parentPath( path().begin(), path().end() - 1 );
+					result = scene()->fullTransform( parentPath );
 				}
 				break;
 			case World :
@@ -302,11 +623,11 @@ Imath::M44f TransformTool::Selection::orientedTransform( Orientation orientation
 
 	// And reset the translation to put it where the pivot is
 
-	Context::Scope upstreamScope( upstreamContext.get() );
+	V3f translate, rotate, scale, pivot;
+	transform( translate, rotate, scale, pivot );
 
-	const V3f pivot = transformPlug->pivotPlug()->getValue();
-	const V3f translate = transformPlug->translatePlug()->getValue();
-	const V3f downstreamWorldPivot = (pivot + translate) * sceneToTransformSpace().inverse();
+	const V3f transformSpacePivot = pivot + translate;
+	const V3f downstreamWorldPivot = transformSpacePivot * sceneToTransformSpace().inverse();
 
 	result[3][0] = downstreamWorldPivot[0];
 	result[3][1] = downstreamWorldPivot[1];
@@ -344,6 +665,7 @@ TransformTool::TransformTool( SceneView *view, const std::string &name )
 
 	view->viewportGadget()->keyPressSignal().connect( boost::bind( &TransformTool::keyPress, this, ::_2 ) );
 	plugDirtiedSignal().connect( boost::bind( &TransformTool::plugDirtied, this, ::_1 ) );
+	view->plugDirtiedSignal().connect( boost::bind( &TransformTool::plugDirtied, this, ::_1 ) );
 
 	connectToViewContext();
 	view->contextChangedSignal().connect( boost::bind( &TransformTool::connectToViewContext, this ) );
@@ -362,6 +684,23 @@ const std::vector<TransformTool::Selection> &TransformTool::selection() const
 	return m_selection;
 }
 
+bool TransformTool::selectionEditable() const
+{
+	const auto &s = selection();
+	if( s.empty() )
+	{
+		return false;
+	}
+	for( const auto &e : s )
+	{
+		if( !e.editable() )
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 TransformTool::SelectionChangedSignal &TransformTool::selectionChangedSignal()
 {
 	return m_selectionChangedSignal;
@@ -370,9 +709,9 @@ TransformTool::SelectionChangedSignal &TransformTool::selectionChangedSignal()
 Imath::M44f TransformTool::handlesTransform()
 {
 	updateSelection();
-	if( m_selection.empty() )
+	if( !selectionEditable() )
 	{
-		throw IECore::Exception( "Selection not valid" );
+		throw IECore::Exception( "Selection not editable" );
 	}
 
 	if( m_handlesDirty )
@@ -441,16 +780,21 @@ void TransformTool::contextChanged( const IECore::InternedString &name )
 
 void TransformTool::plugDirtied( const Gaffer::Plug *plug )
 {
+	// Note : This method is called not only when plugs
+	// belonging to the TransformTool are dirtied, but
+	// _also_ when plugs belonging to the View are dirtied.
+
 	if(
 		plug == activePlug() ||
 		plug == scenePlug()->childNamesPlug() ||
-		plug == scenePlug()->transformPlug()
+		plug == scenePlug()->transformPlug() ||
+		plug == view()->editScopePlug()
 	)
 	{
 		m_selectionDirty = true;
 		if( !m_dragging )
 		{
-			// See associated comment in `preRender()`, and
+			// See associated comment in `updateSelection()`, and
 			// `dragEnd()` where we emit to complete the
 			// deferral started here.
 			selectionChangedSignal()( *this );
@@ -514,6 +858,17 @@ void TransformTool::updateSelection() const
 		return;
 	}
 
+	if( m_dragging )
+	{
+		// In theory, an expression or some such could change the effective
+		// transform plug while we're dragging (for instance, by driving the
+		// enabled status of a downstream transform using the translate value
+		// we're editing). But we ignore that on the grounds that it's unlikely,
+		// and also that it would be very confusing for the selection to be
+		// changed mid-drag.
+		return;
+	}
+
 	// Clear the selection.
 	m_selection.clear();
 	m_selectionDirty = false;
@@ -535,7 +890,6 @@ void TransformTool::updateSelection() const
 		return;
 	}
 
-
 	// Otherwise we need to populate our selection from
 	// the scene selection.
 
@@ -550,27 +904,11 @@ void TransformTool::updateSelection() const
 
 	for( PathMatcher::Iterator it = selectedPaths.begin(), eIt = selectedPaths.end(); it != eIt; ++it )
 	{
-		ScenePlug::ScenePath path = *it;
-		Selection selection;
-		while( path.size() && !selection.transformPlug )
+		Selection selection( scene, *it, view()->getContext(), const_cast<EditScope *>( view()->editScope() ) );
+		m_selection.push_back( selection );
+		if( *it == lastSelectedPath )
 		{
-			selection = Selection( scene, path, view()->getContext() );
-			path.pop_back();
-		}
-
-		if( selection.transformPlug )
-		{
-			m_selection.push_back( selection );
-			if( *it == lastSelectedPath )
-			{
-				lastSelectedPath = selection.path;
-			}
-		}
-		else
-		{
-			// Selection is not editable - give up.
-			m_selection.clear();
-			return;
+			lastSelectedPath = selection.path();
 		}
 	}
 
@@ -580,32 +918,42 @@ void TransformTool::updateSelection() const
 	// `lastSelectedPath` appears last, and isn't removed by the
 	// deduplication.
 
-	// Sort by `transformPlug`, ensuring `lastSelectedPath` comes first
+	// Sort by `editTarget()`, ensuring `lastSelectedPath` comes first
 	// in its group (so it survives deduplication).
 
 	std::sort(
 		m_selection.begin(), m_selection.end(),
 		[&lastSelectedPath]( const Selection &a, const Selection &b )
 		{
-			if( a.transformPlug.get() < b.transformPlug.get() )
+			const auto ta = editTargetOrNull( a );
+			const auto tb = editTargetOrNull( b );
+			if( ta < tb )
 			{
 				return true;
 			}
-			else if( b.transformPlug.get() > a.transformPlug.get() )
+			else if( tb < ta )
 			{
 				return false;
 			}
-			return ( a.path != lastSelectedPath ) < ( b.path != lastSelectedPath );
+			return ( a.path() != lastSelectedPath ) < ( b.path() != lastSelectedPath );
 		}
 	);
 
-	// Deduplicate by `transformPlug`.
+	// Deduplicate by `editTarget()`, being careful to avoid removing
+	// items in EditScopes where the plug hasn't been created yet.
 
 	auto last = std::unique(
 		m_selection.begin(), m_selection.end(),
 		[]( const Selection &a, const Selection &b )
 		{
-			return a.transformPlug == b.transformPlug;
+			const auto ta = editTargetOrNull( a );
+			const auto tb = editTargetOrNull( b );
+			return
+				ta && tb &&
+				ta != a.editScope() &&
+				tb != b.editScope() &&
+				ta == tb
+			;
 		}
 	);
 	m_selection.erase( last, m_selection.end() );
@@ -616,7 +964,7 @@ void TransformTool::updateSelection() const
 		m_selection.begin(), m_selection.end(),
 		[&lastSelectedPath]( const Selection &x )
 		{
-			return x.path == lastSelectedPath;
+			return x.path() == lastSelectedPath;
 		}
 	);
 
@@ -639,12 +987,6 @@ void TransformTool::preRender()
 {
 	if( !m_dragging )
 	{
-		// In theory, an expression or some such could change the effective
-		// transform plug while we're dragging (for instance, by driving the
-		// enabled status of a downstream transform using the translate value
-		// we're editing). But we ignore that on the grounds that it's unlikely,
-		// and also that it would be very confusing for the edited plug to be
-		// changed mid-drag.
 		updateSelection();
 		if( m_priorityPathsDirty )
 		{
@@ -661,7 +1003,7 @@ void TransformTool::preRender()
 		}
 	}
 
-	if( m_selection.empty() )
+	if( !selectionEditable() )
 	{
 		m_handles->setVisible( false );
 		return;
@@ -702,23 +1044,26 @@ bool TransformTool::keyPress( const GafferUI::KeyEvent &event )
 
 	if( event.key == "S" && !event.modifiers )
 	{
-		if( selection().empty() )
+		if( !selectionEditable() )
 		{
 			return false;
 		}
 
-		UndoScope undoScope( selection().back().transformPlug->ancestor<ScriptNode>() );
+		UndoScope undoScope( selection().back().editTarget()->ancestor<ScriptNode>() );
 		for( const auto &s : selection() )
 		{
-			Context::Scope contextScope( s.context.get() );
-			for( RecursiveFloatPlugIterator it( s.transformPlug.get() ); !it.done(); ++it )
+			Context::Scope contextScope( s.context() );
+			const auto edit = s.acquireTransformEdit();
+			for( const auto &vectorPlug : { edit->translate, edit->rotate, edit->scale, edit->pivot } )
 			{
-				FloatPlug *plug = it->get();
-				if( Animation::canAnimate( plug ) )
+				for( const auto &plug : FloatPlug::Range( *vectorPlug ) )
 				{
-					const float value = plug->getValue();
-					Animation::CurvePlug *curve = Animation::acquire( plug );
-					curve->addKey( new Animation::Key( s.context->getTime(), value ) );
+					if( Animation::canAnimate( plug.get() ) )
+					{
+						const float value = plug->getValue();
+						Animation::CurvePlug *curve = Animation::acquire( plug.get() );
+						curve->addKey( new Animation::Key( s.context()->getTime(), value ) );
+					}
 				}
 			}
 		}

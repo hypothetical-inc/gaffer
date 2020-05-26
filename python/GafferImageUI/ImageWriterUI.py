@@ -40,7 +40,7 @@ import Gaffer
 import GafferUI
 import GafferImageUI
 import GafferImage
-import OpenColorIOTransformUI
+from . import OpenColorIOTransformUI
 
 Gaffer.Metadata.registerNode(
 
@@ -95,7 +95,6 @@ Gaffer.Metadata.registerNode(
 			""",
 
 			"plugValueWidget:type", "GafferImageUI.ChannelMaskPlugValueWidget",
-
 
 		],
 
@@ -364,6 +363,20 @@ Gaffer.Metadata.registerNode(
 			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
 			"preset:Float", "float",
 			"preset:Half Float", "half",
+
+		],
+
+		"openexr.depthDataType" : [
+
+			"description",
+			"""
+			Overriding the data type for depth channels is useful because many of the things depth is used
+			for require greater precision.
+			""",
+
+			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
+			"preset:Override to Float", "float",
+			"preset:Use Default", "",
 
 		],
 

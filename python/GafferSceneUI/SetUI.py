@@ -54,6 +54,8 @@ Gaffer.Metadata.registerNode(
 	a particular set.
 	""",
 
+	"layout:activator:pathsInUse", lambda node : node["paths"].getInput() is not None or len( node["paths"].getValue() ),
+
 	plugs = {
 
 		"mode" : [
@@ -98,10 +100,15 @@ Gaffer.Metadata.registerNode(
 			"description",
 			"""
 			The paths to be added to or removed from the set.
+
+			> Caution : This plug is deprecated and will be removed
+			in a future release. No validity checks are performed on
+			these paths, so it is possible to accidentally generate
+			invalid sets.
 			""",
 
-			"ui:scene:acceptsPaths", True,
 			"vectorDataPlugValueWidget:dragPointer", "objects",
+			"layout:visibilityActivator", "pathsInUse",
 
 		],
 
@@ -109,15 +116,7 @@ Gaffer.Metadata.registerNode(
 
 			"description",
 			"""
-			A filter to define additional paths to be added to
-			or removed from the set.
-
-			> Caution : Using a filter can be very expensive.
-			It is advisable to limit use to filters with a
-			limited number of matches and/or sets which are
-			not used heavily downstream. Wherever possible,
-			prefer to use the `paths` plug directly instead
-			of using a filter.
+			Defines the locations to be added to or removed from the set.
 			""",
 
 		],
@@ -169,10 +168,13 @@ def __setsPopupMenu( menuDefinition, plugValueWidget ) :
 	if plug is None :
 		return
 
+	# Some operations require a text widget so we can manipulate insertion position, etc...
+	hasTextWidget = hasattr( plugValueWidget, 'textWidget' )
+
 	# get required data
 	acceptsSetName = Gaffer.Metadata.value( plug, "ui:scene:acceptsSetName" )
 	acceptsSetNames = Gaffer.Metadata.value( plug, "ui:scene:acceptsSetNames" )
-	acceptsSetExpression = Gaffer.Metadata.value( plug, "ui:scene:acceptsSetExpression" )
+	acceptsSetExpression = hasTextWidget and Gaffer.Metadata.value( plug, "ui:scene:acceptsSetExpression" )
 	if not acceptsSetName and not acceptsSetNames and not acceptsSetExpression :
 		return
 
@@ -237,7 +239,7 @@ def __setsPopupMenu( menuDefinition, plugValueWidget ) :
 
 		menuDefinition.prepend( "/Sets/%s" % setName, parameters )
 
-__setsPopupMenuConnection = GafferUI.PlugValueWidget.popupMenuSignal().connect( __setsPopupMenu )
+GafferUI.PlugValueWidget.popupMenuSignal().connect( __setsPopupMenu, scoped = False )
 
 ##########################################################################
 # Gadgets

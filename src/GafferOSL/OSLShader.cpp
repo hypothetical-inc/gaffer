@@ -47,12 +47,12 @@
 #include "Gaffer/PlugAlgo.h"
 #include "Gaffer/SplinePlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/Private/IECorePreview/LRUCache.h"
 
 #include "IECoreScene/ShaderNetwork.h"
 
 #include "IECoreImage/OpenImageIOAlgo.h"
 
-#include "IECore/LRUCache.h"
 #include "IECore/MessageHandler.h"
 
 #include "OSL/oslquery.h"
@@ -128,7 +128,7 @@ ConstShadingEnginePtr getter( const ShadingEngineCacheGetterKey &key, size_t &co
 	return new ShadingEngine( network );
 }
 
-typedef LRUCache<IECore::MurmurHash, ConstShadingEnginePtr, LRUCachePolicy::Parallel, ShadingEngineCacheGetterKey> ShadingEngineCache;
+typedef IECorePreview::LRUCache<IECore::MurmurHash, ConstShadingEnginePtr, IECorePreview::LRUCachePolicy::Parallel, ShadingEngineCacheGetterKey> ShadingEngineCache;
 ShadingEngineCache g_shadingEngineCache( getter, 10000 );
 
 } // namespace
@@ -200,15 +200,15 @@ bool OSLShader::acceptsInput( const Plug *plug, const Plug *inputPlug ) const
 		if( sourceShaderOutPlug && ( sourceShaderOutPlug == inputPlug || sourceShaderOutPlug->isAncestorOf( inputPlug ) ) )
 		{
 			// Source is the output of a shader node, so it needs to
-			// be coming from another OSL shader. Although because Arnold allows
-			// mixing and matching Arnold native shaders and OSL shaders,
+			// be coming from another OSL shader. Although because Arnold and VRay allow
+			// mixing and matching Arnold / VRay native shaders and OSL shaders,
 			// we must also accept connections from ArnoldShaders.
-			if( !sourceShader->isInstanceOf( staticTypeId() ) && !sourceShader->isInstanceOf( "GafferArnold::ArnoldShader" ) )
+			if( !sourceShader->isInstanceOf( staticTypeId() ) && !sourceShader->isInstanceOf( "GafferArnold::ArnoldShader" ) && !sourceShader->isInstanceOf( "GafferVRay::VRayShader" ) )
 			{
 				return false;
 			}
 			const std::string sourceShaderType = sourceShader->typePlug()->getValue();
-			if( sourceShaderType != "osl:shader" && sourceShaderType != "ai:surface" )
+			if( sourceShaderType != "osl:shader" && sourceShaderType != "ai:surface" && sourceShaderType != "vray:surface" )
 			{
 				return false;
 			}
@@ -1213,7 +1213,7 @@ static IECore::ConstCompoundDataPtr metadataGetter( const std::string &key, size
 	return metadata;
 }
 
-typedef LRUCache<std::string, IECore::ConstCompoundDataPtr> MetadataCache;
+typedef IECorePreview::LRUCache<std::string, IECore::ConstCompoundDataPtr> MetadataCache;
 MetadataCache g_metadataCache( metadataGetter, 10000 );
 
 const IECore::CompoundData *OSLShader::metadata() const

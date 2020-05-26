@@ -35,6 +35,7 @@
 ##########################################################################
 
 import unittest
+import six
 
 import imath
 
@@ -130,16 +131,46 @@ class WireframeTest( GafferSceneTest.SceneTestCase ) :
 		wireframe["filter"].setInput( filter["out"] )
 
 		wireframe["position"].setValue( "notKnownHere" )
-		with self.assertRaisesRegexp( RuntimeError, "MeshPrimitive has no primitive variable named \"notKnownHere\"" ) :
+		with six.assertRaisesRegex( self, RuntimeError, "MeshPrimitive has no primitive variable named \"notKnownHere\"" ) :
 			wireframe["out"].object( "/plane" )
 
 		wireframe["position"].setValue( "constantString" )
-		with self.assertRaisesRegexp( RuntimeError, ".* \"constantString\" has unsupported type \"StringData\"" ) :
+		with six.assertRaisesRegex( self, RuntimeError, ".* \"constantString\" has unsupported type \"StringData\"" ) :
 			wireframe["out"].object( "/plane" )
 
 		wireframe["position"].setValue( "constantV3f" )
-		with self.assertRaisesRegexp( RuntimeError, ".* \"constantV3f\" must have Vertex, Varying or FaceVarying interpolation" ) :
+		with six.assertRaisesRegex( self, RuntimeError, ".* \"constantV3f\" must have Vertex, Varying or FaceVarying interpolation" ) :
 			wireframe["out"].object( "/plane" )
+
+	def testAdjustBounds( self ) :
+
+		sphere = GafferScene.Sphere()
+
+		sphereFilter = GafferScene.PathFilter()
+		sphereFilter["paths"].setValue( IECore.StringVectorData( [ "/sphere" ] ) )
+
+		wireframe = GafferScene.Wireframe()
+		wireframe["in"].setInput( sphere["out"] )
+		wireframe["filter"].setInput( sphereFilter["out"] )
+
+		# We don't want to pay for bounds propagation when we're using "P" for the
+		# wireframe position. Hash equality indicates a pass-through.
+
+		self.assertScenesEqual( wireframe["in"], wireframe["out"], checks = { "bound" } )
+		self.assertSceneHashesEqual( wireframe["in"], wireframe["out"], checks = { "bound" } )
+
+		# But when we use something other than "P", we need the bounds to be updated
+		# so as to be valid.
+
+		wireframe["position"].setValue( "uv" )
+		self.assertSceneValid( wireframe["out"] )
+
+		# And if we don't want to pay for bounds propagation, we can turn it off,
+		# and get back to having a pass-through.
+
+		wireframe["adjustBounds"].setValue( False )
+		self.assertScenesEqual( wireframe["in"], wireframe["out"], checks = { "bound" } )
+		self.assertSceneHashesEqual( wireframe["in"], wireframe["out"], checks = { "bound" } )
 
 if __name__ == "__main__":
 	unittest.main()

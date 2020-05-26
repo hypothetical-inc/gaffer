@@ -43,6 +43,7 @@
 #include "GafferOSL/OSLObject.h"
 #include "GafferOSL/OSLShader.h"
 #include "GafferOSL/ShadingEngine.h"
+#include "GafferOSL/ShadingEngineAlgo.h"
 
 #include "GafferBindings/DataBinding.h"
 #include "GafferBindings/DependencyNodeBinding.h"
@@ -112,8 +113,8 @@ IECore::CompoundDataPtr shadeWrapper( ShadingEngine &shadingEngine, const IECore
 {
 	ShadingEngine::Transforms transforms;
 
-	list values = pythonTransforms.values();
-	list keys = pythonTransforms.keys();
+	boost::python::list values = pythonTransforms.values();
+	boost::python::list keys = pythonTransforms.keys();
 
 	for (int i = 0; i < boost::python::len( keys ); i++)
 	{
@@ -140,6 +141,12 @@ IECore::CompoundDataPtr shadeWrapper( ShadingEngine &shadingEngine, const IECore
 	return shadingEngine.shade( points, transforms );
 }
 
+IECore::CompoundDataPtr shadeUVTextureWrapper( const IECoreScene::ShaderNetwork &shaderNetwork, const Imath::V2i &resolution, const IECoreScene::ShaderNetwork::Parameter &output )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	return ShadingEngineAlgo::shadeUVTexture( &shaderNetwork, resolution, output );
+}
+
 void loadShader( OSLLight &l, const std::string &shaderName )
 {
 	IECorePython::ScopedGILRelease gilRelease;
@@ -162,9 +169,9 @@ BOOST_PYTHON_MODULE( _GafferOSL )
 	PlugClass<ClosurePlug>()
 		.def( init<const std::string &, Gaffer::Plug::Direction, unsigned>(
 				(
-					arg( "name" ) = Gaffer::GraphComponent::defaultName<ClosurePlug>(),
-					arg( "direction" ) = Gaffer::Plug::In,
-					arg( "flags" ) = Gaffer::Plug::Default
+					boost::python::arg( "name" ) = Gaffer::GraphComponent::defaultName<ClosurePlug>(),
+					boost::python::arg( "direction" ) = Gaffer::Plug::In,
+					boost::python::arg( "flags" ) = Gaffer::Plug::Default
 				)
 			)
 		)
@@ -188,6 +195,7 @@ BOOST_PYTHON_MODULE( _GafferOSL )
 				)
 			)
 			.def( "needsAttribute", &ShadingEngine::needsAttribute )
+			.def( "hasDeformation", &ShadingEngine::hasDeformation )
 		;
 
 		class_<ShadingEngine::Transform>( "Transform" )
@@ -197,6 +205,20 @@ BOOST_PYTHON_MODULE( _GafferOSL )
 			.def_readwrite( "toObjectSpace", &ShadingEngine::Transform::toObjectSpace )
 			.def( "__repr__", &repr )
 		;
+	}
+
+	{
+		object module( borrowed( PyImport_AddModule( "GafferOSL.ShadingEngineAlgo" ) ) );
+		scope().attr( "ShadingEngineAlgo" ) = module;
+		scope moduleScope( module );
+
+		def( "shadeUVTexture", &shadeUVTextureWrapper,
+			(
+				boost::python::arg( "shaderNetwork" ),
+				boost::python::arg( "resolution" ),
+				boost::python::arg( "output" ) = IECoreScene::ShaderNetwork::Parameter()
+			)
+		);
 	}
 
 	{
