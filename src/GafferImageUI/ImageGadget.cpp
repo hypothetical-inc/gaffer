@@ -512,7 +512,7 @@ void ImageGadget::setSoloChannel( int index )
 		// channels.
 		dirty( TilesDirty );
 	}
-	requestRender();
+	Gadget::dirty( DirtyType::Render );
 }
 
 int ImageGadget::getSoloChannel() const
@@ -630,7 +630,7 @@ void ImageGadget::setLabelsVisible( bool visible )
 		return;
 	}
 	m_labelsVisible = visible;
-	requestRender();
+	Gadget::dirty( DirtyType::Render );
 }
 
 bool ImageGadget::getLabelsVisible() const
@@ -652,7 +652,7 @@ void ImageGadget::setPaused( bool paused )
 	}
 	else if( m_dirtyFlags )
 	{
-		requestRender();
+		Gadget::dirty( DirtyType::Render );
 	}
 }
 
@@ -779,7 +779,9 @@ void ImageGadget::dirty( unsigned flags )
 	}
 
 	m_dirtyFlags |= flags;
-	requestRender();
+	Gadget::dirty(
+		( FormatDirty | DataWindowDirty ) ? DirtyType::Bound : DirtyType::Render
+	);
 }
 
 const GafferImage::Format &ImageGadget::format() const
@@ -1058,7 +1060,7 @@ void ImageGadget::updateTiles()
 			ParallelAlgo::callOnUIThread(
 				[thisRef] {
 					thisRef->m_renderRequestPending = false;
-					thisRef->requestRender();
+					thisRef->Gadget::dirty( DirtyType::Render );
 				}
 			);
 		}
