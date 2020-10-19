@@ -44,24 +44,22 @@ set QT_QPA_PLATFORM_PLUGIN_PATH=%GAFFER_ROOT%\qt\plugins
 call :prependToPath "%GAFFER_ROOT%\bin" PATH
 
 rem Appleseed
-if "%APPLESEED%" == "" (
-	if EXIST "%GAFFER_ROOT%"\appleseed (
-		set APPLESEED=%GAFFER_ROOT%\appleseed
-	)
-)
+rem if "%APPLESEED%" == "" (
+rem 	if EXIST "%GAFFER_ROOT%"\appleseed (
+rem 		set APPLESEED=%GAFFER_ROOT%\appleseed
+rem 	)
+rem )
 
-rem Appleseed
+rem if "%APPLESEED%" NEQ "" (
+rem 	call :prependToPath "%APPLESEED%\shaders\gaffer" OSL_SHADER_PATHS
+rem 	call :prependToPath "%APPLESEED%\shaders\appleseed" OSL_SHADER_PATHS
+rem )
 
-if "%APPLESEED%" NEQ "" (
-	call :prependToPath "%APPLESEED%\shaders\gaffer" OSL_SHADER_PATHS
-	call :prependToPath "%APPLESEED%\shaders\appleseed" OSL_SHADER_PATHS
-)
-
-if "%APPLESEED%" NEQ "" (
-	call :prependToPath "%APPLESEED%\bin;%APPLESEED%\lib" PATH
-	call :prependToPath "%APPLESEED%\lib\python2.7" PYTHONPATH
-	call :prependToPath "%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplays" APPLESEED_SEARCHPATH
-)
+rem if "%APPLESEED%" NEQ "" (
+rem 	call :prependToPath "%APPLESEED%\bin;%APPLESEED%\lib" PATH
+rem 	call :prependToPath "%APPLESEED%\lib\python2.7" PYTHONPATH
+rem 	call :prependToPath "%OSL_SHADER_PATHS%;%GAFFER_ROOT%\appleseedDisplays" APPLESEED_SEARCHPATH
+rem )
 
 rem Arnold
 if "%ARNOLD_ROOT%" NEQ "" (
