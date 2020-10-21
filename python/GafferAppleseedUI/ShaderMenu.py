@@ -62,7 +62,7 @@ def appendShaders( menuDefinition ) :
 
 	q = asr.ShaderQuery()
 
-	for path in os.environ["APPLESEED_SEARCHPATH"].split( ":" ) :
+	for path in os.environ["APPLESEED_SEARCHPATH"].split( os.path.pathsep ) :
 
 		for shader in glob.glob( os.path.join( path, "*.oso" ) ) :
 			shaderFilename = os.path.basename( shader )

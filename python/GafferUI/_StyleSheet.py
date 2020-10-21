@@ -1,3 +1,4 @@
+
 ##########################################################################
 #
 #  Copyright (c) 2011-2012, John Haddon. All rights reserved.
@@ -100,7 +101,7 @@ _styleColors = {
 	"errorColor" : (255, 85, 85),
 	"animatedColor" : (128, 152, 94),
 
-	"foregroundError" : ( 196, 80, 80 ),
+	"foregroundError" : ( 255, 80, 80 ),
 	"foregroundWarning" : ( 239, 129, 24 ),
 	"foregroundInfo" : ( 128, 179, 254 ),
 	"foregroundDebug" : ( 163, 163, 163 ),
@@ -119,6 +120,13 @@ _styleColors = {
 	"tintDarker" :          ( 0, 0, 0, 20 ),
 	"tintDarkerStrong" :    ( 0, 0, 0, 40 ),
 	"tintDarkerStronger" :    ( 0, 0, 0, 70 ),
+
+	# Value Inspectors
+
+	"genericEditTint" : ( 255, 255, 255, 20 ),
+	"editScopeEditTint" : ( 48, 100, 153, 60 ),
+	"editableTint" : ( 0, 0, 0, 20 ),
+	"warningTint" : ( 76, 61, 31 )
 }
 
 _themeVariables = {
@@ -130,7 +138,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -748,6 +756,18 @@ _styleSheet = string.Template(
 		image: url($GAFFER_ROOT/graphics/collapsibleArrowRightHover.png);
 	}
 
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:unchecked,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:unchecked:hover,
+	*[gafferValueChanged="true"] > CheckBox#gafferCollapsibleToggle::indicator:unchecked:focus {
+		image: url($GAFFER_ROOT/graphics/collapsibleArrowDownValueChanged.png);
+	}
+
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked:hover,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked:focus {
+		image: url($GAFFER_ROOT/graphics/collapsibleArrowRightValueChanged.png);
+	}
+
 	QHeaderView {
 		border: 0px;
 		margin: 0px;
@@ -1110,7 +1130,7 @@ _styleSheet = string.Template(
 
 	/* frame */
 
-	*[gafferBorderStyle="None"] {
+	*[gafferBorderStyle="None_"] {
 		border: none;
 		border-radius: $widgetCornerRadius;
 		padding: 2px;
@@ -1324,10 +1344,11 @@ _styleSheet = string.Template(
 	*[gafferClass="GafferSceneUI.TransformToolUI._SelectionWidget"],
 	*[gafferClass="GafferSceneUI.CropWindowToolUI._StatusWidget"],
 	*[gafferClass="GafferUI.EditScopeUI.EditScopePlugValueWidget"] > QFrame,
-	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] > QFrame
+	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] > QFrame,
+	*[gafferClass="GafferSceneUI._SceneViewInspector"] > QFrame
 	{
-		background: rgba( 42, 42, 42, 200 );
-		border-color: rgba( 30, 30, 30, 200 );
+		background: rgba( 42, 42, 42, 240 );
+		border-color: rgba( 30, 30, 30, 240 );
 		border-radius: 2px;
 		padding: 2px;
 	}
@@ -1445,8 +1466,49 @@ _styleSheet = string.Template(
 
 	/* SceneInspector */
 
-	*[gafferClass="GafferSceneUI.SceneInspector"] *[gafferAlternate="true"] {
-		background: $tintLighterSubtle;
+	*[gafferClass="GafferSceneUI._SceneViewInspector"] > QFrame
+	{
+		margin-right: 1px;
+	}
+
+	*[gafferClass="GafferSceneUI._SceneViewInspector._AttributeGroup"] > QLabel
+	{
+		font-weight: bold;
+	}
+
+	*[gafferClass="GafferSceneUI._SceneViewInspector._ValueWidget"] {
+		font-family: $monospaceFontFamily;
+		border-radius: 10px;
+		background-color: $tintDarkerSubtle;
+	}
+
+	QLabel[inspectorValueState="EditScopeEdit"] {
+		background-color: $editScopeEditTint;
+		font-weight: bold;
+	}
+
+	QLabel[inspectorValueState="GenericEdit"] {
+		background-color : $genericEditTint;
+		font-weight: bold;
+	}
+
+	QLabel[inspectorValueState="Editable" ] {
+		background-color: $editableTint;
+	}
+
+	QLabel[inspectorValueHasWarnings="true" ] {
+		border: 2px solid $warningTint;
+	}
+
+	/* Some locations don't yet have edits in the chosen Edit Scope */
+	/* This should be a mix of EditScopeEdit and Editable appearances */
+	QLabel[inspectorValueState="SomeEdited" ] {
+		background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 $editScopeEditTint, stop:0.49 $editScopeEditTint, stop:0.51 $editableTint, stop:1 $editableTint);
+	}
+
+	/* Mix of NodeEdit and EditScopeEdit */
+	QLabel[inspectorValueState="MixedEdits" ] {
+		background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 $editScopeEditTint, stop:0.49 $editScopeEditTint, stop:0.51 $genericEditTint, stop:1 $genericEditTint);
 	}
 
 	/* PythonEditor */

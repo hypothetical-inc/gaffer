@@ -41,6 +41,7 @@
 
 #include "Gaffer/NumericPlug.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/Switch.h"
 
 #include "IECoreImage/DisplayDriver.h"
@@ -60,7 +61,7 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 		~Catalogue() override;
 
 		/// Plug type used to represent an image in the catalogue.
-		class Image : public Gaffer::Plug
+		class GAFFERIMAGE_API Image : public Gaffer::Plug
 		{
 
 			public :
@@ -69,8 +70,8 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 
 				Image( const std::string &name = defaultName<Image>(), Direction direction = In, unsigned flags = Default );
 
-				Gaffer::StringPlug *fileNamePlug();
-				const Gaffer::StringPlug *fileNamePlug() const;
+				Gaffer::FileSystemPathPlug *fileNamePlug();
+				const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 				Gaffer::StringPlug *descriptionPlug();
 				const Gaffer::StringPlug *descriptionPlug() const;
@@ -86,6 +87,18 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 
 				Gaffer::PlugPtr createCounterpart( const std::string &name, Direction direction ) const override;
 
+			private :
+
+				// The Catalogue needs to know the name of each image
+				// so it can support the `catalogue:imageName` context
+				// variable. But computes can only depend on plugs,
+				// so we transfer the name into this private plug
+				// each time it changes.
+				void nameChanged();
+				Gaffer::StringPlug *namePlug();
+				const Gaffer::StringPlug *namePlug() const;
+				friend class Catalogue;
+
 		};
 
 		typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, Image> > ImageIterator;
@@ -99,8 +112,8 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 		Gaffer::StringPlug *namePlug();
 		const Gaffer::StringPlug *namePlug() const;
 
-		Gaffer::StringPlug *directoryPlug();
-		const Gaffer::StringPlug *directoryPlug() const;
+		Gaffer::FileSystemPathPlug *directoryPlug();
+		const Gaffer::FileSystemPathPlug *directoryPlug() const;
 
 		/// All Catalogues share a single DisplayDriverServer instance
 		/// to receive rendered images. To send an image to the catalogues,
@@ -121,9 +134,6 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 		Gaffer::IntPlug *internalImageIndexPlug();
 		const Gaffer::IntPlug *internalImageIndexPlug() const;
 
-		Gaffer::AtomicCompoundDataPlug *mappingPlug();
-		const Gaffer::AtomicCompoundDataPlug *mappingPlug() const;
-
 		Gaffer::Switch *imageSwitch();
 		const Gaffer::Switch *imageSwitch() const;
 
@@ -139,8 +149,6 @@ class GAFFERIMAGE_API Catalogue : public ImageNode
 
 		void hash( const Gaffer::ValuePlug *output, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		void compute( Gaffer::ValuePlug *output, const Gaffer::Context *context ) const override;
-
-		void computeNameToIndexMapping();
 
 		static size_t g_firstPlugIndex;
 

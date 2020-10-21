@@ -35,8 +35,10 @@
 ##########################################################################
 
 import os
-import GafferImageUI
+
+import Gaffer
 import GafferScene
+import GafferImageUI
 
 from GafferImageUI import CatalogueUI
 
@@ -51,7 +53,7 @@ imageNameMap = {
 statusIconColumn = CatalogueUI.column( "Status" )
 if statusIconColumn :
 
-	class __ExtededStatusIconColumn( CatalogueUI.IconColumn ) :
+	class __ExtendedStatusIconColumn( CatalogueUI.IconColumn ) :
 
 		def __init__( self ) :
 
@@ -61,9 +63,12 @@ if statusIconColumn :
 
 			iconName = statusIconColumn.value( image, catalogue )
 
-			scenePlug = GafferScene.SceneAlgo.sourceScene( catalogue["out"] )
-			if not scenePlug :
-				return iconName
+			try :
+				scenePlug = GafferScene.SceneAlgo.sourceScene( catalogue["out"] )
+				if not scenePlug :
+					return iconName
+			except Gaffer.ProcessException :
+				return "errorSmall"
 
 			for type_ in imageNameMap.keys() :
 				if isinstance( scenePlug.node(), type_ ) :
@@ -72,4 +77,4 @@ if statusIconColumn :
 
 			return iconName
 
-	CatalogueUI.registerColumn( "Status", __ExtededStatusIconColumn() )
+	CatalogueUI.registerColumn( "Status", __ExtendedStatusIconColumn() )

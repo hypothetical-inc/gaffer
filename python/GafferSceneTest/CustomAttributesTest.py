@@ -36,12 +36,12 @@
 ##########################################################################
 
 import unittest
-import threading
 
 import IECore
 import IECoreScene
 
 import Gaffer
+import GafferTest
 import GafferScene
 import GafferSceneTest
 
@@ -307,12 +307,8 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 			"a1" : IECore.StringData( "from extra" ),
 			"a2" : IECore.IntData( 2 ),
 		}))
-		s["a"]["attributes"].addChild(
-			Gaffer.NameValuePlug( "a1", IECore.StringData( "from attributes" ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
-		)
-		s["a"]["attributes"].addChild(
-			Gaffer.NameValuePlug( "a3", IECore.IntData( 5 ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
-		)
+		s["a"]["attributes"].addMember( "a1", IECore.StringData( "from attributes" ) )
+		s["a"]["attributes"].addMember( "a3", IECore.IntData( 5 ) )
 		self.assertEqual(
 			s["a"]["out"].attributes( "/sphere" ),
 			IECore.CompoundObject( {
@@ -341,6 +337,50 @@ class CustomAttributesTest( GafferSceneTest.SceneTestCase ) :
 			GafferSceneTest.traverseScene( script["customAttributes"]["out"] )
 
 		self.assertEqual( monitor.combinedStatistics().numUniqueValues( "scene:path" ), 1 )
+
+	def testDirtyPropagation( self ) :
+
+		attributes = GafferScene.CustomAttributes()
+		cs = GafferTest.CapturingSlot( attributes.plugDirtiedSignal() )
+
+		# Adding or removing an attribute should dirty `out.attributes`
+
+		attributes["attributes"].addChild(
+			Gaffer.NameValuePlug( "test", 10, flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+		)
+		self.assertIn( attributes["out"]["attributes"], { x[0] for x in cs } )
+
+		del cs[:]
+		del attributes["attributes"][0]
+		self.assertIn( attributes["out"]["attributes"], { x[0] for x in cs } )
+
+		# And although the Dynamic flag is currently required for proper serialisation
+		# of CustomAttributes nodes, its absence shouldn't prevent dirty propagation.
+		# We hope to be able to remove the Dynamic flag completely in the future.
+
+		del cs[:]
+		attributes["attributes"].addChild( Gaffer.NameValuePlug( "test2", 10 ) )
+		self.assertIn( attributes["out"]["attributes"], { x[0] for x in cs } )
+
+		del cs[:]
+		del attributes["attributes"][0]
+		self.assertIn( attributes["out"]["attributes"], { x[0] for x in cs } )
+
+	def testGlobalsDirtyPropagation( self ) :
+
+		options = GafferScene.StandardOptions()
+
+		attributes = GafferScene.CustomAttributes()
+		attributes["in"].setInput( options["out"] )
+		attributes["global"].setValue( True )
+
+		self.assertEqual( attributes["out"].globals(), IECore.CompoundObject() )
+
+		cs = GafferTest.CapturingSlot( attributes.plugDirtiedSignal() )
+		options["options"]["renderCamera"]["enabled"].setValue( True )
+
+		self.assertIn( attributes["out"]["globals"], { x[0] for x in cs } )
+		self.assertEqual( attributes["out"].globals(), IECore.CompoundObject( { "option:render:camera" : IECore.StringData( "" ) } ) )
 
 if __name__ == "__main__":
 	unittest.main()

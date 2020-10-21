@@ -46,6 +46,7 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( StringPlug )
+IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 
 } // namespace Gaffer
 
@@ -69,8 +70,8 @@ class GAFFERIMAGE_API OpenImageIOReader : public ImageNode
 			Hold,
 		};
 
-		Gaffer::StringPlug *fileNamePlug();
-		const Gaffer::StringPlug *fileNamePlug() const;
+		Gaffer::FileSystemPathPlug *fileNamePlug();
+		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
 
 		/// Number of times the node has been refreshed.
 		Gaffer::IntPlug *refreshCountPlug();
@@ -83,6 +84,9 @@ class GAFFERIMAGE_API OpenImageIOReader : public ImageNode
 		const Gaffer::IntVectorDataPlug *availableFramesPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
+
+		static void setOpenFilesLimit( size_t maxOpenFiles );
+		static size_t getOpenFilesLimit();
 
 		static size_t supportedExtensions( std::vector<std::string> &extensions );
 

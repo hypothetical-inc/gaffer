@@ -138,6 +138,12 @@ struct ThreadStateFixer
 
 #endif
 
+// We only use the lower half of possible dirty count values.
+// The upper half is reserved for a debug "checked" mode where we compute
+// alternate values that are invalidated whenever any plug changes, in
+// order to catch inaccuracies in the cache
+const uint64_t DIRTY_COUNT_RANGE_MAX = std::numeric_limits<uint64_t>::max() / 2;
+
 } // namespace
 
 //////////////////////////////////////////////////////////////////////////
@@ -223,6 +229,33 @@ bool spawnsTasks( const HashProcessKey &key )
 	return key.cachePolicy == ValuePlug::CachePolicy::TaskCollaboration;
 }
 
+ValuePlug::HashCacheMode defaultHashCacheMode()
+{
+	/// \todo Remove
+	if( const char *e = getenv( "GAFFER_HASHCACHE_MODE" ) )
+	{
+		if( !strcmp( e, "Legacy" ) )
+		{
+			IECore::msg( IECore::Msg::Warning, "Gaffer", "GAFFER_HASHCACHE_MODE is Legacy. Interactive performance will be affected." );
+			return ValuePlug::HashCacheMode::Legacy;
+		}
+		else if( !strcmp( e, "Checked" ) )
+		{
+			IECore::msg( IECore::Msg::Warning, "Gaffer", "GAFFER_HASHCACHE_MODE is Checked. Performance will be slow.  Use this setting only for debugging, not in production." );
+			return ValuePlug::HashCacheMode::Checked;
+		}
+		else if( !strcmp( e, "Standard" ) )
+		{
+			return ValuePlug::HashCacheMode::Standard;
+		}
+		else
+		{
+			IECore::msg( IECore::Msg::Warning, "ValuePlug", "Invalid value for GAFFER_HASHCACHE_MODE. Must be Standard, Checked or Legacy." );
+		}
+	}
+	return ValuePlug::HashCacheMode::Standard;
+}
+
 } // namespace
 
 class ValuePlug::HashProcess : public Process
@@ -284,14 +317,41 @@ class ValuePlug::HashProcess : public Process
 				}
 
 				// And then look up the result in our cache.
-
-				try
+				if( g_hashCacheMode == HashCacheMode::Standard )
 				{
 					return threadData.cache.get( processKey );
 				}
-				catch( ... )
+				else if( g_hashCacheMode == HashCacheMode::Checked )
 				{
-					ProcessException::wrapCurrentException( processKey.plug, Context::current(), staticType );
+					HashProcessKey legacyProcessKey( processKey );
+					legacyProcessKey.dirtyCount = g_legacyGlobalDirtyCount + DIRTY_COUNT_RANGE_MAX + 1;
+
+					const IECore::MurmurHash check = threadData.cache.get( legacyProcessKey );
+					const IECore::MurmurHash result = threadData.cache.get( processKey );
+
+					if( result != check )
+					{
+						// This isn't exactly a  process exception, but we want to treat it the same, in
+						// terms of associating it with a plug.  Creating a ProcessException is the simplest
+						// approach, which can be done by throwing and then immediately wrapping
+						try
+						{
+							throw IECore::Exception(  "Detected undeclared dependency. Fix DependencyNode::affects() implementation." );
+						}
+						catch( ... )
+						{
+							ProcessException::wrapCurrentException( processKey.plug, Context::current(), staticType );
+						}
+					}
+					return result;
+				}
+				else
+				{
+					// HashCacheMode::Legacy
+					HashProcessKey legacyProcessKey( processKey );
+					legacyProcessKey.dirtyCount = g_legacyGlobalDirtyCount + DIRTY_COUNT_RANGE_MAX + 1;
+
+					return threadData.cache.get( legacyProcessKey );
 				}
 			}
 		}
@@ -329,6 +389,30 @@ class ValuePlug::HashProcess : public Process
 			}
 		}
 
+		static void dirtyLegacyCache()
+		{
+			if( g_hashCacheMode != HashCacheMode::Standard )
+			{
+				uint64_t count = g_legacyGlobalDirtyCount;
+				uint64_t newCount;
+				do
+				{
+					newCount = std::min( DIRTY_COUNT_RANGE_MAX, count + 1 );
+				} while( !g_legacyGlobalDirtyCount.compare_exchange_weak( count, newCount ) );
+			}
+		}
+
+		static void setHashCacheMode( ValuePlug::HashCacheMode hashCacheMode )
+		{
+			g_hashCacheMode = hashCacheMode;
+			clearCache();
+		}
+
+		static ValuePlug::HashCacheMode getHashCacheMode()
+		{
+			return g_hashCacheMode;
+		}
+
 		static const IECore::InternedString staticType;
 
 	private :
@@ -341,6 +425,14 @@ class ValuePlug::HashProcess : public Process
 				if( !key.computeNode )
 				{
 					throw IECore::Exception( "Plug has no ComputeNode." );
+				}
+
+				// Before we use this key, check that the dirty count hasn't maxed out
+				if(
+					key.dirtyCount == DIRTY_COUNT_RANGE_MAX ||
+					key.dirtyCount == DIRTY_COUNT_RANGE_MAX + 1 + DIRTY_COUNT_RANGE_MAX )
+				{
+					throw IECore::Exception(  "Dirty count exceeded max.  Either you've left Gaffer running for 100 million years, or a strange bug is incrementing dirty counts way too fast." );
 				}
 
 				key.computeNode->hash( key.plug, context(), m_result );
@@ -358,66 +450,50 @@ class ValuePlug::HashProcess : public Process
 
 		static IECore::MurmurHash globalCacheGetter( const HashProcessKey &key, size_t &cost )
 		{
-			try
+			cost = 1;
+			IECore::MurmurHash result;
+			switch( key.cachePolicy )
 			{
-				cost = 1;
-				IECore::MurmurHash result;
-				switch( key.cachePolicy )
+				case CachePolicy::TaskCollaboration :
 				{
-					case CachePolicy::TaskCollaboration :
-					{
-						ThreadStateFixer::Scope scope( key.threadStateFixer );
-						HashProcess process( key );
-						result = process.m_result;
-						break;
-					}
-					case CachePolicy::TaskIsolation :
-					{
-						IECorePreview::ParallelAlgo::isolate(
-							[&result, &key] {
-								HashProcess process( key );
-								result = process.m_result;
-							}
-						);
-						break;
-					}
-					default :
-						// Cache policy not valid for global cache.
-						assert( false );
-						break;
+					ThreadStateFixer::Scope scope( key.threadStateFixer );
+					HashProcess process( key );
+					result = process.m_result;
+					break;
 				}
+				case CachePolicy::TaskIsolation :
+				{
+					IECorePreview::ParallelAlgo::isolate(
+						[&result, &key] {
+							HashProcess process( key );
+							result = process.m_result;
+						}
+					);
+					break;
+				}
+				default :
+					// Cache policy not valid for global cache.
+					assert( false );
+					break;
+			}
 
-				return result;
-			}
-			catch( const ProcessException &e )
-			{
-				// See comments in `ComputeProcess::cacheGetter()`
-				e.rethrowUnwrapped();
-			}
+			return result;
 		}
 
 		static IECore::MurmurHash localCacheGetter( const HashProcessKey &key, size_t &cost )
 		{
-			try
+			cost = 1;
+			switch( key.cachePolicy )
 			{
-				cost = 1;
-				switch( key.cachePolicy )
+				case CachePolicy::TaskCollaboration :
+				case CachePolicy::TaskIsolation :
+					return g_globalCache.get( key );
+				default :
 				{
-					case CachePolicy::TaskCollaboration :
-					case CachePolicy::TaskIsolation :
-						return g_globalCache.get( key );
-					default :
-					{
-						assert( key.cachePolicy != CachePolicy::Uncached );
-						HashProcess process( key );
-						return process.m_result;
-					}
+					assert( key.cachePolicy != CachePolicy::Uncached );
+					HashProcess process( key );
+					return process.m_result;
 				}
-			}
-			catch( const ProcessException &e )
-			{
-				// See comments in `ComputeProcess::cacheGetter()`
-				e.rethrowUnwrapped();
 			}
 		}
 
@@ -425,6 +501,10 @@ class ValuePlug::HashProcess : public Process
 		// so that the work and the result is shared among all threads.
 		typedef IECorePreview::LRUCache<HashCacheKey, IECore::MurmurHash, IECorePreview::LRUCachePolicy::TaskParallel, HashProcessKey> GlobalCache;
 		static GlobalCache g_globalCache;
+		static std::atomic<uint64_t> g_legacyGlobalDirtyCount;
+
+
+		static HashCacheMode g_hashCacheMode;
 
 		// Per-thread cache. This is our default cache, used for hash computations that are
 		// presumed to be lightweight. Using a per-thread cache limits the contention among
@@ -433,7 +513,7 @@ class ValuePlug::HashProcess : public Process
 
 		struct ThreadData
 		{
-			ThreadData() : cache( localCacheGetter, g_cacheSizeLimit ), clearCache( 0 ) {}
+			ThreadData() : cache( localCacheGetter, g_cacheSizeLimit, Cache::RemovalCallback(), /* cacheErrors = */ false ), clearCache( 0 ) {}
 			Cache cache;
 			// Flag to request that hashCache be cleared.
 			tbb::atomic<int> clearCache;
@@ -450,7 +530,9 @@ const IECore::InternedString ValuePlug::HashProcess::staticType( "computeNode:ha
 tbb::enumerable_thread_specific<ValuePlug::HashProcess::ThreadData, tbb::cache_aligned_allocator<ValuePlug::HashProcess::ThreadData>, tbb::ets_key_per_instance > ValuePlug::HashProcess::g_threadData;
 // Default limit corresponds to a cost of roughly 25Mb per thread.
 tbb::atomic<size_t> ValuePlug::HashProcess::g_cacheSizeLimit = 128000;
-ValuePlug::HashProcess::GlobalCache ValuePlug::HashProcess::g_globalCache( globalCacheGetter, g_cacheSizeLimit );
+ValuePlug::HashProcess::GlobalCache ValuePlug::HashProcess::g_globalCache( globalCacheGetter, g_cacheSizeLimit, Cache::RemovalCallback(), /* cacheErrors = */ false );
+std::atomic<uint64_t> ValuePlug::HashProcess::g_legacyGlobalDirtyCount( 0 );
+ValuePlug::HashCacheMode ValuePlug::HashProcess::g_hashCacheMode( defaultHashCacheMode() );
 
 //////////////////////////////////////////////////////////////////////////
 // The ComputeProcess manages the task of calling ComputeNode::compute()
@@ -557,16 +639,7 @@ class ValuePlug::ComputeProcess : public Process
 			}
 			else
 			{
-				IECore::ConstObjectPtr result;
-				try
-				{
-					result = g_cache.get( processKey );
-				}
-				catch( ... )
-				{
-					// See comments in `cacheGetter()`
-					ProcessException::wrapCurrentException( processKey.plug, Context::current(), staticType );
-				}
+				IECore::ConstObjectPtr result = g_cache.get( processKey );
 
 				if( result )
 				{
@@ -659,67 +732,47 @@ class ValuePlug::ComputeProcess : public Process
 
 		static IECore::ConstObjectPtr cacheGetter( const ComputeProcessKey &key, size_t &cost )
 		{
-			try
+			IECore::ConstObjectPtr result;
+			switch( key.cachePolicy )
 			{
-				IECore::ConstObjectPtr result;
-				switch( key.cachePolicy )
+				case CachePolicy::Standard :
 				{
-					case CachePolicy::Standard :
-					{
-						ComputeProcess process( key );
-						result = process.m_result;
-						break;
-					}
-					case CachePolicy::TaskCollaboration :
-					{
-						ThreadStateFixer::Scope scope( key.threadStateFixer );
-						ComputeProcess process( key );
-						result = process.m_result;
-						break;
-					}
-					case CachePolicy::TaskIsolation :
-					{
-						IECorePreview::ParallelAlgo::isolate(
-							[&result, &key] {
-								ComputeProcess process( key );
-								result = process.m_result;
-							}
-						);
-						break;
-					}
-					case CachePolicy::Uncached :
-						// Should not have got here.
-						assert( false );
-						break;
-					default :
-						// Can't do the work inside the cache, because we don't know if
-						// the compute will lead to deadlock. We'll do the work outside.
-						break;
+					ComputeProcess process( key );
+					result = process.m_result;
+					break;
 				}
-				// Using max size for legacy policy so that our null result will never be
-				// cached. This avoids `assert( processKey.cachePolicy == CachePolicy::Legacy )`
-				// being triggered in `ComputeProcess::value()` when a plug with a legacy
-				// policy implements a pass-through from a plug with non-legacy policy.
-				cost = result ? result->memoryUsage() : std::numeric_limits<size_t>::max();
-				return result;
+				case CachePolicy::TaskCollaboration :
+				{
+					ThreadStateFixer::Scope scope( key.threadStateFixer );
+					ComputeProcess process( key );
+					result = process.m_result;
+					break;
+				}
+				case CachePolicy::TaskIsolation :
+				{
+					IECorePreview::ParallelAlgo::isolate(
+						[&result, &key] {
+							ComputeProcess process( key );
+							result = process.m_result;
+						}
+					);
+					break;
+				}
+				case CachePolicy::Uncached :
+					// Should not have got here.
+					assert( false );
+					break;
+				default :
+					// Can't do the work inside the cache, because we don't know if
+					// the compute will lead to deadlock. We'll do the work outside.
+					break;
 			}
-			catch( const ProcessException &processException )
-			{
-				// The LRUCache caches any exceptions thrown by its getter.
-				// But the ProcessException thrown by `Process::handleException()`
-				// is unsuitable for caching because :
-				//
-				// - There isn't a one-to-one mapping between processes and cache
-				//   entries (different plugs can share the same entry).
-				// - ProcessException stores the plug name for return from `what()`,
-				//   but the plug may be renamed.
-				// - ProcessException holds a reference to the plug, and we don't
-				//   want the cache to extend the plug's lifetime.
-				//
-				// So we unwrap the exception here and rewrap it at the call site of
-				// `LRUCache::get()`.
-				processException.rethrowUnwrapped();
-			}
+			// Using max size for legacy policy so that our null result will never be
+			// cached. This avoids `assert( processKey.cachePolicy == CachePolicy::Legacy )`
+			// being triggered in `ComputeProcess::value()` when a plug with a legacy
+			// policy implements a pass-through from a plug with non-legacy policy.
+			cost = result ? result->memoryUsage() : std::numeric_limits<size_t>::max();
+			return result;
 		}
 
 		// A cache mapping from ValuePlug::hash() to the result of the previous computation
@@ -732,7 +785,7 @@ class ValuePlug::ComputeProcess : public Process
 };
 
 const IECore::InternedString ValuePlug::ComputeProcess::staticType( "computeNode:compute" );
-ValuePlug::ComputeProcess::Cache ValuePlug::ComputeProcess::g_cache( cacheGetter, 1024 * 1024 * 1024 * 1 ); // 1 gig
+ValuePlug::ComputeProcess::Cache ValuePlug::ComputeProcess::g_cache( cacheGetter, 1024 * 1024 * 1024 * 1, ValuePlug::ComputeProcess::Cache::RemovalCallback(), /* cacheErrors = */ false ); // 1 gig
 
 //////////////////////////////////////////////////////////////////////////
 // SetValueAction implementation
@@ -802,22 +855,6 @@ IE_CORE_DEFINERUNTIMETYPED( ValuePlug::SetValueAction );
 namespace
 {
 
-bool clearHashCacheOnDirty()
-{
-	/// \todo Remove
-	if( const char *e = getenv( "GAFFER_CLEAR_HASHCACHE_ON_DIRTY" ) )
-	{
-		if( strcmp( e, "" ) && strcmp( e, "0" ) )
-		{
-			IECore::msg( IECore::Msg::Warning, "Gaffer", "GAFFER_CLEAR_HASHCACHE_ON_DIRTY is set. Interactive performance will be affected." );
-			return true;
-		}
-	}
-	return false;
-}
-
-const bool g_clearHashCacheOnDirty = clearHashCacheOnDirty();
-
 std::atomic<uint64_t> g_dirtyCountEpoch( 0 );
 
 } // namespace
@@ -850,20 +887,17 @@ ValuePlug::~ValuePlug()
 	// with a count greater than ours. We do this atomically because
 	// although each graph should only be edited on one thread, it is
 	// permitted to edit multiple graphs in parallel.
-	if( m_dirtyCount != std::numeric_limits<uint64_t>::max() )
+
+	uint64_t epoch = g_dirtyCountEpoch;
+	uint64_t newDirtyCount = std::min( DIRTY_COUNT_RANGE_MAX, m_dirtyCount + 1 );
+	while( !g_dirtyCountEpoch.compare_exchange_weak( epoch, std::max( epoch, newDirtyCount ) ) )
 	{
-		uint64_t epoch = g_dirtyCountEpoch;
-		while( !g_dirtyCountEpoch.compare_exchange_weak( epoch, std::max( epoch, m_dirtyCount + 1 ) ) )
-		{
-			// Nothing to do here.
-		}
+		// Nothing to do here.
 	}
-	else
-	{
-		// Ran out of epochs. Start over.
-		HashProcess::clearCache();
-		g_dirtyCountEpoch = 0;
-	}
+
+	// Legacy mode doesn't use `m_dirtyCount` or `g_dirtyCountEpoch`, so needs
+	// dirtying separately.
+	HashProcess::dirtyLegacyCache();
 }
 
 bool ValuePlug::acceptsChild( const GraphComponent *potentialChild ) const
@@ -1019,6 +1053,33 @@ bool ValuePlug::isSetToDefault() const
 	}
 }
 
+void ValuePlug::resetDefault()
+{
+	if( m_defaultValue != nullptr )
+	{
+		IECore::ConstObjectPtr newDefault = getObjectValue();
+		IECore::ConstObjectPtr oldDefault = m_defaultValue;
+		Action::enact(
+			this,
+			[this, newDefault] () {
+				this->m_defaultValue = newDefault;
+				propagateDirtiness( this );
+			},
+			[this, oldDefault] () {
+				this->m_defaultValue = oldDefault;
+				propagateDirtiness( this );
+			}
+		);
+	}
+	else
+	{
+		for( auto c : ValuePlug::Range( *this ) )
+		{
+			c->resetDefault();
+		}
+	}
+}
+
 IECore::MurmurHash ValuePlug::hash() const
 {
 	if( !m_staticValue )
@@ -1141,22 +1202,9 @@ void ValuePlug::dirty()
 	// Increment `m_dirtyCount` so that we won't try to reuse them.
 	// The invalid entries will be evicted by the LRU rules in due
 	// course.
-	m_dirtyCount++;
-	if(
-		// If our count has wrapped back to 0, it's possible (but
-		// incredibly unlikely) that we could match a stale value
-		// in the cache, so we must do a brute force clear.
-		m_dirtyCount == 0 ||
-		// If a node has bugs in its `DependencyNode::affects()`
-		// implementation, it could also end up using stale cache entries.
-		// We provide the GAFFER_CLEAR_HASHCACHE_ON_DIRTY environment
-		// variable to allow a temporary fallback to the old behaviour
-		// while the bugs are fixed.
-		g_clearHashCacheOnDirty
-	)
-	{
-		HashProcess::clearCache();
-	}
+	m_dirtyCount = std::min( DIRTY_COUNT_RANGE_MAX, m_dirtyCount + 1 );
+
+	HashProcess::dirtyLegacyCache();
 }
 
 size_t ValuePlug::getCacheMemoryLimit()
@@ -1192,4 +1240,14 @@ void ValuePlug::setHashCacheSizeLimit( size_t maxEntriesPerThread )
 void ValuePlug::clearHashCache()
 {
 	HashProcess::clearCache();
+}
+
+void ValuePlug::setHashCacheMode( ValuePlug::HashCacheMode hashCacheMode )
+{
+	HashProcess::setHashCacheMode( hashCacheMode );
+}
+
+ValuePlug::HashCacheMode ValuePlug::getHashCacheMode()
+{
+	return HashProcess::getHashCacheMode();
 }

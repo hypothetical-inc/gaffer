@@ -37,6 +37,7 @@
 
 import gc
 import inspect
+import imath
 
 import IECore
 
@@ -698,6 +699,98 @@ class ValuePlugTest( GafferTest.TestCase ) :
 		with Gaffer.PerformanceMonitor() as m :
 			node["sum"].getValue()
 		self.assertEqual( m.plugStatistics( node["sum"] ).hashCount, 1 )
+
+	def testResetDefault( self ) :
+
+		script = Gaffer.ScriptNode()
+
+		script["node"] = Gaffer.Node()
+		script["node"]["user"]["i"] = Gaffer.IntPlug( defaultValue = 1, flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+		script["node"]["user"]["v"] = Gaffer.V3iPlug( defaultValue = imath.V3i( 1, 2, 3 ), flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
+
+		def assertPreconditions( script ) :
+
+			self.assertTrue( script["node"]["user"]["i"].isSetToDefault() )
+			self.assertEqual( script["node"]["user"]["i"].defaultValue(), 1 )
+			self.assertEqual( script["node"]["user"]["i"].getValue(), 1 )
+
+			self.assertTrue( script["node"]["user"]["v"].isSetToDefault() )
+			self.assertEqual( script["node"]["user"]["v"].defaultValue(), imath.V3i( 1, 2, 3 ) )
+			self.assertEqual( script["node"]["user"]["v"].getValue(), imath.V3i( 1, 2, 3 ) )
+
+		assertPreconditions( script )
+
+		with Gaffer.UndoScope( script ) :
+
+			script["node"]["user"]["i"].setValue( 2 )
+			script["node"]["user"]["i"].resetDefault()
+
+			script["node"]["user"]["v"].setValue( imath.V3i( 10, 11, 12 ) )
+			script["node"]["user"]["v"].resetDefault()
+
+		def assertPostconditions( script ) :
+
+			self.assertTrue( script["node"]["user"]["i"].isSetToDefault() )
+			self.assertEqual( script["node"]["user"]["i"].defaultValue(), 2 )
+			self.assertEqual( script["node"]["user"]["i"].getValue(), 2 )
+
+			self.assertTrue( script["node"]["user"]["v"].isSetToDefault() )
+			self.assertEqual( script["node"]["user"]["v"].defaultValue(), imath.V3i( 10, 11, 12 ) )
+			self.assertEqual( script["node"]["user"]["v"].getValue(), imath.V3i( 10, 11, 12 ) )
+
+		script.undo()
+		assertPreconditions( script )
+
+		script.redo()
+		assertPostconditions( script )
+
+		script.undo()
+		assertPreconditions( script )
+
+		script.redo()
+		assertPostconditions( script )
+
+		script2 = Gaffer.ScriptNode()
+		script2.execute( script.serialise() )
+		assertPostconditions( script2 )
+
+	def testCacheValidation( self ) :
+
+		defaultHashCacheMode = Gaffer.ValuePlug.getHashCacheMode()
+		Gaffer.ValuePlug.setHashCacheMode( Gaffer.ValuePlug.HashCacheMode.Checked )
+		try:
+
+			m = GafferTest.MultiplyNode( "test", True )
+			m["op1"].setValue( 2 )
+			m["op2"].setValue( 3 )
+			self.assertEqual( m["product"].getValue(), 6 )
+
+			m["op2"].setValue( 4 )
+			exception = None
+			try:
+				m["product"].getValue()
+			except Exception as e:
+				exception = e
+
+			self.assertEqual( type( exception ), Gaffer.ProcessException )
+			self.assertEqual( str( exception ), "test.product : Detected undeclared dependency. Fix DependencyNode::affects() implementation." )
+
+			# Make sure the plug with the actual issue is reported, when queried from a downstream network
+			m2 = GafferTest.MultiplyNode( "second" )
+			m2["op1"].setInput( m["product"] )
+			m2["op2"].setValue( 5 )
+
+			exception = None
+			try:
+				m2["product"].getValue()
+			except Exception as e:
+				exception = e
+
+			self.assertEqual( type( exception ), Gaffer.ProcessException )
+			self.assertEqual( str( exception ), "test.product : Detected undeclared dependency. Fix DependencyNode::affects() implementation." )
+
+		finally:
+			Gaffer.ValuePlug.setHashCacheMode( defaultHashCacheMode )
 
 	def setUp( self ) :
 

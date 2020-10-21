@@ -39,10 +39,40 @@ import unittest
 import weakref
 
 import Gaffer
+import GafferTest
 import GafferUI
 import GafferUITest
 
 class NodeEditorTest( GafferUITest.TestCase ) :
+
+	@GafferTest.TestRunner.PerformanceTestMethod()
+	def testPerformance( self ) :
+
+		s = Gaffer.ScriptNode()
+		s["smallNode"] = Gaffer.Node()
+
+		bn = Gaffer.Node()
+		s["bigNode"] = bn
+
+		for i in range( 5 ) :
+			for j in range( 5 ) :
+				for k in range( 10 ) :
+					p = Gaffer.IntPlug( defaultValue = i+j+k )
+					Gaffer.Metadata.registerValue( p, "layout:section", "%d.%d" % ( i, j ) )
+					bn.addChild( p )
+
+		a =  Gaffer.StandardSet( [ s["smallNode"] ] )
+		b =  Gaffer.StandardSet( [ s["bigNode"] ] )
+
+		sw = GafferUI.ScriptWindow.acquire( s )
+		ne = GafferUI.NodeEditor.acquire( s["smallNode"] )
+
+		with GafferTest.TestRunner.PerformanceScope() :
+			for i in range( 2 ) :
+				ne.setNodeSet( a )
+				ne.nodeUI()
+				ne.setNodeSet( b )
+				ne.nodeUI()
 
 	def testAcquireReusesEditors( self ) :
 
@@ -74,8 +104,9 @@ class NodeEditorTest( GafferUITest.TestCase ) :
 		nw.close()
 		del nw
 
-		self.assertEqual( nww(), None )
 		self.assertEqual( sw.childWindows(), [] )
+		self.waitForIdle()
+		self.assertEqual( nww(), None )
 
 		ne2 = GafferUI.NodeEditor.acquire( s["n"] )
 		self.assertIsInstance( ne2, GafferUI.NodeEditor )

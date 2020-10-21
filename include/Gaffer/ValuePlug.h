@@ -96,6 +96,12 @@ class GAFFER_API ValuePlug : public Plug
 		/// > we always consider it to be non-default, because it may vary
 		/// > by context. `isSetToDefault()` does not trigger computes.
 		virtual bool isSetToDefault() const;
+		/// Modifies the default value of this plug to match the current
+		/// value. The default implementation is sufficient for all
+		/// subclasses except those where the number of child plugs varies
+		/// based on the value.
+		/// \undoable
+		virtual void resetDefault();
 
 		/// Returns a hash to represent the value of this plug
 		/// in the current context.
@@ -174,6 +180,22 @@ class GAFFER_API ValuePlug : public Plug
 		/// > Note : Clearing occurs on a per-thread basis as and when
 		/// > each thread next accesses the cache.
 		static void clearHashCache();
+
+		/// The standard hash cache mode relies on correctly implemented
+		/// affects() methods to selectively clear the cache for dirtied
+		/// plugs.  If you have incorrect affects() methods, you can use
+		/// "Legacy", which pessimisticly dirties all hash cache entries
+		/// when something changes, or "Checked" which helps identify
+		/// bad affects() methods by throwing exceptions.
+		enum class HashCacheMode
+		{
+			Standard,
+			Checked,
+			Legacy
+		};
+		static void setHashCacheMode( HashCacheMode hashCacheMode );
+		static HashCacheMode getHashCacheMode();
+
 		//@}
 
 	protected :
@@ -188,8 +210,8 @@ class GAFFER_API ValuePlug : public Plug
 		ValuePlug( const std::string &name, Direction direction,
 			IECore::ConstObjectPtr defaultValue, unsigned flags );
 
-		/// Returns the default value that was passed to the constructor.
-		/// It is imperative that this value is not changed.
+		/// Returns the default value. It is imperative that this object is not
+		/// modified.
 		const IECore::Object *defaultObjectValue() const;
 
 		/// Internally all values are stored as instances of classes derived

@@ -189,7 +189,7 @@ class CropWindowTool::Rectangle : public GafferUI::Gadget
 				return;
 			}
 			m_masked = masked;
-			requestRender();
+			dirty( DirtyType::Render );
 		}
 
 		bool getMasked() const
@@ -284,8 +284,8 @@ class CropWindowTool::Rectangle : public GafferUI::Gadget
 				return;
 			}
 			m_rectangle = rectangle;
+			dirty( DirtyType::Bound );
 			rectangleChangedSignal()( this, reason );
-			requestRender();
 		}
 
 		bool mouseMove( const ButtonEvent &event )
@@ -529,6 +529,18 @@ std::string CropWindowTool::status() const
 CropWindowTool::StatusChangedSignal &CropWindowTool::statusChangedSignal()
 {
 	return m_statusChangedSignal;
+}
+
+Gaffer::Box2fPlug *CropWindowTool::plug()
+{
+	findCropWindowPlug();
+	return m_cropWindowPlug.get();
+}
+
+Gaffer::BoolPlug *CropWindowTool::enabledPlug()
+{
+	findCropWindowPlug();
+	return m_cropWindowEnabledPlug.get();
 }
 
 GafferScene::ScenePlug *CropWindowTool::scenePlug()

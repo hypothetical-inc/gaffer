@@ -168,11 +168,7 @@ bool tolerantExec( const char *pythonScript, boost::python::object globals, boos
 		// And execute it.
 		boost::python::handle<> v( boost::python::allow_null(
 			PyEval_EvalCode(
-#if PY_MAJOR_VERSION >= 3
-				(PyObject *)code.get(),
-#else
 				code.get(),
-#endif
 				globals.ptr(),
 				locals.ptr()
 			)

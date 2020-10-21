@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_OBJECTTOSCENE_H
 #define GAFFERSCENE_OBJECTTOSCENE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
 
 namespace GafferScene

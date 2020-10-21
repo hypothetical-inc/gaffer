@@ -149,6 +149,13 @@ def registerValueWidget( plugType, plugValueWidgetCreator ) :
 
 	_CellPlugValueWidget.registerValueWidget( plugType, plugValueWidgetCreator )
 
+def _dimensionsEditable( rowsPlug ) :
+
+	# We don't currently allow addition/removal of rows/columns
+	# when a RowsPlug is hosted on a Reference node, to avoid
+	# merge hell when reloading or updating the reference.
+	return not isinstance( rowsPlug.node(), Gaffer.Reference )
+
 # Metadata
 # ========
 
@@ -459,6 +466,8 @@ class _RowsPlugValueWidget( GafferUI.PlugValueWidget ) :
 			addRowButton.dragEnterSignal().connect( Gaffer.WeakMethod( self.__addRowButtonDragEnter ), scoped = False )
 			addRowButton.dragLeaveSignal().connect( Gaffer.WeakMethod( self.__addRowButtonDragLeave ), scoped = False )
 			addRowButton.dropSignal().connect( Gaffer.WeakMethod( self.__addRowButtonDrop ), scoped = False )
+
+			addRowButton.setVisible( _dimensionsEditable( plug ) )
 
 			self.__statusLabel = GafferUI.Label(
 				"",
@@ -1010,7 +1019,10 @@ class _PlugTableView( GafferUI.Widget ) :
 			"/Delete Column",
 			{
 				"command" : functools.partial( Gaffer.WeakMethod( self.__deleteColumn), cellPlug ),
-				"active" : not Gaffer.MetadataAlgo.readOnly( cellPlug ),
+				"active" : (
+					not Gaffer.MetadataAlgo.readOnly( cellPlug ) and
+					_dimensionsEditable( self._qtWidget().model().rowsPlug() )
+				)
 			}
 		)
 
@@ -1438,8 +1450,9 @@ class _EditWindow( GafferUI.Window ) :
 					valuePlugValueWidget.menu().popup()
 					return
 
-		windowSize = cls.__currentWindow._qtWidget().sizeHint()
-		cls.__currentWindow.setPosition( plugBound.center() - imath.V2i( windowSize.width() / 2, windowSize.height() / 2 ) )
+		cls.__currentWindow.resizeToFitChild()
+		windowSize = cls.__currentWindow.bound().size()
+		cls.__currentWindow.setPosition( plugBound.center() - windowSize / 2 )
 		cls.__currentWindow.setVisible( True )
 
 		textWidget = cls.__textWidget( plugValueWidget )
@@ -1471,20 +1484,28 @@ class _EditWindow( GafferUI.Window ) :
 	@classmethod
 	def __textWidget( cls, plugValueWidget ) :
 
+		def widgetUsable( w ) :
+			return w.visible() and w.enabled() and w.getEditable()
+
+		widget = None
+
 		if isinstance( plugValueWidget, GafferUI.StringPlugValueWidget ) :
-			return plugValueWidget.textWidget()
+			widget = plugValueWidget.textWidget()
 		elif isinstance( plugValueWidget, GafferUI.NumericPlugValueWidget ) :
-			return plugValueWidget.numericWidget()
+			widget = plugValueWidget.numericWidget()
 		elif isinstance( plugValueWidget, GafferUI.PathPlugValueWidget ) :
-			return plugValueWidget.pathWidget()
+			widget = plugValueWidget.pathWidget()
 		elif isinstance( plugValueWidget, GafferUI.MultiLineStringPlugValueWidget ) :
-			return plugValueWidget.textWidget()
+			widget = plugValueWidget.textWidget()
+
+		if widget is not None and widgetUsable( widget ) :
+			return widget
 
 		for childPlug in Gaffer.Plug.Range( plugValueWidget.getPlug() ) :
 			childWidget = plugValueWidget.childPlugValueWidget( childPlug )
 			if childWidget is not None :
 				childTextWidget = cls.__textWidget( childWidget )
-				if childTextWidget is not None and childTextWidget.visible() :
+				if childTextWidget is not None :
 					return childTextWidget
 
 		return None
@@ -1926,8 +1947,11 @@ def __prependRowAndCellMenuItems( menuDefinition, plugValueWidget ) :
 			"/Delete Row",
 			{
 				"command" : functools.partial( __deleteRow, rowPlug ),
-				"active" : not plugValueWidget.getReadOnly() and not Gaffer.MetadataAlgo.readOnly( rowPlug )
-
+				"active" : (
+					not plugValueWidget.getReadOnly() and
+					not Gaffer.MetadataAlgo.readOnly( rowPlug ) and
+					_dimensionsEditable( rowPlug.parent() )
+				)
 			}
 		)
 

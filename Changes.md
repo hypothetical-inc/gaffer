@@ -1,10 +1,158 @@
-0.58.x.x
+<<<<<<< HEAD
+0.58.3.2 (relative to 0.58.3.1)
+=======
+0.59.x.x
 ========
+
+Improvements
+------------
+
+- GraphEditor : Improved performance slightly for large graphs.
+
+Fixes
+-----
+
+- Viewer : Fixed bug that caused mouse clicks in empty toolbar regions to be ignored.
+
+API
+---
+
+- Gadget :
+  - Added `updateLayout()` virtual method to simplify implementation of container types.
+  - Added `dirty()` method for finer grained tracking of changes than `requestRender()` provided.
+  - Deprecated `requestRender()` method. Use `dirty()` instead.
+- OSLShader : Added `registerCompatibleShader()` method to allow connections from non-OSL shaders
+ to be made.
+
+Breaking Changes
+----------------
+
+- Gadget : Added new virtual method and private member variables.
+- ImageGadget : Removed/moved private member variables.
+- OpenColorIOTransform : Made `transform()` method protected rather than public.
+- BackgroundMethodTest : Removed public visibility from private `TestWidget` and `WaitingSlot`.
+
+Build
+-----
+
+- Dependencies : Updated to version 2.0.0
+
+0.58.3.0 (relative to 0.58.2.0)
+========
+
+Improvements
+------------
+
+- Preferences : Added support for OpenColorIO context variables. These may contain references to Gaffer context variables via the standard `${variable}` syntax, but please note that such variables are only available in the Viewer and not in the rest of the UI (for instance, colour swatches and pickers).
+- Viewer : Increased the size of transform tool handle hit areas.
+- Arnold : Moved debug log messages into the Debug severity and added support for Memory and Timestamp options.
+
+Fixes
+-----
+
+- Node Editor : Fix bug in section decoration when a plug was set to its user default.
+- ErrorDialogue : Fixed extremely slow display of warning and error messages. This was particularly apparent when showing errors that occurred while opening files.
+- Viewer : Fixed Default display transform so that it updates correctly when the default is changed via the Preferences dialogue, and when the context changes.
+- UVView : Fixed a performance regression vs 0.57 when displaying many UDIM textures.
+- OpDialogue, DispatchDialogue, ErrorDialogue : Fixed missing filtering controls for progress messages.
+- Encapsulate : Fixed bug where globals and render sets were evaluated in the wrong context.
+- OSLObject : Fixed invalid reads from Constant array primitive variables.
+- PresetsPlugValueWidget/PlugValueWidget : Fixed bugs handling context-sensitive presets.
+
+API
+---
+
+- MessageWidget : `setMessages()` now also accepts messages in the format used by IECore.CapturingMessageHandler.
+- WidgetAlgo : Added `keepUntilIdle()` method.
+- OpenColorIOTransform : Added `processor()` and `processorHash()` public methods.
+
+0.58.2.0 (relative to 0.58.1.0)
+========
+
+Improvements
+------------
+
+- CollectScenes : Added support for collecting at roots of arbitrary depth.
+- AttributeVisualiser : Added support for V2f, V3f, V2i, V3i, V2d and V3d data types.
+- Node Editor : Added decoration to collapsed sections when any of their children have non-default values.
+- HierarchyView : Added <kbd>Ctrl + C</kbd> shortcut/context menu action to copy the selected paths to the clipboard.
+- UI : Added support for basic math operators (`+`, `-`, `/`, `*`, `%`) in numeric fields.
+
+Fixes
+-----
+
+- PrimitiveInspector :
+  - Fixed bug that caused data lists to lose their scroll position during updates.
+  - Fixed bug that could cause the inspector to show a different location to other Editors.
+  - Fixed bug when the selected location doesn't exist in the input scene.
+- Attributes : Fixed bug that could prevent interactive updates when the `global` plug was on.
+- CollectScenes : Fixed childNames hashing bug.
+- NodeAlgo : Fixed bug that caused `isSetToUserDefault()` to return `True` when the plug's input was from a ComputeNode.
+  Like `ValuePlug::isSetToDefault()`, `isSetToUserDefault()` will now never trigger a compute, and all computed inputs
+  are treated as non-default.
+- GafferArnold : Added missing GafferOSL Python bindings import.
+- Plug : Fixed bug that could break IPR updates following a node graph edit (#3911).
+- Viewer : Fixed CropWindow tool reset button size.
+
+API
+---
+
+- OpenImageIOReader : Added methods for controlling the maximum number of images files to keep open at one time.
+
+0.58.1.0 (relative to 0.58.0.1)
+========
+
+- Catalogue : Added <kbd>Ctrl-D</kbd> shortcut to duplicate selected images (#3545).
+- Viewer :
+  - Added <kbd>Ctrl-D</kbd> shortcut to duplicate currently viewed image when viewing the output of Catalogue node (#3545).
+  - Added enabled/reset controls to the Crop Window Tool.
+  - Improved display of the edited plug in the Inspector's pop-up edit windows.
+
+Fixes
+-----
+
+- Viewer :
+  - Fixed bug preventing the Inspector from finding shaders when assigned via a Switch.
+  - Fixed bug that caused the wrong plug to be edited by the Inspector with nested EditScopes.
+  - Fixed bug that prevented selecting an Edit Scope that contained other Edit Scopes.
+  - Fixed bug that caused an exception when simultaneously editing multiple plugs the Inspector.
+- Box : Fixed GIL management bug that could cause hangs when promoting a plug.
+- SetFilter : Added missing set expression operators to node reference/tooltip.
+- UIEditor : Fixed bug which allowed the creation of non-selectable presets.
+- EditScopes : Fixed crash in `EditScope::processors()` if intermediate nodes had no corresponding input.
+- ShaderAssignment : Fixed bug in `shader` plug connection acceptance that could cause crashes at shutdown.
+
+API
+---
+
+- EditScopeUI : Added support for listing user nodes in the Edit Scope navigation menu when their `editScope:includeInNavigationMenu` metadata entry is set to `True`.
+- CropWindowTool : Added `plug()` and `enabledPlug()` methods to return the currently edited plugs or `nullptr`.
+>>>>>>> e24bba80f... Build : Use dependencies 2.0.0a5 for all builds
+
+0.58.0.1 (relative to 0.58.0.0)
+========
+
+Fixes
+-----
+
+- Catalogue : Fixed missing error icon.
+
+Build
+-----
+
+- Fixed compilation with TBB versions prior to 2018 Update 1.
+
+0.58.0.0
+========
+
+> Caution : References containing promoted Spreadsheets, when saved from Gaffer 0.58, can not be loaded in previous versions of Gaffer.
 
 Features
 --------
 
 - InteractiveRender : Added message log to the node's UI, displaying output from the last render (#3419).
+- Viewer : Added a floating inspector to allow quick inspection and editing of lights and other shaders (#3661).
+- Viewer : Added GPU support for gamma/exposure and OCIO display transforms.
 
 Improvements
 ------------
@@ -21,6 +169,17 @@ Improvements
 Fixes
 -----
 
+- GraphEditor : Implemented undo for node drags (#423).
+- Reference (#3810) :
+  - Fixed bug which caused promoted Spreadsheet values to be lost when exporting a Box for referencing.
+  - Fixed bug which caused promoted Spreadsheet cells to be duplicated by copy/paste.
+  - Prevented addition and removal of rows and columns for promoted Spreadsheets, as changes will be lost when reloading the reference.
+- DeleteSets : Fixed bug which allowed the deletion of Gaffer's internal `__lights`, `__cameras` and `__lightFilters` sets. These are now always preserved, because they are needed to output the scene for rendering.
+- TransformTool :
+  - Fixed handle orientation for transforms with negative scaling.
+  - Fixed handle positions for locations with PointConstraints or ParentConstraints applied.
+  - Fixed translation and rotation of locations with a ParentConstraint applied.
+  - Fixed rotation of locations with negative scaling.
 - ImageReader/ImageWriter : Fixed handling of errors in Python functions registered using `setDefaultColorSpaceFunction()`.
 - StyleSheet : Fixed monospace font stack.
 - GafferUI : Fixed lingering highlight state if a Button was disabled whilst the cursor was over it.
@@ -38,17 +197,32 @@ Fixes
   - OpenImageIOReader
   - LevelSetOffset
   - MeshToLevelSet
+  - CopyPrimitiveVariables
+  - CopyAttributes
+  - SubTree
+  - MergeScenes
+  - CollectScenes
+  - Instancer
+  - Duplicate
+  - ClosestPointSampler
+  - CurveSampler
+  - DeleteSets
 - SetAlgo : Fixed `affectsSetExpression()` to return `True` for `ScenePlug::setNamesPlug()`.
 - GafferTractor: Fixed evaluation of 'tag' and 'service' plugs on Task nodes. Previously, these plugs were evaluated in the default context, which prevented one from using custom context variables (e.g. from Wedge node) to compute tags or service keys dynamically.
-
+- NodeEditor : Reduced layout flicker when switching between nodes.
+- Spreadsheet : Fixed bug that could result in editor windows being placed partially off screen.
+- ValuePlug : Fixed bug that could cause the wrong plug to be reported in `ProcessExceptions`.
 
 API
 ---
 
 - ValuePlug
-  - Improved interactive performance by not clearing the entire hash cache every time a plug is dirtied. Beware : this can reveal subtle bugs in `DependencyNode::affects()` implementations, causing hashes to be reused if a plug has not been dirtied appropriately. These bugs may previously have gone unnoticed but will now need fixing as a matter of urgency. The GAFFER_CLEAR_HASHCACHE_ON_DIRTY environment variable may be used to enable legacy behaviour in the interim.
+  - Improved interactive performance by not clearing the entire hash cache every time a plug is dirtied. Beware : this can reveal subtle bugs in `DependencyNode::affects()` implementations, causing hashes to be reused if a plug has not been dirtied appropriately. These bugs may previously have gone unnoticed but will now need fixing as a matter of urgency. The GAFFER_HASHCACHE_MODE environment variable may be set to "Legacy" to enable legacy behaviour in the interim, or to "Checked" to enable a slow mode which throws exceptions at the source of hash cache cache errors caused by bad `affects()` implementations.
   - Added `clearHashCache()` static method.
-- ScenePlug : Added `childBounds()` and `childBoundsHash()` methods.
+  - Added `resetDefault()` method.
+- ScenePlug :
+  - Added `existsPlug()` accessor, and deprecated the argumentless overload of the `exists()` method.
+  - Added `childBoundsPlug()`, `childBounds()` and `childBoundsHash()` methods.
 - ObjectProcessor : Added `processedObjectComputeCachePolicy()` virtual method. This should be overridden to choose an appropriate cache policy when `computeProcessedObject()` spawns TBB tasks.
 - SceneNode :
   - Deprecated `hashOfTransformedChildBounds()`. Use `ScenePlug::childBoundsHash()` instead.
@@ -57,6 +231,9 @@ API
 - InteractiveRender :
   - Changed base to `Gaffer::ComputeNode` (#3419).
   - Added messages plug containing the output of the node's renderer output (#3419).
+- InteractiveRenderTest :
+  - Scoped a `UIThreadCallHandler` for all test methods, available via `self.uiThreadCallHandler`.
+  - Refactored `_createInteractiveRender` method to provide a default implementation that creates a render node with suitable error propagation.
 - Graphics : Renamed `errorNotificationSmall` icon to `errorSmall`.
 - NotificationMessageHandler : Constructor now accepts `GafferUI.MessageWidget` constructor kwargs to configure the widget.
 - PlugValueWidget : Added the capability to edit more than one plug at a time.
@@ -75,10 +252,15 @@ API
     - PresetsPlugValueWidget
 - SetAlgo : Added Python binding for `affectsSetExpression()`.
 - Shader : Added `affectsAttributes()` protected method.
-- MessageWidget : Added MessageSummaryWidget class to simplify the display of message counts in other UIs.
 - MessageWidget :
   - Added MessageSummaryWidget class to simplify the display of message counts in other UIs.
   - Added `scrollToNextMessage()` and `scrollToPreviousMessage()` methods.
+- MetadataAlgo : Added `readOnlyReason`, returning the outer-most `GraphComponent` that causes the specified component to be read-only.
+- EditScopeAlgo : Added `prunedReadOnlyReason`, `transformEditReadOnlyReason` and `parameterEditReadOnlyReason` to determine the outer-most `GraphComponent` causing and edit (or potential edit) to be read-only.
+- Window : Changed `setPosition` such that the whole window will remain on screen. Set `forcePosition` to `False` to disable this behaviour.
+- ImageGadget : Added support for GPU-based clipping, exposure, gamma and display transform.
+- TestCase : Added `failureMessageLevel` attribute to control which messages trigger test failures.
+- GafferSceneTest : Added `exposure` `FloatPlug` to `TestLight`.
 
 Breaking Changes
 ----------------
@@ -124,22 +306,97 @@ Breaking Changes
     - BoolPlugValueWidget
     - PresetsPlugValueWidget
   - Removed connections to `plugFlagsChangedSignal()`. In the unlikely event that a derived class depends on plug flags, it must now manage the updates itself.
-- InteractiveRender : Changed base class from Node to ComputeNode, added members.
+- InteractiveRender :
+  - Changed base class from Node to ComputeNode, added members.
+  - `state` and `renderer` plugs can no longer be connected to compute node outputs due to dirty propagation constraints.
+- InteractiveRenderTest : Added `interactiveRenderNodeClass` member that must be populated with render node class by derived test cases (#3803).
 - MessageWidget : Removed deprecated `appendMessage` method, use `messageHandler().handle()` instead.
 - Shader : Added virtual method.
+- MetadataAlgo : `readOnly( None )` will now raise an Exception instead of returning `False`.
+- FormatPlug :
+  - Removed private member.
+  - Changed signature of `defaultValue()` method.
+- ValuePlug : Added virtual method.
 
 Build
 -----
 
 - Updated to GafferHQ/dependencies 1.6.0.
 
+0.57.7.4 (relative to 0.57.7.3)
 ========
-0.57.x.x (relative to 0.57.5.0)
+
+- BranchCreator : Fixed bugs affecting set computation.
+
+0.57.7.3 (relative to 0.57.7.2)
 ========
 
 Fixes
 -----
 
+- Encapsulate : Fixed bug where globals and render sets were evaluated in the wrong context.
+- OSLObject : Fixed invalid reads from Constant array primitive variables.
+- PresetsPlugValueWidget/PlugValueWidget : Fixed bugs handling context-sensitive presets.
+
+0.57.7.2 (relative to 0.57.7.1)
+========
+
+- PrimitiveInspector :
+  - Fixed bug that caused data lists to lose their scroll position during updates.
+  - Fixed bug that could cause the inspector to show a different location to other Editors.
+  - Fixed bug when the selected location doesn't exist in the input scene.
+- Attributes : Fixed bug that could prevent interactive updates when the `global` plug was on.
+- CollectScenes : Fixed childNames hashing bug.
+- SceneWriter : Fixed error caused by computed filenames with a dependency on time. This
+  makes it possible to write to a sequence of cache files rather than one monolithic file.
+- GafferArnold : Added missing GafferOSL Python bindings import.
+
+0.57.7.1 (relative to 0.57.7.0)
+========
+
+Fixes
+-----
+
+- Box : Fixed GIL management bug that could cause hangs when promoting a plug.
+- SetFilter : Added missing set expression operators to node reference/tooltip.
+- UIEditor : Fixed bug which allowed the creation of non-selectable presets.
+- EditScopes : Fixed crash in `EditScope::processors()` if intermediate nodes had no corresponding input.
+- ShaderAssignment : Fixed bug in `shader` plug connection acceptance that could cause crashes at shutdown.
+
+0.57.7.0 (relative to 0.57.6.0)
+========
+
+Improvements
+------------
+
+- Dispatch app : Added support for setting CompoundDataPlugs via the `-settings` argument.
+- Viewer : Made light gobos selectable.
+
+Fixes
+-----
+
+- Viewer :
+ - Fixed crashes that could be caused by invalid pixel values.
+ - Fixed bug that caused gobos to ignore the light visualisation mode of their parent light.
+
+API
+---
+
+- CompoundEditor :
+  - Added `visibleOnly` argument to `editor()` method.
+  - Improved `editor()` logic, so that visible editors are always preferred to hidden ones.
+
+0.57.6.0 (relative to 0.57.5.0)
+========
+
+Fixes
+-----
+
+- Catalogue :
+  - Fixed incorrect column values when an image is renamed in a promoted Catalogue (#3815).
+  - Fixed dependency tracking and hashing bugs.
+  - Improved handling of missing images (#3808).
+- SetFilter : Sanitised context used to evaluate set expressions, by removing `scene:filter:inputScene` variable.
 - SceneAlgo : Removed cancellers from contexts referenced by history objects.
 - Context : Fixed Python `Canceller` lifetime management bug.
 
@@ -376,6 +633,20 @@ Build
 -----
 
 - Cortex : Updated to version 10.0.0-a76.
+
+0.56.2.6 (relative to 0.56.2.5)
+========
+
+- Viewer : Fixed crashes that could be caused by invalid pixel values.
+
+0.56.2.5 (relative to 0.56.2.4)
+========
+
+- Catalogue :
+  - Fixed incorrect column values when an image is renamed in a promoted Catalogue (#3815).
+  - Fixed dependency tracking and hashing bugs.
+  - Improved handling of missing images (#3808).
+- SetFilter : Sanitised context used to evaluate set expressions, by removing `scene:filter:inputScene` variable.
 
 0.56.2.4 (relative to 0.56.2.3)
 ========

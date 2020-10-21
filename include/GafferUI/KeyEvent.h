@@ -37,6 +37,7 @@
 #ifndef GAFFERUI_KEYEVENT_H
 #define GAFFERUI_KEYEVENT_H
 
+#include "GafferUI/Export.h"
 #include "GafferUI/ModifiableEvent.h"
 
 #include "IECore/Export.h"

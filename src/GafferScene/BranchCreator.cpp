@@ -110,6 +110,7 @@ BranchCreator::BranchCreator( const std::string &name )
 	filteredPathsPlug()->setInput( filterResults->outPlug() );
 
 	outPlug()->globalsPlug()->setInput( inPlug()->globalsPlug() );
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 }
 
 BranchCreator::~BranchCreator()
@@ -160,7 +161,7 @@ void BranchCreator::affects( const Plug *input, AffectedPlugsContainer &outputs 
 {
 	FilteredSceneProcessor::affects( input, outputs );
 
-	if( input == parentPlug() || input == filteredPathsPlug() )
+	if( input == parentPlug() || input == filteredPathsPlug() || input == inPlug()->existsPlug() )
 	{
 		outputs.push_back( parentPathsPlug() );
 	}
@@ -174,6 +175,7 @@ void BranchCreator::affects( const Plug *input, AffectedPlugsContainer &outputs 
 		input == parentPathsPlug() ||
 		input == mappingPlug() ||
 		input == inPlug()->boundPlug() ||
+		input == outPlug()->childBoundsPlug() ||
 		affectsBranchBound( input )
 	)
 	{
@@ -324,7 +326,7 @@ void BranchCreator::hashBound( const ScenePath &path, const Gaffer::Context *con
 	{
 		FilteredSceneProcessor::hashBound( path, context, parent, h );
 		inPlug()->boundPlug()->hash( h );
-		h.append( outPlug()->childBoundsHash() );
+		outPlug()->childBoundsPlug()->hash( h );
 	}
 	else
 	{
@@ -344,7 +346,7 @@ Imath::Box3f BranchCreator::computeBound( const ScenePath &path, const Gaffer::C
 	else if( parentMatch == IECore::PathMatcher::ExactMatch || parentMatch == IECore::PathMatcher::DescendantMatch )
 	{
 		Box3f result = inPlug()->boundPlug()->getValue();
-		result.extendBy( outPlug()->childBounds() );
+		result.extendBy( outPlug()->childBoundsPlug()->getValue() );
 		return result;
 	}
 	else
@@ -569,10 +571,11 @@ void BranchCreator::hashSet( const IECore::InternedString &setName, const Gaffer
 	if( parentPaths.isEmpty() )
 	{
 		h = inPlug()->setPlug()->hash();
+		return;
 	}
 
 	FilteredSceneProcessor::hashSet( setName, context, parent, h );
-	h.append( inPlug()->setHash( setName ) );
+	inPlug()->setPlug()->hash( h );
 
 	for( PathMatcher::Iterator it = parentPaths.begin(), eIt = parentPaths.end(); it != eIt; ++it )
 	{
@@ -585,6 +588,7 @@ void BranchCreator::hashSet( const IECore::InternedString &setName, const Gaffer
 		MurmurHash branchSetHash;
 		hashBranchSet( parentPath, setName, context, branchSetHash );
 		h.append( branchSetHash );
+		h.append( parentPath.data(), parentPath.size() );
 	}
 }
 
@@ -593,7 +597,7 @@ IECore::ConstPathMatcherDataPtr BranchCreator::computeSet( const IECore::Interne
 	ConstPathMatcherDataPtr parentPathsData = parentPathsPlug()->getValue();
 	const PathMatcher &parentPaths = parentPathsData->readable();
 
-	ConstPathMatcherDataPtr inputSetData = inPlug()->set( setName );
+	ConstPathMatcherDataPtr inputSetData = inPlug()->setPlug()->getValue();
 	if( parentPaths.isEmpty() )
 	{
 		return inputSetData;

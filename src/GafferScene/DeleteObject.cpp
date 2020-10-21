@@ -55,6 +55,8 @@ DeleteObject::DeleteObject( const std::string &name )
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new BoolPlug( "adjustBounds", Plug::In, false ) );
 
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
+
 	// Fast pass-throughs for things we don't modify
 	outPlug()->childNamesPlug()->setInput( inPlug()->childNamesPlug() );
 	outPlug()->globalsPlug()->setInput( inPlug()->globalsPlug() );
@@ -94,7 +96,8 @@ void DeleteObject::affects( const Gaffer::Plug *input, AffectedPlugsContainer &o
 		input == filterPlug() ||
 		input == adjustBoundsPlug() ||
 		input == inPlug()->boundPlug() ||
-		input == inPlug()->objectPlug()
+		input == inPlug()->objectPlug() ||
+		input == outPlug()->childBoundsPlug()
 	)
 	{
 		outputs.push_back( outPlug()->boundPlug() );
@@ -133,7 +136,7 @@ void DeleteObject::hashBound( const ScenePath &path, const Gaffer::Context *cont
 		if( m & ( IECore::PathMatcher::ExactMatch | IECore::PathMatcher::DescendantMatch ) )
 		{
 			FilteredSceneProcessor::hashBound( path, context, parent, h );
-			h.append( outPlug()->childBoundsHash() );
+			outPlug()->childBoundsPlug()->hash( h );
 			if( !(m & IECore::PathMatcher::ExactMatch) )
 			{
 				inPlug()->objectPlug()->hash( h );
@@ -151,7 +154,7 @@ Imath::Box3f DeleteObject::computeBound( const ScenePath &path, const Gaffer::Co
 		const IECore::PathMatcher::Result m = filterValue( context );
 		if( m & ( IECore::PathMatcher::ExactMatch | IECore::PathMatcher::DescendantMatch ) )
 		{
-			Box3f result = outPlug()->childBounds();
+			Box3f result = outPlug()->childBoundsPlug()->getValue();
 			if( !(m & IECore::PathMatcher::ExactMatch) )
 			{
 				ConstObjectPtr o = inPlug()->objectPlug()->getValue();

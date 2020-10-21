@@ -68,6 +68,14 @@ class GAFFERIMAGE_API OpenColorIOTransform : public ColorProcessor
 
 		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::OpenColorIOTransform, OpenColorIOTransformTypeId, ColorProcessor );
 
+		/// Returns the OCIO processor for this node, taking into account
+		/// the current Gaffer context and the OCIO context specified by
+		/// `contextPlug()`. Returns nullptr if this node is a no-op.
+		OpenColorIO::ConstProcessorRcPtr processor() const;
+		/// Returns a hash that uniquely represents the result of calling
+		/// `processor()` in the current context.
+		IECore::MurmurHash processorHash() const;
+
 	protected :
 
 		OpenColorIOTransform( const std::string &name=defaultName<OpenColorIOTransform>(), bool withContextPlug=false );

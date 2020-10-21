@@ -36,6 +36,10 @@
 
 __import__( "GafferScene" )
 
+# GafferArnold makes use of OSL closure plugs, this ensures that the bindings
+# are always loaded for these, even if people only import GafferArnold
+__import__( "GafferOSL" )
+
 try :
 
 	# Make sure we import IECoreArnold and _GafferArnold
@@ -46,16 +50,20 @@ try :
 
 	import sys
 	import ctypes
-	originalDLOpenFlags = sys.getdlopenflags()
-	sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
+	import os
+
+	if os.name == "posix":
+		originalDLOpenFlags = sys.getdlopenflags()
+		sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
 
 	__import__( "IECoreArnold" )
 	from ._GafferArnold import *
 
 finally :
 
-	sys.setdlopenflags( originalDLOpenFlags )
-	del sys, ctypes, originalDLOpenFlags
+	if os.name == "posix":
+		sys.setdlopenflags( originalDLOpenFlags )
+		del sys, ctypes, originalDLOpenFlags
 
 from .ArnoldShaderBall import ArnoldShaderBall
 from .ArnoldTextureBake import ArnoldTextureBake
