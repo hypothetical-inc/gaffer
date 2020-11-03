@@ -81,7 +81,12 @@ for %%A in (%GAFFER_EXTENSION_PATHS%) do (
 	call :prependToPath "%%A\startup" GAFFER_STARTUP_PATHS
 )
 
-"%GAFFER_ROOT%"\bin\python.exe "%GAFFER_ROOT%"/bin/__gaffer.py %*
+if "%GAFFER_DEBUG%" NEQ "" (
+	%GAFFER_DEBUGGER% /debugexe "%GAFFER_ROOT%\bin\python.exe" "%GAFFER_ROOT%"/bin/__gaffer.py %*
+) else (
+	"%GAFFER_ROOT%"\bin\python.exe "%GAFFER_ROOT%"/bin/__gaffer.py %*
+)
+
 if %ERRORLEVEL% NEQ 0 (
 	echo "Error(s) running Gaffer"
 	exit /B %ERRORLEVEL%
