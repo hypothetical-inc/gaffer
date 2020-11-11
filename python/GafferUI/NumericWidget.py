@@ -281,7 +281,7 @@ class NumericWidget( GafferUI.TextWidget ) :
 
 		# update our validator based on the type of the value
 		numericType = type( value )
-		assert( numericType is int or numericType is float )
+		assert( numericType is int or numericType is long or numericType is float )
 		if self.__numericType is not numericType :
 
 			self.__numericType = numericType
