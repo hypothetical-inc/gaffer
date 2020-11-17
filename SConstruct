@@ -518,7 +518,8 @@ else:
 			"/GR", # enable RTTI
 			"/TP", # treat all files as c++ (vs C)
 			"/FC", # display full paths in diagnostics
-			"/EHsc\";\"/MP", # catch c++ exceptions only
+			"/EHsc", # catch c++ exceptions only
+			"/MP",
 			"/wd4910",	# disable warning C4910 (https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4910?view=vs-2019) generated many times by OpenEXR
 		]
 	)
