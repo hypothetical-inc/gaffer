@@ -519,7 +519,10 @@ else:
 			"/TP", # treat all files as c++ (vs C)
 			"/FC", # display full paths in diagnostics
 			"/EHsc", # catch c++ exceptions only
-			"/MP",
+			"/MP",  # enable multiprocessing of builds
+			"/permissive-", # disable permissive mode, which also enables standard compliant two phase name lookup
+			# required in when permissive mode is off, for defining constants like M_PI used by OpenVDB
+			"/D_USE_MATH_DEFINES",
 			"/wd4910",	# disable warning C4910 (https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4910?view=vs-2019) generated many times by OpenEXR
 		]
 	)
