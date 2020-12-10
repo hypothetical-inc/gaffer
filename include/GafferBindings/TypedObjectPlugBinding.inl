@@ -143,7 +143,8 @@ TypedObjectPlugClass<T, TWrapper>::TypedObjectPlugClass( const char *docString )
 	);
 	this->def( "defaultValue", &Detail::defaultValue<T>, ( boost::python::arg_( "_copy" ) = true ) );
 	this->def( "setValue", Detail::setValue<T>, ( boost::python::arg_( "value" ), boost::python::arg_( "_copy" ) = true ) );
-	this->def( "getValue", Detail::getValue<T>, ( boost::python::arg_( "_precomputedHash" ) = boost::python::object(), boost::python::arg_( "_copy" ) = true ) );
+	boost::python::object b = boost::python::object();
+	this->def( "getValue", Detail::getValue<T>, ( boost::python::arg_( "_precomputedHash" ) = b, boost::python::arg_( "_copy" ) = true ) );
 
 	boost::python::scope s = *this;
 
