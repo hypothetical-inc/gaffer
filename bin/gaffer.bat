@@ -6,6 +6,8 @@ set GAFFER_ROOT=%~dp0%..
 
 set HOME=%USERPROFILE%
 
+set GAFFER_JEMALLOC=0
+
 call :prependToPath "%GAFFER_ROOT%\glsl" IECOREGL_SHADER_PATHS
 call :prependToPath "%GAFFER_ROOT%\glsl" IECOREGL_SHADER_INCLUDE_PATHS
 
