@@ -100,6 +100,9 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 			"fileFormat" : IECore.StringData( "openexr" ),
 			"dataType" : IECore.StringData( "float" ),
 		} )
+		if hasattr( IECoreImage, "OpenImageIOAlgo" ) and IECoreImage.OpenImageIOAlgo.version() >= 20206 :
+			expectedMetadata['oiio:subimages'] = IECore.IntData( 1 )
+
 		self.assertEqual( n["out"]["metadata"].getValue(), expectedMetadata )
 
 		channelNames = n["out"]["channelNames"].getValue()
@@ -512,6 +515,19 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 
 				self.assertImagesEqual( r["out"], offsetIn["out"], ignoreMetadata = True )
 
+	def testFileNameContext( self ) :
+
+		s = Gaffer.ScriptNode()
+		s["reader"] = GafferImage.OpenImageIOReader()
+
+		s["expression"] = Gaffer.Expression()
+		s["expression"].setExpression( 'parent["reader"]["fileName"] = "%s"' % self.fileName )
+
+		with Gaffer.ContextMonitor( root = s["expression"] ) as cm :
+			GafferImage.ImageAlgo.tiles( s["reader"]["out"] )
+
+		self.assertEqual( set( cm.combinedStatistics().variableNames() ), set( ['frame', 'framesPerSecond'] ) )
+
 	def testMultipartRead( self ) :
 
 		rgbReader = GafferImage.OpenImageIOReader()
@@ -616,6 +632,14 @@ class OpenImageIOReaderTest( GafferImageTest.ImageTestCase ) :
 		self.assertNotEqual( h2, h3 )
 		self.assertEqual( h1, h4 )
 
+	def testOpenFilesLimit( self ) :
+
+		l = GafferImage.OpenImageIOReader.getOpenFilesLimit()
+		try :
+			GafferImage.OpenImageIOReader.setOpenFilesLimit( l + 1 )
+			self.assertEqual( GafferImage.OpenImageIOReader.getOpenFilesLimit(), l + 1 )
+		finally :
+			GafferImage.OpenImageIOReader.setOpenFilesLimit( l )
 
 if __name__ == "__main__":
 	unittest.main()

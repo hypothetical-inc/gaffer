@@ -45,7 +45,7 @@ using namespace Gaffer;
 
 size_t NameSwitch::g_firstPlugIndex = 0;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( NameSwitch );
+GAFFER_NODE_DEFINE_TYPE( NameSwitch );
 
 NameSwitch::NameSwitch( const std::string &name )
 	:	Switch( name )
@@ -81,7 +81,7 @@ void NameSwitch::setup( const Plug *plug )
 		Plug::In,
 		element,
 		2,
-		Imath::limits<size_t>::max(),
+		std::numeric_limits<size_t>::max(),
 		Plug::Default,
 		/* resizeWhenInputsChange = */ false
 	);

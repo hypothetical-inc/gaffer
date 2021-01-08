@@ -64,7 +64,7 @@ class GAFFERIMAGE_API Merge : public FlatImageProcessor
 		Merge( const std::string &name=defaultName<Merge>() );
 		~Merge() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::Merge, MergeTypeId, FlatImageProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferImage::Merge, MergeTypeId, FlatImageProcessor );
 
 		enum Operation
 		{
@@ -104,10 +104,6 @@ class GAFFERIMAGE_API Merge : public FlatImageProcessor
 		IECore::ConstFloatVectorDataPtr computeChannelData( const std::string &channelName, const Imath::V2i &tileOrigin, const Gaffer::Context *context, const ImagePlug *parent ) const override;
 
 	private :
-
-		// Performs the merge operation using the functor 'F'.
-		template<typename F>
-		IECore::ConstFloatVectorDataPtr merge( F f, const std::string &channelName, const Imath::V2i &tileOrigin ) const;
 
 		static size_t g_firstPlugIndex;
 

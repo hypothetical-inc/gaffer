@@ -52,7 +52,7 @@ class GAFFERSCENE_API Duplicate : public BranchCreator
 		Duplicate( const std::string &name=defaultName<Duplicate>() );
 		~Duplicate() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Duplicate, DuplicateTypeId, BranchCreator );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::Duplicate, DuplicateTypeId, BranchCreator );
 
 		Gaffer::StringPlug *targetPlug();
 		const Gaffer::StringPlug *targetPlug() const;
@@ -92,6 +92,10 @@ class GAFFERSCENE_API Duplicate : public BranchCreator
 		bool affectsBranchChildNames( const Gaffer::Plug *input ) const override;
 		void hashBranchChildNames( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
 		IECore::ConstInternedStringVectorDataPtr computeBranchChildNames( const ScenePath &parentPath, const ScenePath &branchPath, const Gaffer::Context *context ) const override;
+
+		bool affectsBranchSetNames( const Gaffer::Plug *input ) const override;
+		void hashBranchSetNames( const ScenePath &parentPath, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;
+		IECore::ConstInternedStringVectorDataPtr computeBranchSetNames( const ScenePath &parentPath, const Gaffer::Context *context ) const override;
 
 		bool affectsBranchSet( const Gaffer::Plug *input ) const override;
 		void hashBranchSet( const ScenePath &parentPath, const IECore::InternedString &setName, const Gaffer::Context *context, IECore::MurmurHash &h ) const override;

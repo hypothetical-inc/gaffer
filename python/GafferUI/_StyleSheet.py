@@ -100,7 +100,7 @@ _styleColors = {
 	"errorColor" : (255, 85, 85),
 	"animatedColor" : (128, 152, 94),
 
-	"foregroundError" : ( 196, 80, 80 ),
+	"foregroundError" : ( 255, 80, 80 ),
 	"foregroundWarning" : ( 239, 129, 24 ),
 	"foregroundInfo" : ( 128, 179, 254 ),
 	"foregroundDebug" : ( 163, 163, 163 ),
@@ -119,6 +119,13 @@ _styleColors = {
 	"tintDarker" :          ( 0, 0, 0, 20 ),
 	"tintDarkerStrong" :    ( 0, 0, 0, 40 ),
 	"tintDarkerStronger" :    ( 0, 0, 0, 70 ),
+
+	# Value Inspectors
+
+	"genericEditTint" : ( 255, 255, 255, 20 ),
+	"editScopeEditTint" : ( 48, 100, 153, 60 ),
+	"editableTint" : ( 0, 0, 0, 20 ),
+	"warningTint" : ( 76, 61, 31 )
 }
 
 _themeVariables = {
@@ -130,7 +137,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
 }
 
 for k, v in _styleColors.items() :
@@ -676,6 +683,40 @@ _styleSheet = string.Template(
 
 	}
 
+	/* The interaction between stylesheets and QTabBar sub controls is somewhat */
+	/* 'delicate'. Some selectors only seem to support a sub-set of properties. */
+	/* The presentation of the selectors below isn't ideal, but represents a    */
+	/* pragmatic compromise that was more readily achievable.                   */
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::scroller {
+		width: 40px;
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"]::tear {
+		image: none;
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"] QToolButton {
+		background: $backgroundHighlight;
+		border: 1px solid $backgroundDark;
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"] QToolButton::left-arrow {
+		image: url($GAFFER_ROOT/graphics/arrowLeft10.png);
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"] QToolButton::left-arrow:disabled {
+		image: url($GAFFER_ROOT/graphics/arrowLeftDisabled10.png);
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"] QToolButton::right-arrow { /* the arrow mark in the tool buttons */
+		image: url($GAFFER_ROOT/graphics/arrowRight10.png);
+	}
+
+	QTabBar[gafferClass="GafferUI.SpreadsheetUI._SectionChooser"] QToolButton::right-arrow:disabled { /* the arrow mark in the tool buttons */
+		image: url($GAFFER_ROOT/graphics/arrowRightDisabled10.png);
+	}
+
 	/* Splitters */
 	/* ========= */
 
@@ -746,6 +787,18 @@ _styleSheet = string.Template(
 	QCheckBox#gafferCollapsibleToggle::indicator:checked:hover,
 	QCheckBox#gafferCollapsibleToggle::indicator:checked:focus {
 		image: url($GAFFER_ROOT/graphics/collapsibleArrowRightHover.png);
+	}
+
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:unchecked,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:unchecked:hover,
+	*[gafferValueChanged="true"] > CheckBox#gafferCollapsibleToggle::indicator:unchecked:focus {
+		image: url($GAFFER_ROOT/graphics/collapsibleArrowDownValueChanged.png);
+	}
+
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked:hover,
+	*[gafferValueChanged="true"] > QCheckBox#gafferCollapsibleToggle::indicator:checked:focus {
+		image: url($GAFFER_ROOT/graphics/collapsibleArrowRightValueChanged.png);
 	}
 
 	QHeaderView {
@@ -1110,7 +1163,7 @@ _styleSheet = string.Template(
 
 	/* frame */
 
-	*[gafferBorderStyle="None"] {
+	*[gafferBorderStyle="None_"] {
 		border: none;
 		border-radius: $widgetCornerRadius;
 		padding: 2px;
@@ -1324,12 +1377,21 @@ _styleSheet = string.Template(
 	*[gafferClass="GafferSceneUI.TransformToolUI._SelectionWidget"],
 	*[gafferClass="GafferSceneUI.CropWindowToolUI._StatusWidget"],
 	*[gafferClass="GafferUI.EditScopeUI.EditScopePlugValueWidget"] > QFrame,
-	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] > QFrame
+	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] > QFrame,
+	*[gafferClass="GafferSceneUI._SceneViewInspector"] > QFrame
 	{
-		background: rgba( 42, 42, 42, 200 );
-		border-color: rgba( 30, 30, 30, 200 );
+		background: rgba( 42, 42, 42, 240 );
+		border-color: rgba( 30, 30, 30, 240 );
 		border-radius: 2px;
 		padding: 2px;
+	}
+
+	*[gafferClass="GafferUI.EditScopeUI.EditScopePlugValueWidget"][editScopeActive="true"] QPushButton[gafferWithFrame="true"][gafferMenuIndicator="true"]
+	{
+		border: 1px solid rgb( 46, 75, 107 );
+		border-top-color: rgb( 75, 113, 155 );
+		border-left-color: rgb( 75, 113, 155 );
+		background-color : qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgba( 69, 113, 161 ), stop: 0.1 rgb( 48, 99, 153 ), stop: 0.90 rgb( 54, 88, 125 ));
 	}
 
 	*[gafferClass="GafferSceneUI.InteractiveRenderUI._ViewRenderControlUI"] QPushButton[gafferWithFrame="true"] {
@@ -1445,8 +1507,49 @@ _styleSheet = string.Template(
 
 	/* SceneInspector */
 
-	*[gafferClass="GafferSceneUI.SceneInspector"] *[gafferAlternate="true"] {
-		background: $tintLighterSubtle;
+	*[gafferClass="GafferSceneUI._SceneViewInspector"] > QFrame
+	{
+		margin-right: 1px;
+	}
+
+	*[gafferClass="GafferSceneUI._SceneViewInspector._AttributeGroup"] > QLabel
+	{
+		font-weight: bold;
+	}
+
+	*[gafferClass="GafferSceneUI._SceneViewInspector._ValueWidget"] {
+		font-family: $monospaceFontFamily;
+		border-radius: 10px;
+		background-color: $tintDarkerSubtle;
+	}
+
+	QLabel[inspectorValueState="EditScopeEdit"] {
+		background-color: $editScopeEditTint;
+		font-weight: bold;
+	}
+
+	QLabel[inspectorValueState="GenericEdit"] {
+		background-color : $genericEditTint;
+		font-weight: bold;
+	}
+
+	QLabel[inspectorValueState="Editable" ] {
+		background-color: $editableTint;
+	}
+
+	QLabel[inspectorValueHasWarnings="true" ] {
+		border: 2px solid $warningTint;
+	}
+
+	/* Some locations don't yet have edits in the chosen Edit Scope */
+	/* This should be a mix of EditScopeEdit and Editable appearances */
+	QLabel[inspectorValueState="SomeEdited" ] {
+		background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 $editScopeEditTint, stop:0.49 $editScopeEditTint, stop:0.51 $editableTint, stop:1 $editableTint);
+	}
+
+	/* Mix of NodeEdit and EditScopeEdit */
+	QLabel[inspectorValueState="MixedEdits" ] {
+		background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 $editScopeEditTint, stop:0.49 $editScopeEditTint, stop:0.51 $genericEditTint, stop:1 $genericEditTint);
 	}
 
 	/* PythonEditor */

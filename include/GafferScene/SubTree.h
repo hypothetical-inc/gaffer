@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_SUBTREE_H
 #define GAFFERSCENE_SUBTREE_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 #include "Gaffer/StringPlug.h"
@@ -57,7 +58,7 @@ class GAFFERSCENE_API SubTree : public SceneProcessor
 		SubTree( const std::string &name=defaultName<SubTree>() );
 		~SubTree() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::SubTree, SubTreeTypeId, SceneProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::SubTree, SubTreeTypeId, SceneProcessor );
 
 		Gaffer::StringPlug *rootPlug();
 		const Gaffer::StringPlug *rootPlug() const;

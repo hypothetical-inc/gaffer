@@ -42,7 +42,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( CopyAttributes );
+GAFFER_NODE_DEFINE_TYPE( CopyAttributes );
 
 size_t CopyAttributes::g_firstPlugIndex = 0;
 
@@ -119,7 +119,8 @@ void CopyAttributes::affects( const Gaffer::Plug *input, AffectedPlugsContainer 
 		input == filterPlug() ||
 		input == attributesPlug() ||
 		input == sourceLocationPlug() ||
-		input == deleteExistingPlug()
+		input == deleteExistingPlug() ||
+		input == sourcePlug()->existsPlug()
 	)
 	{
 		outputs.push_back( outPlug()->attributesPlug() );

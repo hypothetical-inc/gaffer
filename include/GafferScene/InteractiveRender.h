@@ -63,7 +63,7 @@ class GAFFERSCENE_API InteractiveRender : public Gaffer::ComputeNode
 		InteractiveRender( const std::string &name=defaultName<InteractiveRender>() );
 		~InteractiveRender() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::InteractiveRender, GafferScene::InteractiveRenderTypeId, Gaffer::ComputeNode );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::InteractiveRender, GafferScene::InteractiveRenderTypeId, Gaffer::ComputeNode );
 
 		enum State
 		{
@@ -109,6 +109,8 @@ class GAFFERSCENE_API InteractiveRender : public Gaffer::ComputeNode
 
 		Gaffer::ValuePlug::CachePolicy computeCachePolicy( const Gaffer::ValuePlug *output ) const override;
 
+		virtual bool acceptsInput( const Gaffer::Plug *plug, const Gaffer::Plug *inputPlug ) const override;
+
 	private :
 
 		ScenePlug *adaptedInPlug();
@@ -120,7 +122,7 @@ class GAFFERSCENE_API InteractiveRender : public Gaffer::ComputeNode
 		void messagesChanged();
 		static void messagesChangedUI();
 
-		void plugDirtied( const Gaffer::Plug *plug );
+		void plugSet( const Gaffer::Plug *plug );
 
 		void update();
 		Gaffer::ConstContextPtr effectiveContext();

@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_IMAGETRANSFORM_H
 #define GAFFERSCENE_IMAGETRANSFORM_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/FlatImageProcessor.h"
 
 namespace Gaffer
@@ -59,7 +60,7 @@ class GAFFERIMAGE_API ImageTransform : public FlatImageProcessor
 		ImageTransform( const std::string &name=defaultName<ImageTransform>() );
 		~ImageTransform() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::ImageTransform, ImageTransformTypeId, FlatImageProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferImage::ImageTransform, ImageTransformTypeId, FlatImageProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

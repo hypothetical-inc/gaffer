@@ -50,7 +50,7 @@ namespace GafferArnold
 
 class ArnoldShader;
 
-class GAFFERSCENE_API ArnoldColorManager : public GafferScene::GlobalsProcessor
+class GAFFERARNOLD_API ArnoldColorManager : public GafferScene::GlobalsProcessor
 {
 
 	public :
@@ -58,7 +58,7 @@ class GAFFERSCENE_API ArnoldColorManager : public GafferScene::GlobalsProcessor
 		ArnoldColorManager( const std::string &name=defaultName<ArnoldColorManager>() );
 		~ArnoldColorManager() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferArnold::ArnoldColorManager, ArnoldColorManagerTypeId, GafferScene::GlobalsProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferArnold::ArnoldColorManager, ArnoldColorManagerTypeId, GafferScene::GlobalsProcessor );
 
 		Gaffer::Plug *parametersPlug();
 		const Gaffer::Plug *parametersPlug() const;

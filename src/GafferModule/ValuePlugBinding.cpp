@@ -83,6 +83,12 @@ bool isSetToDefault( ValuePlug *plug )
 	return plug->isSetToDefault();
 }
 
+void resetDefault( ValuePlug *plug )
+{
+	IECorePython::ScopedGILRelease r;
+	plug->resetDefault();
+}
+
 IECore::MurmurHash hash( ValuePlug *plug )
 {
 	// we use a GIL release here to prevent a lock in the case where this triggers a graph
@@ -117,6 +123,8 @@ void GafferModule::bindValuePlug()
 		.def( "setFrom", setFrom )
 		.def( "setToDefault", setToDefault )
 		.def( "isSetToDefault", isSetToDefault )
+		.def( "resetDefault", resetDefault )
+		.def( "defaultHash", &ValuePlug::defaultHash )
 		.def( "hash", hash )
 		.def( "hash", hash2 )
 		.def( "getCacheMemoryLimit", &ValuePlug::getCacheMemoryLimit )
@@ -133,7 +141,18 @@ void GafferModule::bindValuePlug()
 		.staticmethod( "setHashCacheSizeLimit" )
 		.def( "clearHashCache", &ValuePlug::clearHashCache )
 		.staticmethod( "clearHashCache" )
+		.def( "getHashCacheMode", &ValuePlug::getHashCacheMode )
+		.staticmethod( "getHashCacheMode" )
+		.def( "setHashCacheMode", &ValuePlug::setHashCacheMode )
+		.staticmethod( "setHashCacheMode" )
+		.def( "dirtyCount", &ValuePlug::dirtyCount )
 		.def( "__repr__", &repr )
+	;
+
+	enum_<ValuePlug::HashCacheMode>( "HashCacheMode" )
+		.value( "Standard", ValuePlug::HashCacheMode::Standard )
+		.value( "Checked", ValuePlug::HashCacheMode::Checked )
+		.value( "Legacy", ValuePlug::HashCacheMode::Legacy )
 	;
 
 	enum_<ValuePlug::CachePolicy>( "CachePolicy" )

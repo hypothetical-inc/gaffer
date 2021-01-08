@@ -248,7 +248,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 				udimOffset = i["udim"].value - 1001
 				parent["__cameraTweaks"]["tweaks"]["resolution"]["value"] = imath.V2i( i["resolution"].value )
 				parent["__cameraTweaks"]["tweaks"]["u_offset"]["value"] = -( udimOffset % 10 )
-				parent["__cameraTweaks"]["tweaks"]["v_offset"]["value"] = -( udimOffset / 10 )
+				parent["__cameraTweaks"]["tweaks"]["v_offset"]["value"] = -( udimOffset // 10 )
 				parent["__cameraTweaks"]["tweaks"]["mesh"]["value"] = i["mesh"].value
 				parent["__cameraTweaks"]["tweaks"]["uv_set"]["value"] = parent["uvSet"] if parent["uvSet"] != "uv" else ""
 				"""
@@ -458,7 +458,7 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		), "python" )
 
 		self["__SizeMaxExpression"] = Gaffer.Expression()
-		self["__SizeMaxExpression"].setExpression( 
+		self["__SizeMaxExpression"].setExpression(
 			"parent.__SizeLoop.next = max( int( parent.__imageSize ), parent.__SizeLoop.previous )",
 			"OSL"
 		)

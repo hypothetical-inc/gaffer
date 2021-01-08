@@ -40,6 +40,7 @@
 #include "GafferImage/OpenImageIOReader.h"
 
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 
 #include "OpenEXR/ImathFun.h"
 
@@ -88,7 +89,7 @@ class FrameMaskScope : public Context::EditableScope
 
 				if( m_mode == ImageReader::ClampToFrame )
 				{
-					setFrame( clamp( frame, startFrame, endFrame ) );
+					setFrame( Imath::clamp( frame, startFrame, endFrame ) );
 				}
 		}
 
@@ -109,7 +110,7 @@ class FrameMaskScope : public Context::EditableScope
 // ImageReader implementation
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ImageReader );
+GAFFER_NODE_DEFINE_TYPE( ImageReader );
 
 size_t ImageReader::g_firstChildIndex = 0;
 
@@ -118,7 +119,7 @@ ImageReader::ImageReader( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstChildIndex );
 	addChild(
-		new StringPlug(
+		new FileSystemPathPlug(
 			"fileName", Plug::In, "",
 			/* flags */ Plug::Default,
 			/* substitutions */ IECore::StringAlgo::AllSubstitutions & ~IECore::StringAlgo::FrameSubstitutions
@@ -167,14 +168,14 @@ ImageReader::~ImageReader()
 {
 }
 
-StringPlug *ImageReader::fileNamePlug()
+FileSystemPathPlug *ImageReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
-const StringPlug *ImageReader::fileNamePlug() const
+const FileSystemPathPlug *ImageReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstChildIndex );
+	return getChild<FileSystemPathPlug>( g_firstChildIndex );
 }
 
 IntPlug *ImageReader::refreshCountPlug()

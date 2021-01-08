@@ -339,14 +339,27 @@ plugsMetadata = {
 
 	],
 
+	"renderSettingOverrides.*" : [
+
+		"nameValuePlugPlugValueWidget:ignoreNamePlug", True,
+
+	],
+
 	"visualiserAttributes" : [
 
 			"description",
 			"""
-			Attributes that affect the visualisation of this Light in the Viewer.
+			Attributes that affect the visualisation of this camera in the Viewer.
 			""",
 
 			"layout:section", "Visualisation",
+			"compoundDataPlugValueWidget:editable", False,
+
+	],
+
+	"visualiserAttributes.*" : [
+
+		"nameValuePlugPlugValueWidget:ignoreNamePlug", True,
 
 	],
 

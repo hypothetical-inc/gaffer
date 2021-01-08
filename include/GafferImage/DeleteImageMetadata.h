@@ -39,6 +39,8 @@
 
 #include "GafferImage/MetadataProcessor.h"
 
+#include "Gaffer/StringPlug.h"
+
 namespace GafferImage
 {
 
@@ -50,7 +52,7 @@ class GAFFERIMAGE_API DeleteImageMetadata : public MetadataProcessor
 		DeleteImageMetadata( const std::string &name=defaultName<DeleteImageMetadata>() );
 		~DeleteImageMetadata() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::DeleteImageMetadata, DeleteImageMetadataTypeId, MetadataProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferImage::DeleteImageMetadata, DeleteImageMetadataTypeId, MetadataProcessor );
 
 		Gaffer::StringPlug *namesPlug();
 		const Gaffer::StringPlug *namesPlug() const;

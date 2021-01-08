@@ -39,9 +39,13 @@ import gc
 import sys
 import time
 import tempfile
-import resource
 import collections
 import six
+
+if sys.platform != "win32":
+	import resource
+else:
+	import subprocess
 
 import IECore
 
@@ -119,10 +123,29 @@ class stats( Gaffer.Application ) :
 					allowEmptyList = True,
 				),
 
+				IECore.StringVectorParameter(
+					name = "context",
+					description = "The Context used during stats evaluation. Note that the frames "
+						"parameter will be used to vary the Context frame entry. Arguments are specified "
+						"in the same format as used by the `execute` app.",
+					defaultValue = IECore.StringVectorData( [] ),
+					userData = {
+						"parser" : {
+							"acceptFlags" : IECore.BoolData( True ),
+						},
+					},
+				),
+
 				IECore.BoolParameter(
 					name = "nodeSummary",
 					description = "Turns on a summary of nodes in the script.",
 					defaultValue = True,
+				),
+
+				IECore.BoolParameter(
+					name = "serialise",
+					description = "Reports serialisation time for the script.",
+					defaultValue = False,
 				),
 
 				IECore.StringParameter(
@@ -332,6 +355,9 @@ class stats( Gaffer.Application ) :
 
 			self.__writeNodes( script )
 
+		if args["serialise"].value :
+			self.__serialise( script, args )
+
 		if args["scene"].value :
 
 			self.__writeScene( script, args )
@@ -456,11 +482,17 @@ class stats( Gaffer.Application ) :
 
 	def __context( self, script, args ) :
 
+		context = Gaffer.Context( script.context() )
+
+		for i in range( 0, len( args["context"] ), 2 ) :
+			entry = args["context"][i].lstrip( "-" )
+			context[entry] = eval( args["context"][i+1] )
+
 		if args["canceller"].value :
 			self.__canceller = IECore.Canceller()
-			return Gaffer.Context( script.context(), self.__canceller )
+			return Gaffer.Context( context, self.__canceller )
 		else :
-			return Gaffer.Context( script.context() )
+			return context
 
 	def __frames( self, script, args ) :
 
@@ -469,6 +501,18 @@ class stats( Gaffer.Application ) :
 			frames = [ script.context().getFrame() ]
 
 		return frames
+
+	def __serialise( self, script, args ) :
+
+		memory = _Memory.maxRSS()
+		# We don't expect serialisation to trigger any processes that the monitors would see,
+		# but we definitely want to know if they do.
+		with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
+			with _Timer() as timer :
+				script.serialise()
+
+		self.__timers["Serialisation"] = timer
+		self.__memory["Serialisation"] = _Memory.maxRSS() - memory
 
 	def __writeScene( self, script, args ) :
 
@@ -490,10 +534,12 @@ class stats( Gaffer.Application ) :
 		if args["contextSanitiser"].value :
 			contextSanitiser = GafferSceneTest.ContextSanitiser()
 
+		frames = self.__frames( script, args )
+
 		def computeScene() :
 
 			with self.__context( script, args ) as context :
-				for frame in self.__frames( script, args ) :
+				for frame in frames :
 					context.setFrame( frame )
 
 					if isinstance( scene, GafferDispatch.TaskNode.TaskPlug ) :
@@ -517,9 +563,9 @@ class stats( Gaffer.Application ) :
 			computeScene()
 
 		memory = _Memory.maxRSS()
-		with _Timer() as sceneTimer :
-			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
-				with contextSanitiser :
+		with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
+			with contextSanitiser :
+				with _Timer() as sceneTimer :
 					computeScene()
 
 		self.__timers["Scene generation"] = sceneTimer
@@ -546,10 +592,12 @@ class stats( Gaffer.Application ) :
 		if args["contextSanitiser"].value :
 			contextSanitiser = GafferImageTest.ContextSanitiser()
 
+		frames = self.__frames( script, args )
+
 		def computeImage() :
 
 			with self.__context( script, args ) as context :
-				for frame in self.__frames( script, args ) :
+				for frame in frames :
 					context.setFrame( frame )
 					GafferImageTest.processTiles( image )
 
@@ -557,9 +605,9 @@ class stats( Gaffer.Application ) :
 			computeImage()
 
 		memory = _Memory.maxRSS()
-		with _Timer() as imageTimer :
-			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
-				with contextSanitiser :
+		with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
+			with contextSanitiser :
+				with _Timer() as imageTimer :
 					computeImage()
 
 		self.__timers["Image generation"] = imageTimer
@@ -593,7 +641,7 @@ class stats( Gaffer.Application ) :
 		memory = _Memory.maxRSS()
 		with _Timer() as taskTimer :
 			with self.__performanceMonitor or _NullContextManager(), self.__contextMonitor or _NullContextManager(), self.__vtuneMonitor or _NullContextManager() :
-				with Gaffer.Context( script.context() ) as context :
+				with self.__context( script, args ) as context :
 					for frame in self.__frames( script, args ) :
 						context.setFrame( frame )
 						dispatcher.dispatch( [ task ] )
@@ -702,6 +750,9 @@ class _Memory( object ) :
 
 		if sys.platform == "darwin" :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss )
+		elif sys.platform == "win32" :
+			result = subprocess.check_output( ["wmic", "process", "where", "processid={}".format(os.getpid()), "get", "PeakWorkingSetSize"] )
+			return cls( long( result.split()[1] ) * 1024 )
 		else :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss * 1024 )
 

@@ -44,6 +44,15 @@
 #include "IECore/AngleConversion.h"
 #include "IECore/SimpleTypedData.h"
 
+#ifdef _MSC_VER
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+#endif
+
 using namespace std;
 using namespace Imath;
 using namespace IECoreGLPreview;

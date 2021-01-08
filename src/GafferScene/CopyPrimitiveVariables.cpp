@@ -48,7 +48,7 @@ using namespace IECoreScene;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( CopyPrimitiveVariables );
+GAFFER_NODE_DEFINE_TYPE( CopyPrimitiveVariables );
 
 size_t CopyPrimitiveVariables::g_firstPlugIndex = 0;
 
@@ -100,7 +100,8 @@ bool CopyPrimitiveVariables::affectsProcessedObject( const Gaffer::Plug *input )
 	return Deformer::affectsProcessedObject( input ) ||
 		input == sourcePlug()->objectPlug() ||
 		input == primitiveVariablesPlug() ||
-		input == sourceLocationPlug()
+		input == sourceLocationPlug() ||
+		input == sourcePlug()->existsPlug()
 	;
 }
 

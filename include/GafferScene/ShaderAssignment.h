@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_SHADERASSIGNMENT_H
 #define GAFFERSCENE_SHADERASSIGNMENT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/AttributeProcessor.h"
 #include "GafferScene/ShaderPlug.h"
 
@@ -52,7 +53,7 @@ class GAFFERSCENE_API ShaderAssignment : public AttributeProcessor
 		ShaderAssignment( const std::string &name=defaultName<ShaderAssignment>() );
 		~ShaderAssignment() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::ShaderAssignment, ShaderAssignmentTypeId, AttributeProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::ShaderAssignment, ShaderAssignmentTypeId, AttributeProcessor );
 
 		GafferScene::ShaderPlug *shaderPlug();
 		const GafferScene::ShaderPlug *shaderPlug() const;

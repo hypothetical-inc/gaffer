@@ -43,7 +43,7 @@ using namespace Imath;
 using namespace Gaffer;
 using namespace GafferArnold;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ArnoldAttributes );
+GAFFER_NODE_DEFINE_TYPE( ArnoldAttributes );
 
 ArnoldAttributes::ArnoldAttributes( const std::string &name )
 	:	GafferScene::Attributes( name )
@@ -76,7 +76,7 @@ ArnoldAttributes::ArnoldAttributes( const std::string &name )
 
 	// Subdivision parameters
 
-	attributes->addChild( new Gaffer::NameValuePlug( "ai:polymesh:subdiv_iterations", new IntPlug( "value", Plug::In, 1, 1 ), false, "subdivIterations" ) );
+	attributes->addChild( new Gaffer::NameValuePlug( "ai:polymesh:subdiv_iterations", new IntPlug( "value", Plug::In, 1, 0 ), false, "subdivIterations" ) );
 	attributes->addChild( new Gaffer::NameValuePlug( "ai:polymesh:subdiv_adaptive_error", new FloatPlug( "value", Plug::In, 0.0f, 0.0f ), false, "subdivAdaptiveError" ) );
 	attributes->addChild( new Gaffer::NameValuePlug( "ai:polymesh:subdiv_adaptive_metric", new StringPlug( "value", Plug::In, "auto" ), false, "subdivAdaptiveMetric" ) );
 	attributes->addChild( new Gaffer::NameValuePlug( "ai:polymesh:subdiv_adaptive_space", new StringPlug( "value", Plug::In, "raster" ), false, "subdivAdaptiveSpace" ) );

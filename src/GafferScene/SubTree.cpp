@@ -48,7 +48,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SubTree );
+GAFFER_NODE_DEFINE_TYPE( SubTree );
 
 size_t SubTree::g_firstPlugIndex = 0;
 
@@ -58,6 +58,8 @@ SubTree::SubTree( const std::string &name )
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "root", Plug::In, "" ) );
 	addChild( new BoolPlug( "includeRoot", Plug::In, false ) );
+
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 
 	// Fast pass-throughs for things we don't modify.
 	outPlug()->globalsPlug()->setInput( inPlug()->globalsPlug() );
@@ -92,20 +94,45 @@ void SubTree::affects( const Plug *input, AffectedPlugsContainer &outputs ) cons
 {
 	SceneProcessor::affects( input, outputs );
 
-	if( input->parent<ScenePlug>() == inPlug() )
-	{
-		outputs.push_back( outPlug()->getChild<ValuePlug>( input->getName() ) );
-	}
-	else if( input == rootPlug() || input == includeRootPlug() )
+	const bool affectsSourcePath = input == rootPlug() || input == includeRootPlug() || input == inPlug()->existsPlug();
+
+	if(
+		affectsSourcePath ||
+		input == inPlug()->boundPlug() ||
+		input == outPlug()->childBoundsPlug()
+	)
 	{
 		outputs.push_back( outPlug()->boundPlug() );
-		outputs.push_back( outPlug()->transformPlug() );
-		outputs.push_back( outPlug()->attributesPlug() );
-		outputs.push_back( outPlug()->objectPlug() );
-		outputs.push_back( outPlug()->childNamesPlug() );
-		outputs.push_back( outPlug()->setPlug() );
 	}
 
+	if( affectsSourcePath || input == inPlug()->transformPlug() )
+	{
+		outputs.push_back( outPlug()->transformPlug() );
+	}
+
+	if( affectsSourcePath || input == inPlug()->attributesPlug() )
+	{
+		outputs.push_back( outPlug()->attributesPlug() );
+	}
+
+	if( affectsSourcePath || input == inPlug()->objectPlug() )
+	{
+		outputs.push_back( outPlug()->objectPlug() );
+	}
+
+	if( affectsSourcePath || input == inPlug()->childNamesPlug() )
+	{
+		outputs.push_back( outPlug()->childNamesPlug() );
+	}
+
+	if(
+		input == inPlug()->setPlug() ||
+		input == rootPlug() ||
+		input == includeRootPlug()
+	)
+	{
+		outputs.push_back( outPlug()->setPlug() );
+	}
 }
 
 void SubTree::hashBound( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const
@@ -118,7 +145,7 @@ void SubTree::hashBound( const ScenePath &path, const Gaffer::Context *context, 
 			h = inPlug()->boundHash( source );
 			break;
 		case CreateRoot :
-			h = parent->childBoundsHash();
+			h = parent->childBoundsPlug()->hash();
 			break;
 		case EmptyRoot :
 			SceneProcessor::hashBound( path, context, parent, h );
@@ -135,7 +162,7 @@ Imath::Box3f SubTree::computeBound( const ScenePath &path, const Gaffer::Context
 		case Default :
 			return inPlug()->bound( source );
 		case CreateRoot :
-			return parent->childBounds();
+			return parent->childBoundsPlug()->getValue();
 		default : // EmptyRoot
 			return Imath::Box3f();
 	}

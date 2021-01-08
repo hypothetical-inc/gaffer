@@ -48,7 +48,7 @@ using namespace IECoreScene;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Grid );
+GAFFER_NODE_DEFINE_TYPE( Grid );
 
 size_t Grid::g_firstPlugIndex = 0;
 static InternedString g_gridLinesName( "gridLines" );
@@ -74,6 +74,7 @@ Grid::Grid( const std::string &name )
 	addChild( new FloatPlug( "centerPixelWidth", Plug::In, 1.0f, 0.01f ) );
 	addChild( new FloatPlug( "borderPixelWidth", Plug::In, 1.0f, 0.01f ) );
 
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 }
 
 Grid::~Grid()
@@ -184,20 +185,30 @@ void Grid::affects( const Plug *input, AffectedPlugsContainer &outputs ) const
 {
 	SceneNode::affects( input, outputs );
 
-	if( input == namePlug() )
+	if(
+		input == outPlug()->childBoundsPlug() ||
+		dimensionsPlug()->isAncestorOf( input )
+	)
 	{
-		outputs.push_back( outPlug()->childNamesPlug() );
+		outputs.push_back( outPlug()->boundPlug() );
 	}
-	else if( transformPlug()->isAncestorOf( input ) )
+
+	if( transformPlug()->isAncestorOf( input ) )
 	{
 		outputs.push_back( outPlug()->transformPlug() );
 	}
-	else if( dimensionsPlug()->isAncestorOf( input ) )
+
+	if(
+		input == gridPixelWidthPlug() ||
+		input == centerPixelWidthPlug() ||
+		input == borderPixelWidthPlug()
+	)
 	{
-		outputs.push_back( outPlug()->boundPlug() );
-		outputs.push_back( outPlug()->objectPlug() );
+		outputs.push_back( outPlug()->attributesPlug() );
 	}
-	else if(
+
+	if(
+		dimensionsPlug()->isAncestorOf( input ) ||
 		input == spacingPlug() ||
 		input->parent<Plug>() == gridColorPlug() ||
 		input->parent<Plug>() == centerColorPlug() ||
@@ -206,13 +217,10 @@ void Grid::affects( const Plug *input, AffectedPlugsContainer &outputs ) const
 	{
 		outputs.push_back( outPlug()->objectPlug() );
 	}
-	else if(
-		input == gridPixelWidthPlug() ||
-		input == centerPixelWidthPlug() ||
-		input == borderPixelWidthPlug()
-	)
+
+	if( input == namePlug() )
 	{
-		outputs.push_back( outPlug()->attributesPlug() );
+		outputs.push_back( outPlug()->childNamesPlug() );
 	}
 }
 
@@ -220,7 +228,7 @@ void Grid::hashBound( const SceneNode::ScenePath &path, const Gaffer::Context *c
 {
 	if( path.size() == 0 )
 	{
-		h = parent->childBoundsHash();
+		h = parent->childBoundsPlug()->hash();
 	}
 	else
 	{
@@ -233,7 +241,7 @@ Imath::Box3f Grid::computeBound( const SceneNode::ScenePath &path, const Gaffer:
 {
 	if( path.size() == 0 )
 	{
-		return parent->childBounds();
+		return parent->childBoundsPlug()->getValue();
 	}
 	else
 	{

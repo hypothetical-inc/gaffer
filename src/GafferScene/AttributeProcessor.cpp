@@ -40,7 +40,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( AttributeProcessor );
+GAFFER_NODE_DEFINE_TYPE( AttributeProcessor );
 
 AttributeProcessor::AttributeProcessor( const std::string &name, IECore::PathMatcher::Result filterDefault )
 	:	FilteredSceneProcessor( name, filterDefault )
@@ -78,12 +78,6 @@ AttributeProcessor::~AttributeProcessor()
 void AttributeProcessor::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
 {
 	FilteredSceneProcessor::affects( input, outputs );
-
-	if( !refCount() )
-	{
-		// Avoid calling pure virtual methods while we're still constructing.
-		return;
-	}
 
 	if( affectsProcessedAttributes( input ) )
 	{

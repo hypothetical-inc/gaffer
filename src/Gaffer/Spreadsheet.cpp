@@ -606,9 +606,7 @@ void Spreadsheet::RowsPlug::removeColumn( size_t columnIndex )
 
 Spreadsheet::RowPlug *Spreadsheet::RowsPlug::addRow()
 {
-	// We need to use the `Dynamic` flag so that we get dirty propagation via
-	// `Plug::propagateDirtinessForParentChange()`.
-	RowPlugPtr newRow = new RowPlug( "row" + boost::lexical_cast<std::string>( children().size() ), direction(), Default | Dynamic );
+	RowPlugPtr newRow = new RowPlug( "row" + boost::lexical_cast<std::string>( children().size() ), direction() );
 	for( auto &defaultCell : CellPlug::Range( *defaultRow()->cellsPlug() ) )
 	{
 		CellPlugPtr newCell = boost::static_pointer_cast<CellPlug>(
@@ -816,7 +814,7 @@ Gaffer::PlugPtr Spreadsheet::CellPlug::createCounterpart( const std::string &nam
 //////////////////////////////////////////////////////////////////////////
 
 size_t Spreadsheet::g_firstPlugIndex = 0;
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Spreadsheet );
+GAFFER_NODE_DEFINE_TYPE( Spreadsheet );
 
 Spreadsheet::Spreadsheet( const std::string &name )
 	:	ComputeNode( name )

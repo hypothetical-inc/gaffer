@@ -592,23 +592,18 @@ PlugPtr Plug::createCounterpart( const std::string &name, Direction direction ) 
 
 void Plug::parentChanging( Gaffer::GraphComponent *newParent )
 {
-	if( getFlags( Dynamic ) )
+	// When a plug is removed from a node, we need to propagate
+	// dirtiness based on that. We must call `DependencyNode::affects()`
+	// now, while the plug is still a child of the node, but we push
+	// scope so that the emission of `plugDirtiedSignal()` is deferred
+	// until `parentChanged()` when the operation is complete. It is
+	// essential that exceptions don't prevent us getting to `parentChanged()`
+	// where we pop scope, so propateDirtiness() takes care of handling
+	// exceptions thrown by `DependencyNode::affects()`.
+	pushDirtyPropagationScope();
+	if( node() )
 	{
-		// When a dynamic plug is removed from a node, we
-		// need to propagate dirtiness based on that. We
-		// must call DependencyNode::affects() now, while the
-		// plug is still a child of the node, but we push
-		// scope so that the emission of plugDirtiedSignal()
-		// is deferred until parentChanged() when the operation
-		// is complete. It is essential that exceptions don't
-		// prevent us getting to parentChanged() where we pop
-		// scope, so propateDirtiness() takes care of handling
-		// exceptions thrown by DependencyNode::affects().
-		pushDirtyPropagationScope();
-		if( node() )
-		{
-			propagateDirtinessForParentChange( this );
-		}
+		propagateDirtinessForParentChange( this );
 	}
 
 	// This method manages the connections between plugs when
@@ -691,17 +686,14 @@ void Plug::parentChanged( Gaffer::GraphComponent *oldParent )
 {
 	GraphComponent::parentChanged( oldParent );
 
-	if( getFlags( Dynamic ) )
+	if( node() )
 	{
-		if( node() )
-		{
-			// If a dynamic plug has been added to a
-			// node, we need to propagate dirtiness.
-			propagateDirtinessForParentChange( this );
-		}
-		// Pop the scope pushed in parentChanging().
-		popDirtyPropagationScope();
+		// If a plug has been added to a node, we need to
+		// propagate dirtiness.
+		propagateDirtinessForParentChange( this );
 	}
+	// Pop the scope pushed in `parentChanging()`.
+	popDirtyPropagationScope();
 }
 
 void Plug::propagateDirtinessForParentChange( Plug *plugToDirty )
@@ -765,12 +757,15 @@ class Plug::DirtyPlugs
 
 			for( DownstreamIterator it( plugToDirty ); !it.done(); ++it )
 			{
-				InsertedVertex v = insertVertex( &*it );
+				// The `const_casts()` are harmless because we're starting iteration from
+				// a non-const plug. But they are necessary because DownstreamIterator
+				// doesn't currently have a non-const form, and always yields const plugs.
+				InsertedVertex v = insertVertex( const_cast<Plug *>( &*it ) );
 				if( !it->getFlags( Plug::AcceptsDependencyCycles ) )
 				{
 					add_edge(
 						v.first,
-						insertVertex( it.upstream() ).first,
+						insertVertex( const_cast<Plug *>( it.upstream() ) ).first,
 						m_graph
 					);
 				}
@@ -828,7 +823,7 @@ class Plug::DirtyPlugs
 		// inserted.
 		typedef std::pair<VertexDescriptor, bool> InsertedVertex;
 
-		InsertedVertex insertVertex( const Plug *plug )
+		InsertedVertex insertVertex( Plug *plug )
 		{
 			// We need to hold a reference to the plug, because otherwise
 			// it might be deleted between now and emit(). But if there is
@@ -845,11 +840,12 @@ class Plug::DirtyPlugs
 			}
 
 			VertexDescriptor result = add_vertex( m_graph );
-			m_graph[result] = const_cast<Plug *>( plug );
+			m_graph[result] = plug;
 			m_plugs[plug] = result;
+			plug->dirty();
 
 			// Insert parent plug.
-			if( const Plug *parent = plug->parent<Plug>() )
+			if( auto parent = plug->parent<Plug>() )
 			{
 				if( parent->refCount() )
 				{
@@ -876,17 +872,19 @@ class Plug::DirtyPlugs
 
 			void back_edge( const EdgeDescriptor &e, const Graph &graph )
 			{
-				throw IECore::Exception( boost::str(
-					boost::format( "Cycle detected between %1% and %2%" ) %
-					graph[boost::target( e, graph )]->fullName() %
-					graph[boost::source( e, graph )]->fullName()
-				) );
+				IECore::msg(
+					IECore::Msg::Error, "Plug dirty propagation",
+					boost::str(
+						boost::format( "Cycle detected between %1% and %2%" ) %
+							graph[boost::target( e, graph )]->fullName() %
+							graph[boost::source( e, graph )]->fullName()
+					)
+				);
 			}
 
 			void finish_vertex( const VertexDescriptor &u, const Graph &graph )
 			{
 				Plug *plug = graph[u].get();
-				plug->dirty();
 				if( Node *node = plug->node() )
 				{
 					node->plugDirtiedSignal()( plug );
@@ -929,7 +927,24 @@ class Plug::DirtyPlugs
 			}
 
 			m_graph.clear();
-			m_plugs.clear();
+			// Using swap instead of `clear()` because libstdc++'s `clear()`
+			// method is linear in the number of buckets, _not_ in `size()` as
+			// required by the standard :
+			//
+			// - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67922
+			// - https://cplusplus.github.io/LWG/issue2550
+			//
+			// This caused severe performance regressions when making many
+			// small calls to `emit()` after previously growing `m_plugs` to
+			// a large size.
+			//
+			/// \todo Consider `m_plugs.erase( m_plugs.begin(), m_plugs.end() )`
+			/// as an alternative. This appears to be slightly slower for the
+			/// many-small-emits case, but may provide benefits through reduced
+			/// allocation for several large emissions. Also investigate the
+			/// root causes of the many-small-emits cases.
+			PlugMap emptyPlugs;
+			m_plugs.swap( emptyPlugs );
 		}
 
 		Graph m_graph;

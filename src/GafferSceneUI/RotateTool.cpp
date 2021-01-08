@@ -63,7 +63,7 @@ using namespace GafferUI;
 using namespace GafferScene;
 using namespace GafferSceneUI;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( RotateTool );
+GAFFER_NODE_DEFINE_TYPE( RotateTool );
 
 RotateTool::ToolDescription<RotateTool, SceneView> RotateTool::g_toolDescription;
 
@@ -405,7 +405,8 @@ Imath::V3f RotateTool::Rotation::updatedRotateValue( const Gaffer::V3fPlug *rota
 	Quatf q = rotation.toQuat();
 	V3f transformSpaceAxis;
 	m_gadgetToTransform.multDirMatrix( q.axis(), transformSpaceAxis );
-	q.setAxisAngle( transformSpaceAxis, q.angle() );
+	float d = Imath::sign( m_gadgetToTransform.determinant() );
+	q.setAxisAngle( transformSpaceAxis, q.angle() * d );
 
 	// Compose it with the original.
 

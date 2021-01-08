@@ -129,6 +129,7 @@ class BoxIOSerialiser : public NodeSerialiser
 
 		// Add a call to `setup()` to recreate the plugs.
 
+		/// \todo Avoid creating a temporary plug.
 		PlugPtr plug = boxIO->plug()->createCounterpart( boxIO->plug()->getName(), Plug::In );
 		plug->setFlags( Plug::Dynamic, false );
 
@@ -198,6 +199,18 @@ PlugPtr plug( BoxIO &b )
 PlugPtr promotedPlug( BoxIO &b )
 {
 	return b.promotedPlug();
+}
+
+PlugPtr promote( Plug &plug )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	return BoxIO::promote( &plug );
+}
+
+void insert( Box &box )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	BoxIO::insert( &box );
 }
 
 DependencyNodePtr acquireProcessor( EditScope &e, const std::string &type, bool createIfNecessary )
@@ -312,9 +325,9 @@ void GafferModule::bindSubGraph()
 		.def( "setupPromotedPlug", &setupPromotedPlug )
 		.def( "plug", &plug )
 		.def( "promotedPlug", &promotedPlug )
-		.def( "promote", &BoxIO::promote, return_value_policy<CastToIntrusivePtr>() )
+		.def( "promote", &promote )
 		.staticmethod( "promote" )
-		.def( "insert", &BoxIO::insert )
+		.def( "insert", &insert )
 		.staticmethod( "insert" )
 		.def( "canInsert", &BoxIO::canInsert )
 		.staticmethod( "canInsert" )

@@ -61,7 +61,7 @@ class GAFFERSCENEUI_API TransformTool : public GafferSceneUI::SelectionTool
 
 		~TransformTool() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferSceneUI::TransformTool, TransformToolTypeId, SelectionTool );
+		GAFFER_NODE_DECLARE_TYPE( GafferSceneUI::TransformTool, TransformToolTypeId, SelectionTool );
 
 		enum Orientation
 		{
@@ -73,7 +73,7 @@ class GAFFERSCENEUI_API TransformTool : public GafferSceneUI::SelectionTool
 		Gaffer::FloatPlug *sizePlug();
 		const Gaffer::FloatPlug *sizePlug() const;
 
-		struct Selection
+		struct GAFFERSCENEUI_API Selection
 		{
 
 			// Constructs an empty selection.
@@ -169,9 +169,18 @@ class GAFFERSCENEUI_API TransformTool : public GafferSceneUI::SelectionTool
 
 			private :
 
+				void initFromHistory( const GafferScene::SceneAlgo::History *history );
 				void initFromSceneNode( const GafferScene::SceneAlgo::History *history );
-				void initWalk( const GafferScene::SceneAlgo::History *history, bool &editScopeFound );
+				void initFromEditScope( const GafferScene::SceneAlgo::History *history );
+				void initWalk(
+					const GafferScene::SceneAlgo::History *history,
+					bool &editScopeFound,
+					const GafferScene::SceneAlgo::History *editScopeOutHistory = nullptr
+				);
+				bool initRequirementsSatisfied( bool editScopeFound );
+
 				void throwIfNotEditable() const;
+				Imath::M44f transformToLocalSpace() const;
 
 				GafferScene::ConstScenePlugPtr m_scene;
 				GafferScene::ScenePlug::ScenePath m_path;
@@ -186,7 +195,9 @@ class GAFFERSCENEUI_API TransformTool : public GafferSceneUI::SelectionTool
 				Gaffer::EditScopePtr m_editScope;
 				mutable boost::optional<TransformEdit> m_transformEdit;
 				Imath::M44f m_transformSpace;
+				bool m_aimConstraint;
 
+				static std::string displayName( const GraphComponent *component );
 		};
 
 		/// Returns the current selection.

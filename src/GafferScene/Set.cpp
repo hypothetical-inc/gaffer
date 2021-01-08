@@ -49,7 +49,7 @@ using namespace GafferScene;
 
 static InternedString g_ellipsis( "..." );
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Set );
+GAFFER_NODE_DEFINE_TYPE( Set );
 
 size_t Set::g_firstPlugIndex = 0;
 
@@ -138,31 +138,31 @@ void Set::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) 
 {
 	FilteredSceneProcessor::affects( input, outputs );
 
-	if( inPlug()->setNamesPlug() == input )
+	if(
+		input == inPlug()->setNamesPlug() ||
+		input == modePlug() ||
+		input == namePlug()
+	)
 	{
 		outputs.push_back( outPlug()->setNamesPlug() );
 	}
-	else if( inPlug()->setPlug() == input )
+
+	if(
+		input == namePlug() ||
+		input == inPlug()->setPlug() ||
+		input == modePlug() ||
+		input == pathMatcherPlug()
+	)
 	{
 		outputs.push_back( outPlug()->setPlug() );
 	}
-	else if( modePlug() == input )
-	{
-		outputs.push_back( outPlug()->setNamesPlug() );
-		outputs.push_back( outPlug()->setPlug() );
-	}
-	else if( namePlug() == input )
-	{
-		outputs.push_back( outPlug()->setNamesPlug() );
-		outputs.push_back( outPlug()->setPlug() );
-	}
-	else if( pathsPlug() == input || filterResultsPlug() == input )
+
+	if(
+		input == pathsPlug() ||
+		input == filterResultsPlug()
+	)
 	{
 		outputs.push_back( pathMatcherPlug() );
-	}
-	else if( pathMatcherPlug() == input )
-	{
-		outputs.push_back( outPlug()->setPlug() );
 	}
 }
 

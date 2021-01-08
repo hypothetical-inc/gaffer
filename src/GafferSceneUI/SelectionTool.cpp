@@ -80,7 +80,7 @@ class SelectionTool::DragOverlay : public GafferUI::Gadget
 				return;
 			}
 			m_startPosition = p;
-			requestRender();
+			dirty( DirtyType::Render );
 		}
 
 		const V3f &getStartPosition() const
@@ -95,7 +95,7 @@ class SelectionTool::DragOverlay : public GafferUI::Gadget
 				return;
 			}
 			m_endPosition = p;
-			requestRender();
+			dirty( DirtyType::Render );
 		}
 
 		const V3f &getEndPosition() const
@@ -138,7 +138,7 @@ class SelectionTool::DragOverlay : public GafferUI::Gadget
 // SelectionTool implementation
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SelectionTool );
+GAFFER_NODE_DEFINE_TYPE( SelectionTool );
 
 SelectionTool::ToolDescription<SelectionTool, SceneView> SelectionTool::g_toolDescription;
 static IECore::InternedString g_dragOverlayName( "__selectionToolDragOverlay" );

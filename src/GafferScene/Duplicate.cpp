@@ -47,7 +47,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Duplicate );
+GAFFER_NODE_DEFINE_TYPE( Duplicate );
 
 size_t Duplicate::g_firstPlugIndex = 0;
 
@@ -154,6 +154,7 @@ void Duplicate::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outp
 	}
 
 	if(
+		input == inPlug()->existsPlug() ||
 		input == targetPlug() ||
 		input == copiesPlug() ||
 		input == namePlug()
@@ -398,6 +399,23 @@ IECore::ConstInternedStringVectorDataPtr Duplicate::computeBranchChildNames( con
 		sourcePath( branchPath, source );
 		return inPlug()->childNames( source );
 	}
+}
+
+bool Duplicate::affectsBranchSetNames( const Gaffer::Plug *input ) const
+{
+	return input == inPlug()->setNamesPlug();
+}
+
+void Duplicate::hashBranchSetNames( const ScenePath &parentPath, const Gaffer::Context *context, IECore::MurmurHash &h ) const
+{
+	assert( parentPath.size() == 0 ); // Expectation driven by `constantBranchSetNames() == true`
+	h = inPlug()->setNamesPlug()->hash();
+}
+
+IECore::ConstInternedStringVectorDataPtr Duplicate::computeBranchSetNames( const ScenePath &parentPath, const Gaffer::Context *context ) const
+{
+	assert( parentPath.size() == 0 ); // Expectation driven by `constantBranchSetNames() == true`
+	return inPlug()->setNamesPlug()->getValue();
 }
 
 bool Duplicate::affectsBranchSet( const Gaffer::Plug *input ) const

@@ -48,7 +48,15 @@ class GAFFER_API TransformPlug : public ValuePlug
 
 	public :
 
-		TransformPlug( const std::string &name = defaultName<TransformPlug>(), Direction direction=In, unsigned flags = Default );
+		TransformPlug(
+			const std::string &name = defaultName<TransformPlug>(),
+			Direction direction=In,
+			const Imath::V3f &defaultTranslate = Imath::V3f( 0 ),
+			const Imath::V3f &defaultRotate = Imath::V3f( 0 ),
+			const Imath::V3f &defaultScale = Imath::V3f( 1 ),
+			const Imath::V3f &defaultPivot = Imath::V3f( 0 ),
+			unsigned flags = Default
+		);
 		~TransformPlug() override;
 
 		GAFFER_PLUG_DECLARE_TYPE( Gaffer::TransformPlug, TransformPlugTypeId, ValuePlug );
@@ -75,10 +83,10 @@ class GAFFER_API TransformPlug : public ValuePlug
 
 IE_CORE_DECLAREPTR( TransformPlug );
 
+/// \deprecated Use TransformPlug::Iterator etc instead
 typedef FilteredChildIterator<PlugPredicate<Plug::Invalid, TransformPlug> > TransformPlugIterator;
 typedef FilteredChildIterator<PlugPredicate<Plug::In, TransformPlug> > InputTransformPlugIterator;
 typedef FilteredChildIterator<PlugPredicate<Plug::Out, TransformPlug> > OutputTransformPlugIterator;
-
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Invalid, TransformPlug>, PlugPredicate<> > RecursiveTransformPlugIterator;
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::In, TransformPlug>, PlugPredicate<> > RecursiveInputTransformPlugIterator;
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Out, TransformPlug>, PlugPredicate<> > RecursiveOutputTransformPlugIterator;

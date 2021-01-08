@@ -491,7 +491,7 @@ class Instancer::EngineData : public Data
 // Instancer
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Instancer );
+GAFFER_NODE_DEFINE_TYPE( Instancer );
 
 size_t Instancer::g_firstPlugIndex = 0;
 
@@ -672,6 +672,7 @@ void Instancer::affects( const Plug *input, AffectedPlugsContainer &outputs ) co
 		input == prototypeRootsPlug() ||
 		input == prototypeRootsListPlug() ||
 		input == prototypesPlug()->childNamesPlug() ||
+		input == prototypesPlug()->existsPlug() ||
 		input == idPlug() ||
 		input == positionPlug() ||
 		input == orientationPlug() ||
@@ -811,7 +812,8 @@ bool Instancer::affectsBranchBound( const Gaffer::Plug *input ) const
 		input == namePlug() ||
 		input == prototypesPlug()->boundPlug() ||
 		input == prototypesPlug()->transformPlug() ||
-		input == prototypeChildNamesPlug()
+		input == prototypeChildNamesPlug() ||
+		input == outPlug()->childBoundsPlug()
 	;
 }
 

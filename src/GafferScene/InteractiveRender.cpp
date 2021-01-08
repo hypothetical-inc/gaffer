@@ -99,6 +99,9 @@ class InteractiveRender::RenderMessageHandler : public MessageHandler
 
 		void handle( MessageHandler::Level level, const std::string &context, const std::string &message  ) override
 		{
+			// Always forward to the default handler for visibility outside of the UI
+			MessageHandler::getDefaultHandler()->handle( level, context, message );
+
 			{
 				tbb::mutex::scoped_lock lock( m_mutex );
 				m_messages->writable().add( IECorePreview::Message( level, context, message ) );
@@ -142,7 +145,7 @@ static InternedString g_rendererContextName( "scene:renderer" );
 
 size_t InteractiveRender::g_firstPlugIndex = 0;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( InteractiveRender );
+GAFFER_NODE_DEFINE_TYPE( InteractiveRender );
 
 InteractiveRender::InteractiveRender( const std::string &name )
 	:	InteractiveRender( /* rendererType = */ InternedString(), name )
@@ -172,7 +175,10 @@ InteractiveRender::InteractiveRender( const IECore::InternedString &rendererType
 
 	outPlug()->setInput( inPlug() );
 
-	plugDirtiedSignal().connect( boost::bind( &InteractiveRender::plugDirtied, this, ::_1 ) );
+	// We can't use plugDirtiedSignal as we need to update messagesUpdateCountPlug
+	// due to message output during render startup. We implement acceptsInput
+	// to reject any computed connections to renderer/state.
+	plugSetSignal().connect( boost::bind( &InteractiveRender::plugSet, this, ::_1 ) );
 
 	m_messageHandler->messagesChangedSignal.connect( boost::bind( &InteractiveRender::messagesChanged, this ) );
 }
@@ -275,7 +281,7 @@ void InteractiveRender::setContext( Gaffer::ContextPtr context )
 	}
 }
 
-void InteractiveRender::plugDirtied( const Gaffer::Plug *plug )
+void InteractiveRender::plugSet( const Gaffer::Plug *plug )
 {
 	if( plug == rendererPlug() || plug == statePlug() )
 	{
@@ -320,7 +326,7 @@ void InteractiveRender::update()
 		m_controller.reset(
 			new RenderController( adaptedInPlug(), effectiveContext(), m_renderer )
 		);
-		m_controller->setMinimumExpansionDepth( limits<size_t>::max() );
+		m_controller->setMinimumExpansionDepth( numeric_limits<size_t>::max() );
 		m_controller->updateRequiredSignal().connect(
 			boost::bind( &InteractiveRender::update, this )
 		);
@@ -339,7 +345,10 @@ void InteractiveRender::update()
 	// and kick off a render.
 	assert( requiredState == Running );
 
-	m_controller->update();
+	{
+		IECore::MessageHandler::Scope messageScope( m_messageHandler.get() );
+		m_controller->update();
+	}
 
 	m_state = requiredState;
 	m_renderer->render();
@@ -387,7 +396,7 @@ void InteractiveRender::messagesChanged()
 			scheduleUpdate = true;
 			pending.plugs.reset( new PlugSet );
 		}
-		pending.plugs->insert( messagesPlug() );
+		pending.plugs->insert( messageUpdateCountPlug() );
 	}
 	if( scheduleUpdate )
 	{
@@ -468,4 +477,19 @@ Gaffer::ValuePlug::CachePolicy InteractiveRender::computeCachePolicy( const Gaff
 	}
 
 	return ComputeNode::computeCachePolicy( output );
+}
+
+bool InteractiveRender::acceptsInput( const Gaffer::Plug *plug, const Gaffer::Plug *inputPlug ) const
+{
+	if( plug == rendererPlug() || plug == statePlug() )
+	{
+		// We can't accept computed plugs as we may need to dirty our messages plug as
+		// result. It is forbidden to modify the node graph during dirty propagation.
+		if( inputPlug && inputPlug->source()->direction() != Gaffer::Plug::In )
+		{
+			return false;
+		}
+	}
+
+	return Gaffer::ComputeNode::acceptsInput( plug, inputPlug );
 }

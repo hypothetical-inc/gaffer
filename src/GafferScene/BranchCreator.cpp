@@ -85,7 +85,7 @@ void mergeSetNames( const InternedStringVectorData *toAdd, vector<InternedString
 //////////////////////////////////////////////////////////////////////////
 
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( BranchCreator );
+GAFFER_NODE_DEFINE_TYPE( BranchCreator );
 
 size_t BranchCreator::g_firstPlugIndex = 0;
 
@@ -110,6 +110,7 @@ BranchCreator::BranchCreator( const std::string &name )
 	filteredPathsPlug()->setInput( filterResults->outPlug() );
 
 	outPlug()->globalsPlug()->setInput( inPlug()->globalsPlug() );
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 }
 
 BranchCreator::~BranchCreator()
@@ -160,7 +161,7 @@ void BranchCreator::affects( const Plug *input, AffectedPlugsContainer &outputs 
 {
 	FilteredSceneProcessor::affects( input, outputs );
 
-	if( input == parentPlug() || input == filteredPathsPlug() )
+	if( input == parentPlug() || input == filteredPathsPlug() || input == inPlug()->existsPlug() )
 	{
 		outputs.push_back( parentPathsPlug() );
 	}
@@ -174,6 +175,7 @@ void BranchCreator::affects( const Plug *input, AffectedPlugsContainer &outputs 
 		input == parentPathsPlug() ||
 		input == mappingPlug() ||
 		input == inPlug()->boundPlug() ||
+		input == outPlug()->childBoundsPlug() ||
 		affectsBranchBound( input )
 	)
 	{
@@ -230,7 +232,7 @@ void BranchCreator::affects( const Plug *input, AffectedPlugsContainer &outputs 
 	}
 
 	if(
-		input == parentPathsPlug() ||
+		affectsParentPathsForSet( input ) ||
 		input == mappingPlug() ||
 		input == inPlug()->setPlug() ||
 		affectsBranchSet( input )
@@ -324,7 +326,7 @@ void BranchCreator::hashBound( const ScenePath &path, const Gaffer::Context *con
 	{
 		FilteredSceneProcessor::hashBound( path, context, parent, h );
 		inPlug()->boundPlug()->hash( h );
-		h.append( outPlug()->childBoundsHash() );
+		outPlug()->childBoundsPlug()->hash( h );
 	}
 	else
 	{
@@ -344,7 +346,7 @@ Imath::Box3f BranchCreator::computeBound( const ScenePath &path, const Gaffer::C
 	else if( parentMatch == IECore::PathMatcher::ExactMatch || parentMatch == IECore::PathMatcher::DescendantMatch )
 	{
 		Box3f result = inPlug()->boundPlug()->getValue();
-		result.extendBy( outPlug()->childBounds() );
+		result.extendBy( outPlug()->childBoundsPlug()->getValue() );
 		return result;
 	}
 	else
@@ -563,17 +565,17 @@ IECore::ConstInternedStringVectorDataPtr BranchCreator::computeSetNames( const G
 
 void BranchCreator::hashSet( const IECore::InternedString &setName, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const
 {
-	ConstPathMatcherDataPtr parentPathsData = parentPathsPlug()->getValue();
-	const PathMatcher &parentPaths = parentPathsData->readable();
-
+	const PathMatcher parentPaths = parentPathsForSet( setName, context );
 	if( parentPaths.isEmpty() )
 	{
 		h = inPlug()->setPlug()->hash();
+		return;
 	}
 
 	FilteredSceneProcessor::hashSet( setName, context, parent, h );
-	h.append( inPlug()->setHash( setName ) );
+	inPlug()->setPlug()->hash( h );
 
+	/// \todo Parallelise.
 	for( PathMatcher::Iterator it = parentPaths.begin(), eIt = parentPaths.end(); it != eIt; ++it )
 	{
 		const ScenePlug::ScenePath &parentPath = *it;
@@ -585,15 +587,15 @@ void BranchCreator::hashSet( const IECore::InternedString &setName, const Gaffer
 		MurmurHash branchSetHash;
 		hashBranchSet( parentPath, setName, context, branchSetHash );
 		h.append( branchSetHash );
+		h.append( parentPath.data(), parentPath.size() );
 	}
 }
 
 IECore::ConstPathMatcherDataPtr BranchCreator::computeSet( const IECore::InternedString &setName, const Gaffer::Context *context, const ScenePlug *parent ) const
 {
-	ConstPathMatcherDataPtr parentPathsData = parentPathsPlug()->getValue();
-	const PathMatcher &parentPaths = parentPathsData->readable();
+	ConstPathMatcherDataPtr inputSetData = inPlug()->setPlug()->getValue();
 
-	ConstPathMatcherDataPtr inputSetData = inPlug()->set( setName );
+	const PathMatcher parentPaths = parentPathsForSet( setName, context );
 	if( parentPaths.isEmpty() )
 	{
 		return inputSetData;
@@ -602,6 +604,7 @@ IECore::ConstPathMatcherDataPtr BranchCreator::computeSet( const IECore::Interne
 	PathMatcherDataPtr outputSetData = inputSetData->copy();
 	PathMatcher &outputSet = outputSetData->writable();
 
+	/// \todo Parallelise.
 	vector<InternedString> outputPrefix;
 	for( PathMatcher::Iterator it = parentPaths.begin(), eIt = parentPaths.end(); it != eIt; ++it )
 	{
@@ -625,6 +628,53 @@ IECore::ConstPathMatcherDataPtr BranchCreator::computeSet( const IECore::Interne
 	}
 
 	return outputSetData;
+}
+
+Gaffer::ValuePlug::CachePolicy BranchCreator::hashCachePolicy( const Gaffer::ValuePlug *output ) const
+{
+	if( output == outPlug()->setPlug() )
+	{
+		// Technically we do not _need_ TaskIsolation because we have not yet
+		// multithreaded `hashSet()`. But we still benefit from requesting it
+		// because it means the hash is stored in the global cache, where it is
+		// shared between all threads and is almost guaranteed not to be evicted.
+		return ValuePlug::CachePolicy::TaskIsolation;
+	}
+	return FilteredSceneProcessor::hashCachePolicy( output );
+}
+
+IECore::PathMatcher BranchCreator::parentPathsForSet( const IECore::InternedString &setName, const Gaffer::Context *context ) const
+{
+	if( constantBranchSetNames() )
+	{
+		// All branches provide the same sets. If that doesn't include the set in question
+		// then we don't need to visit any of the parent paths at all, and can early out
+		// in `hashSet()` and `computeSet()`.
+		ConstInternedStringVectorDataPtr branchSetNamesData;
+		{
+			ScenePlug::GlobalScope globalScope( context );
+			branchSetNamesData = computeBranchSetNames( ScenePlug::ScenePath(), context );
+		}
+		if( !branchSetNamesData )
+		{
+			return IECore::PathMatcher();
+		}
+		const auto &branchSetNames = branchSetNamesData->readable();
+		if( find( branchSetNames.begin(), branchSetNames.end(), setName ) == branchSetNames.end() )
+		{
+			return IECore::PathMatcher();
+		}
+	}
+
+	return parentPathsPlug()->getValue()->readable();
+}
+
+bool BranchCreator::affectsParentPathsForSet( const Gaffer::Plug *input ) const
+{
+	return
+		( constantBranchSetNames() && affectsBranchSetNames( input ) ) ||
+		input == parentPathsPlug()
+	;
 }
 
 bool BranchCreator::affectsBranchBound( const Gaffer::Plug *input ) const

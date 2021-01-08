@@ -55,7 +55,7 @@ class GAFFEROSL_API OSLShader : public GafferScene::Shader
 		OSLShader( const std::string &name=defaultName<OSLShader>() );
 		~OSLShader() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferOSL::OSLShader, OSLShaderTypeId, GafferScene::Shader );
+		GAFFER_NODE_DECLARE_TYPE( GafferOSL::OSLShader, OSLShaderTypeId, GafferScene::Shader );
 
 		/// Returns a plug based on the "correspondingInput" metadata of each output plug
 		Gaffer::Plug *correspondingInput( const Gaffer::Plug *output ) override;
@@ -102,6 +102,9 @@ class GAFFEROSL_API OSLShader : public GafferScene::Shader
 			}
 		}
 
+		/// Allows other renderer shaders to connect to OSL shaders by registering them.
+		/// Returns true on success, false if already added.
+		static bool registerCompatibleShader( const IECore::InternedString shaderType );
 
 
 	protected :

@@ -43,8 +43,9 @@ import IECore
 import Gaffer
 import GafferUI
 import GafferTest
+import GafferUITest
 
-class PlugValueWidgetTest( unittest.TestCase ) :
+class PlugValueWidgetTest( GafferUITest.TestCase ) :
 
 	def testContext( self ) :
 
@@ -134,6 +135,33 @@ class PlugValueWidgetTest( unittest.TestCase ) :
 		with six.assertRaisesRegex( self, Exception, "Multiple widget creators" ) :
 			GafferUI.PlugValueWidget.create( n["user"].children() )
 
+	def testCreateSupportsLegacyWidgetsWithSinglePlugs( self ) :
+
+		class SinglePlugOnlyWidget( GafferUI.PlugValueWidget ) :
+
+			def __init__( self, plug, **kw  ) :
+
+				GafferUI.PlugValueWidget.__init__( self, GafferUI.TextWidget(), plug, **kw )
+
+				if not isinstance( plug, Gaffer.Plug ) :
+					raise GafferUI.PlugValueWidget.MultiplePlugsError()
+
+		class LegacyWidgetTestPlug( Gaffer.ValuePlug ) :
+			pass
+
+		IECore.registerRunTimeTyped( LegacyWidgetTestPlug )
+		GafferUI.PlugValueWidget.registerType( LegacyWidgetTestPlug, SinglePlugOnlyWidget )
+
+		n = Gaffer.Node()
+		n["user"]["p1"] = LegacyWidgetTestPlug()
+		n["user"]["p2"] = LegacyWidgetTestPlug()
+
+		self.assertIsInstance( GafferUI.PlugValueWidget.create( n["user"]["p1"] ), SinglePlugOnlyWidget )
+		self.assertIsInstance( GafferUI.PlugValueWidget.create( { n["user"]["p1"] } ), SinglePlugOnlyWidget )
+
+		with self.assertRaises( GafferUI.PlugValueWidget.MultiplePlugsError ) :
+			GafferUI.PlugValueWidget.create( { n["user"]["p1"], n["user"]["p2"] } )
+
 	def testAcquire( self ) :
 
 		s = Gaffer.ScriptNode()
@@ -153,6 +181,49 @@ class PlugValueWidgetTest( unittest.TestCase ) :
 		self.assertTrue( isinstance( pw, GafferUI.PlugWidget ) )
 		self.assertTrue( pw.plugValueWidget() is w )
 		self.assertTrue( GafferUI.PlugWidget.acquire( s["n"]["p"] ) is pw )
+
+	def testContextSensitivePresets( self ) :
+
+		def presetNames( plug ) :
+
+			c = Gaffer.Context.current()
+			return IECore.StringVectorData(
+				[ k for k in c.keys() if k.startswith( "preset" ) ]
+			)
+
+		def presetValues( plug ) :
+
+			c = Gaffer.Context.current()
+			return IECore.IntVectorData(
+				[ c[k] for k in Gaffer.Context.current().keys() if k.startswith( "preset" ) ]
+			)
+
+		Gaffer.Metadata.registerValue( GafferTest.AddNode, "op1", "presetNames", presetNames )
+		Gaffer.Metadata.registerValue( GafferTest.AddNode, "op1", "presetValues", presetValues )
+
+		script = Gaffer.ScriptNode()
+		script["variables"]["presetOne"] = Gaffer.NameValuePlug( "presetOne", 1 )
+		script["variables"]["presetTwo"] = Gaffer.NameValuePlug( "presetTwo", 2 )
+
+		script["n"] = GafferTest.AddNode()
+
+		widget = GafferUI.PlugValueWidget.create( script["n"]["op1"] )
+		self.assertIsInstance( widget, GafferUI.NumericPlugValueWidget )
+
+		menu = widget._popupMenuDefinition().item( "/Preset" ).subMenu()
+		self.assertEqual( { "/presetOne", "/presetTwo" }, { k for k, v in menu.items() } )
+
+		menu.item( "/presetOne" ).command()
+		self.assertEqual( script["n"]["op1"].getValue(), 1 )
+		menu.item( "/presetTwo" ).command()
+		self.assertEqual( script["n"]["op1"].getValue(), 2 )
+
+	def tearDown( self ) :
+
+		GafferUITest.TestCase.tearDown( self )
+
+		Gaffer.Metadata.deregisterValue( GafferTest.AddNode, "op1", "presetNames" )
+		Gaffer.Metadata.deregisterValue( GafferTest.AddNode, "op1", "presetValues" )
 
 if __name__ == "__main__":
 	unittest.main()

@@ -70,7 +70,7 @@ std::vector<std::string> &processorNames()
 // EditScope
 // =========
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( EditScope );
+GAFFER_NODE_DEFINE_TYPE( EditScope );
 
 EditScope::EditScope( const std::string &name )
 	:	Box( name )
@@ -136,9 +136,16 @@ std::vector<DependencyNode *> EditScope::processors()
 			}
 		}
 
-		if( plug->direction() == Plug::Out )
+		if( plug->direction() == Plug::Out && node )
 		{
-			plug = node ? node->correspondingInput( plug )->getInput() : plug->getInput();
+			if( auto input = node->correspondingInput( plug ) )
+			{
+				plug = input->getInput();
+			}
+			else
+			{
+				throw IECore::Exception( "Node '" + node->getName().string() + "' has no corresponding input" );
+			}
 		}
 		else
 		{

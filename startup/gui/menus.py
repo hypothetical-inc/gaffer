@@ -199,6 +199,7 @@ if moduleSearchPath.find( "nsi.py" ) and moduleSearchPath.find( "GafferDelight" 
 
 			visibilityPlug = Gaffer.NameValuePlug( "dl:visibility.camera", False, "cameraVisibility", flags = Gaffer.Plug.Flags.Default | Gaffer.Plug.Flags.Dynamic )
 			node["attributes"].addChild( visibilityPlug )
+			Gaffer.Metadata.registerValue( visibilityPlug, "nameValuePlugPlugValueWidget:ignoreNamePlug", True )
 			Gaffer.MetadataAlgo.setReadOnly( visibilityPlug["name"], True )
 
 			return node
@@ -323,6 +324,7 @@ nodeMenu.append( "/Scene/Hierarchy/Prune", GafferScene.Prune )
 nodeMenu.append( "/Scene/Hierarchy/Isolate", GafferScene.Isolate )
 nodeMenu.append( "/Scene/Hierarchy/Collect", GafferScene.CollectScenes, searchText = "CollectScenes" )
 nodeMenu.append( "/Scene/Hierarchy/Encapsulate", GafferScene.Encapsulate )
+nodeMenu.append( "/Scene/Hierarchy/Unencapsulate", GafferScene.Unencapsulate )
 nodeMenu.append( "/Scene/Transform/Transform", GafferScene.Transform )
 nodeMenu.append( "/Scene/Transform/Freeze Transform", GafferScene.FreezeTransform, searchText = "FreezeTransform" )
 nodeMenu.append( "/Scene/Transform/Point Constraint", GafferScene.PointConstraint, searchText = "PointConstraint" )
@@ -409,45 +411,48 @@ if moduleSearchPath.find( "GafferOSL" ) :
 
 		return node
 
+	# Appleseed comes with a library of OSL shaders which we put
+	# on the OSL_SHADER_PATHS, but we don't want to show them in
+	# this menu, because we show them in the Appleseed menu instead.
+	# Likewise, 3Delight comes with a library of shaders that we
+	# show in the 3Delight menu and don't want to show here.
+	#
+	# The OSLCode node also generates a great many shaders behind
+	# the scenes that we don't want to place in the menus. Typically
+	# these aren't on the OSL_SHADER_PATHS anyway because they are
+	# given to the renderer via absolute paths, but at the time of
+	# writing it is necessary to place them on the OSL_SHADER_PATHS
+	# in order to use them in Arnold. We don't enable this by default
+	# because it causes Arnold to potentially load a huge number of
+	# shader plugins at startup, but we hide any oslCode shaders here
+	# in case someone else enables it.
+	#
+	# This match expression filters these categories of shader out
+	# as follows :
+	#
+	# - (?!__) asserts that the shader does not begin with double underscore.
+	# - (^|.*/) matches any number (including zero) of directory
+	#   names preceding the shader name.
+	# - (?<!maya/osl/) is a negative lookbehind, asserting that the
+	#   directory is not maya/osl, the directory containing 3delight's
+	#   shaders.
+	# - (?<!3DelightForKatana/osl/) is the same, but for another location
+	#   where 3delight seems to put copies of the same shaders.
+	# - (?!as_|oslCode) is a negative lookahead, asserting that the shader
+	#   name does not start with "as_", the prefix for all
+	#   Appleseed shaders, or "oslCode", the prefix for all OSLCode
+	#   shaders.
+	# - [^/]*$ matches the rest of the shader name, ensuring it
+	#   doesn't include any directory separators.
+
+	shader_regex = "(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$" if os.name != "nt" else r"(^|.*\\)(?<!maya\\osl\\)(?<!3DelightForKatana\\osl\\)(?!as_|oslCode)[^\\]*$"
+
 	GafferSceneUI.ShaderUI.appendShaders(
 		nodeMenu.definition(), "/OSL/Shader",
-		os.environ["OSL_SHADER_PATHS"].split( ":" ),
+		os.environ["OSL_SHADER_PATHS"].split( os.path.pathsep ),
 		[ "oso" ],
-		__shaderNodeCreator,
-		# Appleseed comes with a library of OSL shaders which we put
-		# on the OSL_SHADER_PATHS, but we don't want to show them in
-		# this menu, because we show them in the Appleseed menu instead.
-		# Likewise, 3Delight comes with a library of shaders that we
-		# show in the 3Delight menu and don't want to show here.
-		#
-		# The OSLCode node also generates a great many shaders behind
-		# the scenes that we don't want to place in the menus. Typically
-		# these aren't on the OSL_SHADER_PATHS anyway because they are
-		# given to the renderer via absolute paths, but at the time of
-		# writing it is necessary to place them on the OSL_SHADER_PATHS
-		# in order to use them in Arnold. We don't enable this by default
-		# because it causes Arnold to potentially load a huge number of
-		# shader plugins at startup, but we hide any oslCode shaders here
-		# in case someone else enables it.
-		#
-		# This match expression filters these categories of shader out
-		# as follows :
-		#
-		# - (?!__) asserts that the shader does not begin with double underscore.
-		# - (^|.*/) matches any number (including zero) of directory
-		#   names preceding the shader name.
-		# - (?<!maya/osl/) is a negative lookbehind, asserting that the
-		#   directory is not maya/osl, the directory containing 3delight's
-		#   shaders.
-		# - (?<!3DelightForKatana/osl/) is the same, but for another location
-		#   where 3delight seems to put copies of the same shaders.
-		# - (?!as_|oslCode) is a negative lookahead, asserting that the shader
-		#   name does not start with "as_", the prefix for all
-		#   Appleseed shaders, or "oslCode", the prefix for all OSLCode
-		#   shaders.
-		# - [^/]*$ matches the rest of the shader name, ensuring it
-		#   doesn't include any directory separators.
-		matchExpression = re.compile( "(?!__)(^|.*/)(?<!maya/osl/)(?<!3DelightForKatana/osl/)(?!as_|oslCode)[^/]*$"),
+		__shaderNodeCreator,	
+		matchExpression = re.compile( shader_regex ),
 		searchTextPrefix = "osl",
 	)
 
@@ -455,7 +460,7 @@ if moduleSearchPath.find( "GafferOSL" ) :
 	nodeMenu.append( "/OSL/Image", GafferOSL.OSLImage, searchText = "OSLImage" )
 	nodeMenu.append( "/OSL/Object", GafferOSL.OSLObject, searchText = "OSLObject" )
 
-	oslDocs = os.path.expandvars( "$GAFFER_ROOT/doc/osl-languagespec.pdf" )
+	oslDocs = os.path.expandvars( os.path.join( os.environ["GAFFER_ROOT"], "doc", "osl-languagespec.pdf" ) )
 	scriptWindowMenu.append(
 		"/Help/Open Shading Language/Language Reference",
 		{
@@ -503,7 +508,6 @@ nodeMenu.append( "/Utility/Name Switch", Gaffer.NameSwitch, searchText = "NameSw
 nodeMenu.append( "/Utility/Context Variables", Gaffer.ContextVariables, searchText = "ContextVariables" )
 nodeMenu.append( "/Utility/Delete Context Variables", Gaffer.DeleteContextVariables, searchText = "DeleteContextVariables" )
 nodeMenu.append( "/Utility/Time Warp", Gaffer.TimeWarp, searchText = "TimeWarp" )
-nodeMenu.append( "/Utility/Loop", Gaffer.Loop )
 nodeMenu.append( "/Utility/Spreadsheet", Gaffer.Spreadsheet )
 
 ## Miscellaneous UI

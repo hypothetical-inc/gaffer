@@ -44,12 +44,12 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Encapsulate );
+GAFFER_NODE_DEFINE_TYPE( Encapsulate );
 
 size_t Encapsulate::g_firstPlugIndex = 0;
 
 Encapsulate::Encapsulate( const std::string &name )
-	:	FilteredSceneProcessor( name, IECore::PathMatcher::NoMatch ), m_dirtyCount( 0 )
+	:	FilteredSceneProcessor( name, IECore::PathMatcher::NoMatch )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
@@ -58,8 +58,6 @@ Encapsulate::Encapsulate( const std::string &name )
 	outPlug()->attributesPlug()->setInput( inPlug()->attributesPlug() );
 	outPlug()->globalsPlug()->setInput( inPlug()->globalsPlug() );
 	outPlug()->setNamesPlug()->setInput( inPlug()->setNamesPlug() );
-
-	plugDirtiedSignal().connect( 0, boost::bind( &Encapsulate::plugDirtied, this, ::_1 ) );
 }
 
 Encapsulate::~Encapsulate()
@@ -95,9 +93,23 @@ void Encapsulate::affects( const Plug *input, AffectedPlugsContainer &outputs ) 
 	}
 }
 
+IECore::PathMatcher::Result Encapsulate::filterValueChecked( const Gaffer::Context *context ) const
+{
+	IECore::PathMatcher::Result f = filterValue( context );
+	if( f & IECore::PathMatcher::AncestorMatch )
+	{
+		std::string locationStr;
+		ScenePlug::pathToString( context->get<ScenePlug::ScenePath>( ScenePlug::scenePathContextName ), locationStr );
+		throw IECore::Exception(
+			"Tried to access path \"" + locationStr + "\", but its ancestor has been converted to a capsule"
+		);
+	}
+	return f;
+}
+
 void Encapsulate::hashObject( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const
 {
-	if( filterValue( context ) & IECore::PathMatcher::ExactMatch )
+	if( filterValueChecked( context ) & IECore::PathMatcher::ExactMatch )
 	{
 		FilteredSceneProcessor::hashObject( path, context, parent, h );
 		// What we really want here is a hash uniquely identifying the
@@ -112,7 +124,11 @@ void Encapsulate::hashObject( const ScenePath &path, const Gaffer::Context *cont
 		/// up and compute the accurate hash? Or at least provide the
 		/// option?
 		h.append( reinterpret_cast<uint64_t>( this ) );
-		h.append( m_dirtyCount );
+
+		/// \todo : This shouldn't include the dirtyCount of the globals plug,
+		/// once we fix things so that capsules don't depend on the shutter
+		/// setting of the source scene
+		h.append( inPlug()->dirtyCount() );
 		h.append( context->hash() );
 		inPlug()->boundPlug()->hash( h );
 	}
@@ -124,7 +140,7 @@ void Encapsulate::hashObject( const ScenePath &path, const Gaffer::Context *cont
 
 IECore::ConstObjectPtr Encapsulate::computeObject( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const
 {
-	if( filterValue( context ) & IECore::PathMatcher::ExactMatch )
+	if( filterValueChecked( context ) & IECore::PathMatcher::ExactMatch )
 	{
 		return new Capsule(
 			inPlug()->source<ScenePlug>(),
@@ -142,7 +158,7 @@ IECore::ConstObjectPtr Encapsulate::computeObject( const ScenePath &path, const 
 
 void Encapsulate::hashChildNames( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent, IECore::MurmurHash &h ) const
 {
-	if( filterValue( context ) & IECore::PathMatcher::ExactMatch )
+	if( filterValueChecked( context ) & IECore::PathMatcher::ExactMatch )
 	{
 		h = outPlug()->childNamesPlug()->defaultValue()->Object::hash();
 	}
@@ -154,7 +170,7 @@ void Encapsulate::hashChildNames( const ScenePath &path, const Gaffer::Context *
 
 IECore::ConstInternedStringVectorDataPtr Encapsulate::computeChildNames( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const
 {
-	if( filterValue( context ) & IECore::PathMatcher::ExactMatch )
+	if( filterValueChecked( context ) & IECore::PathMatcher::ExactMatch )
 	{
 		return outPlug()->childNamesPlug()->defaultValue();
 	}
@@ -236,13 +252,3 @@ IECore::ConstPathMatcherDataPtr Encapsulate::computeSet( const IECore::InternedS
 
 	return outputSetData;
 }
-
-void Encapsulate::plugDirtied( const Gaffer::Plug *plug )
-{
-	if( plug->parent() == outPlug() )
-	{
-		++m_dirtyCount;
-	}
-}
-
-

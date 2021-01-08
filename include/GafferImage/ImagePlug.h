@@ -130,7 +130,7 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 		/// with tile/channel specific variables removed. This can be used
 		/// when evaluating plugs which must be global to the whole image,
 		/// and can improve performance by reducing pressure on the hash cache.
-		struct GlobalScope : public Gaffer::Context::EditableScope
+		struct GAFFERIMAGE_API GlobalScope : public Gaffer::Context::EditableScope
 		{
 			GlobalScope( const Gaffer::Context *context );
 			GlobalScope( const Gaffer::ThreadState &threadState );
@@ -139,7 +139,7 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 		/// Utility class to scope a temporary copy of a context,
 		/// with convenient accessors to set tileOrigin and channelName,
 		/// which you often need to do while accessing channelData
-		struct ChannelDataScope : public Gaffer::Context::EditableScope
+		struct GAFFERIMAGE_API ChannelDataScope : public Gaffer::Context::EditableScope
 		{
 			ChannelDataScope( const Gaffer::Context *context );
 			ChannelDataScope( const Gaffer::ThreadState &threadState );
@@ -217,6 +217,13 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 		inline static int pixelIndex( const Imath::V2i &point, const Imath::V2i &tileOrigin )
 		{
 			return ( ( point.y - tileOrigin.y ) << tileSizeLog2() ) + point.x - tileOrigin.x;
+		};
+
+		/// Returns the pixel corresponding to an unwrapped index
+		inline static Imath::V2i indexPixel( int index, const Imath::V2i &tileOrigin )
+		{
+			int y = index >> tileSizeLog2();
+			return Imath::V2i( index - ( y << tileSizeLog2() ) + tileOrigin.x, y + tileOrigin.y );
 		};
 		//@}
 

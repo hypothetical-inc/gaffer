@@ -219,6 +219,9 @@ Gang plugs together                            :kbd:`Ctrl` + :kbd:`G`
 ============================================== ===============================================
 ```
 
+> Tip :
+> Numeric fields support basic mathematical operators to adjust their values. For example, appending `+1` to a plug with an existing value of `2`, will set it to `3`. You can use `+`, `-`, `/`, `*` and `%` to modify the existing value.
+
 
 ### Path plugs ###
 
@@ -299,6 +302,7 @@ Fit clipping planes to selection                       |M2| > *Clipping Planes*
 Frame view, and fit clipping planes to scene/selection :kbd:`Ctrl` + :kbd:`F`
 Reset clipping planes                                  |M2| > *Clipping Planes* > 
                                                        *Default*
+Toggle Inspector                                       :kbd:`I`
 ====================================================== =====================================
 ```
 
@@ -334,6 +338,7 @@ Isolate alpha channel                 :kbd:`A`
 Center image at 1:1 scale             :kbd:`Home`
 Next Catalogue image                  :kbd:`↓`
 Previous Catalogue image              :kbd:`↑`
+Duplicate current Catalogue image     :kbd:`Ctrl` + `:kbd:`D`
 ===================================== =============================================
 ```
 
@@ -346,6 +351,17 @@ Action                                Control or shortcut
 ===================================== =============================================
 Draw new region anywhere              :kbd:`Shift` + click and drag
 ===================================== =============================================
+```
+
+
+## Hierarchy View ##
+
+```eval_rst
+==================================== ================================================
+Action                               Control or shorcut
+==================================== ================================================
+Copy selected paths                  :kbd:`Ctrl` + :kbd:`C`
+==================================== ================================================
 ```
 
 
@@ -425,4 +441,37 @@ Adjust selected key(s)                          |M1| and drag
 Adjust frame(s) of selected key(s)              :kbd:`Shift` + |M1| and drag left/right
 Adjust value(s) of selected key(s)              :kbd:`Shift` + |M1| and drag up/down
 =============================================== =============================================
+```
+
+
+## Interactive Render Log ##
+
+```eval_rst
+==================================== ================================================
+Action                               Control or shorcut
+==================================== ================================================
+Next message of level                :kbd:`e`, :kbd:`w`, :kbd:`i`, :kbd:`d`
+Previous message of level            :kbd:`Shift` + :kbd:`e`, :kbd:`w`, :kbd:`i`, :kbd:`d`
+Search                               :kbd:`Ctrl` + :kbd:`F`
+  Next match (search field focus)    :kbd:`Enter`
+  Next match (log focus)             :kbd:`N`
+  Previous match (log focus)         :kbd:`P`
+Scroll to bottom                     :kbd:`B`
+==================================== ================================================
+```
+
+## Spreadsheet ##
+
+```eval_rst
+================================================== ================================================================
+Action                                             Control or shorcut
+================================================== ================================================================
+Toggle/edit selected cells                         :kbd:`Return` or |M1| |M1|
+Toggle Enabled state of selected cells             :kbd:`D`
+Copy/Paste selected cells or rows                  :kbd:`Ctrl` + :kbd:`C`/:kbd:`V`
+Move cell selection                                :kbd:`Up`, :kbd:`Down`, :kbd:`Left`, :kbd:`Right`
+Extend cell selection                              :kbd:`Shift` + :kbd:`Up`, :kbd:`Down`, :kbd:`Left`, :kbd:`Right`
+Move keyboard focus                                :kbd:`Ctrl` + :kbd:`Up`, :kbd:`Down`, :kbd:`Left`, :kbd:`Right`
+Toggle selection state of cell with keyboard focus :kbd:`Space`
+================================================== ================================================================
 ```

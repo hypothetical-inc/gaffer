@@ -38,6 +38,7 @@
 
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
+#include "Gaffer/FileSystemPathPlug.h"
 #include "Gaffer/TransformPlug.h"
 
 #include "IECoreScene/SceneCache.h"
@@ -57,7 +58,7 @@ using namespace GafferScene;
 
 typedef boost::tokenizer<boost::char_separator<char> > Tokenizer;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( SceneReader );
+GAFFER_NODE_DEFINE_TYPE( SceneReader );
 
 //////////////////////////////////////////////////////////////////////////
 // SceneReader implementation
@@ -71,10 +72,12 @@ SceneReader::SceneReader( const std::string &name )
 	:	SceneNode( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new IntPlug( "refreshCount" ) );
 	addChild( new StringPlug( "tags" ) );
 	addChild( new TransformPlug( "transform" ) );
+
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 	plugSetSignal().connect( boost::bind( &SceneReader::plugSet, this, ::_1 ) );
 }
 
@@ -82,14 +85,14 @@ SceneReader::~SceneReader()
 {
 }
 
-Gaffer::StringPlug *SceneReader::fileNamePlug()
+Gaffer::FileSystemPathPlug *SceneReader::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::StringPlug *SceneReader::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *SceneReader::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
 }
 
 Gaffer::IntPlug *SceneReader::refreshCountPlug()
@@ -126,26 +129,33 @@ void SceneReader::affects( const Gaffer::Plug *input, AffectedPlugsContainer &ou
 {
 	SceneNode::affects( input, outputs );
 
-	if( input == fileNamePlug() || input == refreshCountPlug() )
+	const bool affectsScene = input == fileNamePlug() || input == refreshCountPlug();
+
+	if(
+		affectsScene ||
+		input == outPlug()->childBoundsPlug() ||
+		transformPlug()->isAncestorOf( input )
+	)
 	{
 		outputs.push_back( outPlug()->boundPlug() );
+	}
+
+	if( affectsScene || transformPlug()->isAncestorOf( input ) )
+	{
 		outputs.push_back( outPlug()->transformPlug() );
+	}
+
+	if( affectsScene || input == tagsPlug() )
+	{
+		outputs.push_back( outPlug()->childNamesPlug() );
+	}
+
+	if( affectsScene )
+	{
 		outputs.push_back( outPlug()->attributesPlug() );
 		outputs.push_back( outPlug()->objectPlug() );
-		outputs.push_back( outPlug()->childNamesPlug() );
-		// deliberately not adding globalsPlug(), since we don't
-		// load those from file.
 		outputs.push_back( outPlug()->setNamesPlug() );
 		outputs.push_back( outPlug()->setPlug() );
-	}
-	else if( input == tagsPlug() )
-	{
-		outputs.push_back( outPlug()->childNamesPlug() );
-	}
-	else if( transformPlug()->isAncestorOf( input ) )
-	{
-		outputs.push_back( outPlug()->transformPlug() );
-		outputs.push_back( outPlug()->boundPlug() );
 	}
 }
 
@@ -173,6 +183,9 @@ void SceneReader::hashBound( const ScenePath &path, const Gaffer::Context *conte
 	}
 	else
 	{
+		// Deliberately not using `childBoundsPlug()->hash()`
+		// here because `fileName/path` uniquely identifies the
+		// result, and is quicker to compute.
 		fileNamePlug()->hash( h );
 		h.append( &path.front(), path.size() );
 	}
@@ -203,7 +216,7 @@ Imath::Box3f SceneReader::computeBound( const ScenePath &path, const Gaffer::Con
 	}
 	else
 	{
-		result = parent->childBounds();
+		result = parent->childBoundsPlug()->getValue();
 	}
 
 	if( path.size() == 0 && !result.isEmpty() )

@@ -38,6 +38,7 @@
 #ifndef GAFFERSCENE_DELETEPOINTS_H
 #define GAFFERSCENE_DELETEPOINTS_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Deformer.h"
 
 namespace Gaffer
@@ -64,7 +65,7 @@ class GAFFERSCENE_API DeletePoints : public Deformer
 		Gaffer::BoolPlug *invertPlug();
 		const Gaffer::BoolPlug *invertPlug() const;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::DeletePoints, DeletePointsTypeId, Deformer );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::DeletePoints, DeletePointsTypeId, Deformer );
 
 	protected :
 

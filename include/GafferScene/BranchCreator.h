@@ -63,7 +63,7 @@ class GAFFERSCENE_API BranchCreator : public FilteredSceneProcessor
 
 		~BranchCreator() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::BranchCreator, BranchCreatorTypeId, FilteredSceneProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::BranchCreator, BranchCreatorTypeId, FilteredSceneProcessor );
 
 		Gaffer::StringPlug *parentPlug();
 		const Gaffer::StringPlug *parentPlug() const;
@@ -97,6 +97,8 @@ class GAFFERSCENE_API BranchCreator : public FilteredSceneProcessor
 		IECore::ConstInternedStringVectorDataPtr computeChildNames( const ScenePath &path, const Gaffer::Context *context, const ScenePlug *parent ) const override;
 		IECore::ConstInternedStringVectorDataPtr computeSetNames( const Gaffer::Context *context, const ScenePlug *parent ) const override;
 		IECore::ConstPathMatcherDataPtr computeSet( const IECore::InternedString &setName, const Gaffer::Context *context, const ScenePlug *parent ) const override;
+
+		Gaffer::ValuePlug::CachePolicy hashCachePolicy( const Gaffer::ValuePlug *output ) const override;
 
 		/// @name Branch evaluation methods
 		/// These must be implemented by derived classes. The hashBranch*() methods must either :
@@ -171,6 +173,11 @@ class GAFFERSCENE_API BranchCreator : public FilteredSceneProcessor
 
 		void hashMapping( const Gaffer::Context *context, IECore::MurmurHash &h ) const;
 		IECore::ConstDataPtr computeMapping( const Gaffer::Context *context ) const;
+
+		// Returns the parent paths that should be used to compute a set. If these are empty,
+		// the input set will be passed through unchanged.
+		IECore::PathMatcher parentPathsForSet( const IECore::InternedString &setName, const Gaffer::Context *context ) const;
+		bool affectsParentPathsForSet( const Gaffer::Plug *input ) const;
 
 		// Computes the relevant parent and branch paths for computing the result
 		// at the specified path. Returns a PathMatcher::Result to describe where path is

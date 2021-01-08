@@ -451,6 +451,8 @@ IECore::DataPtr extractDataFromPlug( const ValuePlug *plug )
 			return static_cast<const Color3fVectorDataPlug *>( plug )->getValue()->copy();
 		case M44fVectorDataPlugTypeId :
 			return static_cast<const M44fVectorDataPlug *>( plug )->getValue()->copy();
+		// case M33fVectorDataPlugTypeId :
+		// 	return static_cast<const M33fVectorDataPlug *>( plug )->getValue()->copy();
 		case SplineffPlugTypeId :
 			return new SplineffData( static_cast<const SplineffPlug *>( plug )->getValue().spline() );
 		case SplinefColor3fPlugTypeId :
@@ -459,6 +461,8 @@ IECore::DataPtr extractDataFromPlug( const ValuePlug *plug )
 			return new M44fData( static_cast<const TransformPlug *>( plug )->matrix() );
 		case M44fPlugTypeId :
 			return new M44fData( static_cast<const M44fPlug *>( plug )->getValue() );
+		case M33fPlugTypeId :
+			return new M33fData( static_cast<const M33fPlug *>( plug )->getValue() );
 		default :
 			throw IECore::Exception(
 				boost::str( boost::format( "Plug \"%s\" has unsupported type \"%s\"" ) % plug->getName().string() % plug->typeName() )
@@ -652,7 +656,7 @@ void applyDynamicFlag( Plug *plug )
 		for( RecursivePlugIterator it( plug ); !it.done(); ++it )
 		{
 			(*it)->setFlags( Plug::Dynamic, true );
-			if( find( compoundTypes, compoundTypesEnd, (Gaffer::TypeId)(*it)->typeId() ) != compoundTypesEnd )
+			if( find( compoundTypes, compoundTypesEnd, (Gaffer::TypeId)(*it)->typeId() ) == compoundTypesEnd )
 			{
 				it.prune();
 			}

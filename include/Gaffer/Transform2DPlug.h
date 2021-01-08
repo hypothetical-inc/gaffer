@@ -47,7 +47,15 @@ class GAFFER_API Transform2DPlug : public ValuePlug
 
 	public :
 
-		Transform2DPlug( const std::string &name = defaultName<Transform2DPlug>(), Direction direction=In, unsigned flags = Default );
+		Transform2DPlug(
+			const std::string &name = defaultName<Transform2DPlug>(),
+			Direction direction=In,
+			const Imath::V2f &defaultTranslate = Imath::V2f( 0 ),
+			float defaultRotate = 0,
+			const Imath::V2f &defaultScale = Imath::V2f( 1 ),
+			const Imath::V2f &defaultPivot = Imath::V2f( 0 ),
+			unsigned flags = Default
+		);
 		~Transform2DPlug() override;
 
 		GAFFER_PLUG_DECLARE_TYPE( Gaffer::Transform2DPlug, Transform2DPlugTypeId, ValuePlug );
@@ -55,14 +63,14 @@ class GAFFER_API Transform2DPlug : public ValuePlug
 		bool acceptsChild( const GraphComponent *potentialChild ) const override;
 		PlugPtr createCounterpart( const std::string &name, Direction direction ) const override;
 
-		V2fPlug *pivotPlug();
-		const V2fPlug *pivotPlug() const;
 		V2fPlug *translatePlug();
 		const V2fPlug *translatePlug() const;
 		FloatPlug *rotatePlug();
 		const FloatPlug *rotatePlug() const;
 		V2fPlug *scalePlug();
 		const V2fPlug *scalePlug() const;
+		V2fPlug *pivotPlug();
+		const V2fPlug *pivotPlug() const;
 
 		Imath::M33f matrix() const;
 
@@ -73,10 +81,10 @@ class GAFFER_API Transform2DPlug : public ValuePlug
 
 IE_CORE_DECLAREPTR( Transform2DPlug );
 
+/// \deprecated Use Transform2DPlug::Iterator etc instead
 typedef FilteredChildIterator<PlugPredicate<Plug::Invalid, Transform2DPlug> > Transform2DPlugIterator;
 typedef FilteredChildIterator<PlugPredicate<Plug::In, Transform2DPlug> > InputTransform2DPlugIterator;
 typedef FilteredChildIterator<PlugPredicate<Plug::Out, Transform2DPlug> > OutputTransform2DPlugIterator;
-
 typedef FilteredRecursiveChildIterator<PlugPredicate<Gaffer::Plug::Invalid, Transform2DPlug>, PlugPredicate<> > RecursiveTransform2DPlugPlugIterator;
 typedef FilteredRecursiveChildIterator<PlugPredicate<Gaffer::Plug::In, Transform2DPlug>, PlugPredicate<> > RecursiveInputTransform2DPlugPlugIterator;
 typedef FilteredRecursiveChildIterator<PlugPredicate<Gaffer::Plug::Out, Transform2DPlug>, PlugPredicate<> > RecursiveOutputTransform2DPlugPlugIterator;

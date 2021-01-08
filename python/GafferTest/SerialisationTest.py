@@ -35,6 +35,8 @@
 ##########################################################################
 
 import imath
+import unittest
+import six
 
 import IECore
 
@@ -245,6 +247,58 @@ class SerialisationTest( GafferTest.TestCase ) :
 		bIdentifier = serialisation.identifier( node["b"] )
 		self.assertEqual( bIdentifier, "" )
 		self.assertEqual( serialisation.childIdentifier( bIdentifier, node["b"]["op1"] ), "" )
+
+	def testBase64ObjectConversions( self ) :
+
+		# Test StringData with all possible byte values (except 0,
+		# because we can't construct a StringData with a null at the start).
+		allBytes = bytes().join( [ six.int2byte( i ) for i in range( 1, 256 ) ] )
+		for i in range( 0, len( allBytes ) ) :
+			o = IECore.StringData( allBytes[:i] )
+			b = Gaffer.Serialisation.objectToBase64( o )
+			self.assertEqual(
+				Gaffer.Serialisation.objectFromBase64( b ),
+				o
+			)
+
+		# Test CompoundData
+		o = IECore.CompoundData( {
+			"a" : 10,
+			"b" : 20,
+			"c" : IECore.CompoundData( {
+				"d" : imath.V3f( 1, 2, 3 )
+			} )
+		} )
+		b = Gaffer.Serialisation.objectToBase64( o )
+		self.assertEqual(
+			Gaffer.Serialisation.objectFromBase64( b ),
+			o
+		)
+
+	@unittest.skipIf( GafferTest.inCI(), "Performance not relevant on CI platform" )
+	@GafferTest.TestRunner.PerformanceTestMethod( repeat = 1 )
+	def testSwitchPerformance( self ) :
+
+		script = Gaffer.ScriptNode()
+
+		def build( maxDepth, upstreamNode = None, depth = 0 ) :
+
+			node = Gaffer.Switch()
+			node.setup( Gaffer.V3iPlug() )
+			if upstreamNode is not None :
+				node["in"][0].setInput( upstreamNode["out"] )
+
+			script.addChild( node )
+
+			if depth < maxDepth :
+				build( maxDepth, node, depth + 1 )
+				build( maxDepth, node, depth + 1 )
+
+		with Gaffer.DirtyPropagationScope() :
+			build( 13 )
+
+		with GafferTest.TestRunner.PerformanceScope() :
+			script.serialise()
 
 if __name__ == "__main__":
 	unittest.main()

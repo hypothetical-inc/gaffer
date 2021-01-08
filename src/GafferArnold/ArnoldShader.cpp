@@ -39,6 +39,8 @@
 
 #include "GafferArnold/ParameterHandler.h"
 
+#include "GafferOSL/OSLShader.h"
+
 #include "Gaffer/CompoundNumericPlug.h"
 #include "Gaffer/NumericPlug.h"
 #include "Gaffer/StringPlug.h"
@@ -59,8 +61,17 @@ using namespace IECore;
 using namespace GafferScene;
 using namespace GafferArnold;
 using namespace Gaffer;
+using namespace GafferOSL;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( ArnoldShader );
+namespace
+{
+
+// This is to allow Arnold Shaders to be connected to OSL Shaders
+static bool g_oslRegistration = OSLShader::registerCompatibleShader( "ai:surface" );
+
+} // namespace
+
+GAFFER_NODE_DEFINE_TYPE( ArnoldShader );
 
 ArnoldShader::ArnoldShader( const std::string &name )
 	:	GafferScene::Shader( name )

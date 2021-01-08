@@ -55,16 +55,38 @@ using namespace Gaffer;
 namespace
 {
 
-float filteredStripes( float x, float period, float filterWidth )
+inline float filteredStripes( float x, float period, float filterWidth )
 {
-	float w = filterWidth / period * .5;
-	float x0 = x / period - w;
-	float x1 = x / period + w;
-	float floorX0 = floor( x0 );
-	float floorX1 = floor( x1 );
-	return ( ( .5f * floorX1 + max( 0.f, x1 - floorX1 - .5f ) ) -
-		( .5f * floorX0 + max( 0.f, x0 - floorX0 - .5f ) ) ) /
-		( w * 2 );
+	// \todo : this call to round is actually quite slow, and isn't being inlined.
+	//
+	// Replacing it with nearbyintf is faster, and should be inlinable, but there are
+	// two issues:
+	// * nearbyintf is influenced by the current rounding mode, which could be something
+	//   other than FE_TONEAREST ( but if it was something other than FE_TONEAREST, it looks
+	//   like that would also break OIIO's use of rint(), so maybe that's fine?
+	// * This bug in GCC means it wouldn't get inlined until we get on GCC 9:
+	//   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71278
+	//
+	// Alternatively, we could explicitly use an intrinsic for the ASM instruction we actually
+	// want, avoiding both issues:
+	//
+	//   float nearestBoundary;
+	//   __m128 d = _mm_load_ss(&xp);
+	//   d = _mm_round_ss(d, d, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+	//   _mm_store_ss(&nearestBoundary, d);
+	//
+	// But mm_round_ss requires sse4.2 - I doubt if anyone is running Gaffer without sse4.2
+	// support, but we would need to make a decision about what processors we support, and this
+	// isn't important enough to justify it.
+	//
+	// The other approach used by oiio's fast_rint is just static_cast<int>(x + copysignf(0.5f, x)).
+	// This is faster than round(), but messy, and not as fast as nearbyintf or mm_round_ss.
+	//
+	// Just sticking with the old round() for now, since this isn't too important
+	float xp = x / ( period * 0.5f );
+	float nearestBoundary = round( xp );
+	float boundaryDirection = (((int)nearestBoundary) % 2 ) == 0 ? -1.0f : 1.0f;
+	return max( 0.0f, min( 1.0f, ( ( xp - nearestBoundary ) * ( period * 0.5f ) / filterWidth * boundaryDirection + 0.5f ) ) );
 }
 
 } // namespace
@@ -73,7 +95,7 @@ float filteredStripes( float x, float period, float filterWidth )
 // Checkerboard implementation
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Checkerboard );
+GAFFER_NODE_DEFINE_TYPE( Checkerboard );
 
 size_t Checkerboard::g_firstPlugIndex = 0;
 
@@ -276,24 +298,56 @@ IECore::ConstFloatVectorDataPtr Checkerboard::computeChannelData( const std::str
 	vector<float> &result = resultData->writable();
 	result.reserve( ImagePlug::tileSize() * ImagePlug::tileSize() );
 
-	float w0;
-	float h0;
-	float v;
-
-	for( int y = 0; y < ImagePlug::tileSize(); ++y )
+	// If there is no dependency between X and Y, we can treat them separably, for much better perf
+	if( transform[0][1] == 0 && transform[1][0] == 0 )
 	{
+		// Position of pixel <0,0>
+		float xOffset = inverseTransform[2][0] + (tileOrigin.x + .5f) * inverseTransform[0][0];
+		float yOffset = inverseTransform[2][1] + (tileOrigin.y + .5f) * inverseTransform[1][1];
+
+		// Use the first scanline as a buffer to store the x component of the checkerboard
 		for( int x = 0; x < ImagePlug::tileSize(); ++x )
 		{
-			V2f p( tileOrigin.x + x + .5f, tileOrigin.y + y + .5f );
-			p *= inverseTransform;
-
-			w0 = filteredStripes( p.x, size.x, filterWidth.x );
-			h0 = filteredStripes( p.y, size.y, filterWidth.y );
-
-			v = lerp<float>( w0, 1 - w0, h0 );
-			result.push_back( lerp<float>( valueA, valueB, v ) );
+			float w0 = filteredStripes( x * inverseTransform[0][0] + xOffset, size.x, filterWidth.x );
+			result.push_back( w0 );
 		}
 
+		// Compute the y components and fill the rest of the image by copying the x components
+		// stored in the first scanline
+		for( int y = 1; y < ImagePlug::tileSize(); ++y )
+		{
+			float h0 = filteredStripes( y * inverseTransform[1][1] + yOffset, size.y, filterWidth.y );
+			for( int x = 0; x < ImagePlug::tileSize(); ++x )
+			{
+				float v = lerp<float>( result[x], 1 - result[x], h0 );
+				result.push_back( lerp<float>( valueA, valueB, v ) );
+			}
+		}
+
+		// Apply the y component to the first scanline
+		float h0 = filteredStripes( yOffset, size.y, filterWidth.y );
+		for( int x = 0; x < ImagePlug::tileSize(); ++x )
+		{
+			float v = lerp<float>( result[x], 1 - result[x], h0 );
+			result[x] = lerp<float>( valueA, valueB, v );
+		}
+	}
+	else
+	{
+		for( int y = 0; y < ImagePlug::tileSize(); ++y )
+		{
+			for( int x = 0; x < ImagePlug::tileSize(); ++x )
+			{
+				V2f p( tileOrigin.x + x + .5f, tileOrigin.y + y + .5f );
+				p *= inverseTransform;
+
+				float w0 = filteredStripes( p.x, size.x, filterWidth.x );
+				float h0 = filteredStripes( p.y, size.y, filterWidth.y );
+
+				float v = lerp<float>( w0, 1 - w0, h0 );
+				result.push_back( lerp<float>( valueA, valueB, v ) );
+			}
+		}
 	}
 
 	return resultData;

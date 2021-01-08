@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_MAPPROJECTION_H
 #define GAFFERSCENE_MAPPROJECTION_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/ObjectProcessor.h"
 
 namespace Gaffer
@@ -58,7 +59,7 @@ class GAFFERSCENE_API MapProjection : public ObjectProcessor
 		MapProjection( const std::string &name=defaultName<MapProjection>() );
 		~MapProjection() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::MapProjection, MapProjectionTypeId, ObjectProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::MapProjection, MapProjectionTypeId, ObjectProcessor );
 
 		Gaffer::StringPlug *cameraPlug();
 		const Gaffer::StringPlug *cameraPlug() const;

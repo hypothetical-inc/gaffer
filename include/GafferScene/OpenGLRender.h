@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_OPENGLRENDER_H
 #define GAFFERSCENE_OPENGLRENDER_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Render.h"
 
 namespace GafferScene
@@ -50,7 +51,7 @@ class GAFFERSCENE_API OpenGLRender : public Render
 		OpenGLRender( const std::string &name=defaultName<OpenGLRender>() );
 		~OpenGLRender() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::OpenGLRender, OpenGLRenderTypeId, Render );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::OpenGLRender, OpenGLRenderTypeId, Render );
 
 };
 

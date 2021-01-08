@@ -56,7 +56,7 @@ class GAFFER_API Animation : public ComputeNode
 		Animation( const std::string &name=defaultName<Animation>() );
 		~Animation() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( Gaffer::Animation, AnimationTypeId, ComputeNode );
+		GAFFER_NODE_DECLARE_TYPE( Gaffer::Animation, AnimationTypeId, ComputeNode );
 
 		/// Defines the method used to interpolate
 		/// between a key and the previous one.
@@ -72,7 +72,7 @@ class GAFFER_API Animation : public ComputeNode
 		class CurvePlug;
 
 		/// Defines a single keyframe.
-		class Key : public IECore::RefCounted
+		class GAFFER_API Key : public IECore::RefCounted
 		{
 
 			public :
@@ -121,7 +121,7 @@ class GAFFER_API Animation : public ComputeNode
 		/// Defines a curve as a collection of keyframes and methods
 		/// for editing them. Provides methods for evaluating the
 		/// interpolated curve at arbitrary positions.
-		class CurvePlug : public ValuePlug
+		class GAFFER_API CurvePlug : public ValuePlug
 		{
 
 			public :

@@ -85,7 +85,7 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 		ImageView( const std::string &name = defaultName<ImageView>() );
 		~ImageView() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImageUI::ImageView, ImageViewTypeId, GafferUI::View );
+		GAFFER_NODE_DECLARE_TYPE( GafferImageUI::ImageView, ImageViewTypeId, GafferUI::View );
 
 		Gaffer::BoolPlug *clippingPlug();
 		const Gaffer::BoolPlug *clippingPlug() const;
@@ -99,6 +99,9 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 		/// Values should be names that exist in registeredDisplayTransforms().
 		Gaffer::StringPlug *displayTransformPlug();
 		const Gaffer::StringPlug *displayTransformPlug() const;
+
+		Gaffer::BoolPlug *lutGPUPlug();
+		const Gaffer::BoolPlug *lutGPUPlug() const;
 
 		void setContext( Gaffer::ContextPtr context ) override;
 
@@ -121,18 +124,6 @@ class GAFFERIMAGEUI_API ImageView : public GafferUI::View
 		void insertConverter( Gaffer::NodePtr converter );
 
 	private :
-
-		GafferImage::DeepState *deepStateNode();
-		const GafferImage::DeepState *deepStateNode() const;
-
-		GafferImage::Clamp *clampNode();
-		const GafferImage::Clamp *clampNode() const;
-
-		GafferImage::Grade *gradeNode();
-		const GafferImage::Grade *gradeNode() const;
-
-		GafferImage::ImageProcessor *displayTransformNode();
-		const GafferImage::ImageProcessor *displayTransformNode() const;
 
 		void plugSet( Gaffer::Plug *plug );
 		bool keyPress( const GafferUI::KeyEvent &event );

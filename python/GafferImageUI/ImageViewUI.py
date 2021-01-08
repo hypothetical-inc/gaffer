@@ -45,6 +45,8 @@ import GafferUI
 import GafferImage
 import GafferImageUI
 
+
+
 ##########################################################################
 # Metadata registration.
 ##########################################################################
@@ -55,21 +57,27 @@ Gaffer.Metadata.registerNode(
 
 	"nodeToolbar:bottom:type", "GafferUI.StandardNodeToolbar.bottom",
 
-	"toolbarLayout:customWidget:LeftSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
-	"toolbarLayout:customWidget:LeftSpacer:section", "Top",
-	"toolbarLayout:customWidget:LeftSpacer:index", 0,
-
 	"toolbarLayout:customWidget:StateWidget:widgetType", "GafferImageUI.ImageViewUI._StateWidget",
 	"toolbarLayout:customWidget:StateWidget:section", "Top",
-	"toolbarLayout:customWidget:StateWidget:index", -1,
+	"toolbarLayout:customWidget:StateWidget:index", 0,
 
-	"toolbarLayout:customWidget:RightSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
-	"toolbarLayout:customWidget:RightSpacer:section", "Top",
-	"toolbarLayout:customWidget:RightSpacer:index", -2,
+	"toolbarLayout:customWidget:LeftCenterSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
+	"toolbarLayout:customWidget:LeftCenterSpacer:section", "Top",
+	"toolbarLayout:customWidget:LeftCenterSpacer:index", 1,
+
+	"toolbarLayout:customWidget:RightCenterSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
+	"toolbarLayout:customWidget:RightCenterSpacer:section", "Top",
+	"toolbarLayout:customWidget:RightCenterSpacer:index", -2,
+
+	"toolbarLayout:customWidget:StateWidgetBalancingSpacer:widgetType", "GafferImageUI.ImageViewUI._StateWidgetBalancingSpacer",
+	"toolbarLayout:customWidget:StateWidgetBalancingSpacer:section", "Top",
+	"toolbarLayout:customWidget:StateWidgetBalancingSpacer:index", -1,
 
 	"toolbarLayout:customWidget:BottomRightSpacer:widgetType", "GafferImageUI.ImageViewUI._Spacer",
 	"toolbarLayout:customWidget:BottomRightSpacer:section", "Bottom",
 	"toolbarLayout:customWidget:BottomRightSpacer:index", 2,
+
+	"layout:activator:gpuAvailable", lambda node : ImageViewUI.createDisplayTransform( node["displayTransform"].getValue() ).isinstance( GafferImage.OpenColorIOTransform ),
 
 	plugs = {
 
@@ -84,6 +92,7 @@ Gaffer.Metadata.registerNode(
 			"togglePlugValueWidget:imagePrefix", "clipping",
 			"togglePlugValueWidget:defaultToggleValue", True,
 			"toolbarLayout:divider", True,
+			"toolbarLayout:index", 4,
 
 		],
 
@@ -97,6 +106,7 @@ Gaffer.Metadata.registerNode(
 			"plugValueWidget:type", "GafferImageUI.ImageViewUI._TogglePlugValueWidget",
 			"togglePlugValueWidget:imagePrefix", "exposure",
 			"togglePlugValueWidget:defaultToggleValue", 1,
+			"toolbarLayout:index", 5,
 
 		],
 
@@ -110,6 +120,7 @@ Gaffer.Metadata.registerNode(
 			"plugValueWidget:type", "GafferImageUI.ImageViewUI._TogglePlugValueWidget",
 			"togglePlugValueWidget:imagePrefix", "gamma",
 			"togglePlugValueWidget:defaultToggleValue", 2,
+			"toolbarLayout:index", 6,
 
 		],
 
@@ -123,11 +134,26 @@ Gaffer.Metadata.registerNode(
 			"plugValueWidget:type", "GafferUI.PresetsPlugValueWidget",
 			"label", "",
 			"toolbarLayout:width", 100,
+			"toolbarLayout:index", 7,
 
 			"presetNames", lambda plug : IECore.StringVectorData( GafferImageUI.ImageView.registeredDisplayTransforms() ),
 			"presetValues", lambda plug : IECore.StringVectorData( GafferImageUI.ImageView.registeredDisplayTransforms() ),
 
 		],
+
+		"lutGPU" : [
+			"description",
+			"""
+			Controls whether to use the fast GPU path for applying exposure, gamma, and displayTransform.
+			Much faster, but may suffer loss of accuracy in some corner cases.
+			""",
+
+			"plugValueWidget:type", "GafferImageUI.ImageViewUI._LutGPUPlugValueWidget",
+			"toolbarLayout:index", 8,
+			"label", "",
+			"layout:activator", "gpuAvailable",
+		],
+
 
 		"colorInspector" : [
 
@@ -146,7 +172,7 @@ Gaffer.Metadata.registerNode(
 			""",
 
 			"plugValueWidget:type", "GafferImageUI.RGBAChannelsPlugValueWidget",
-			"toolbarLayout:index", 1,
+			"toolbarLayout:index", 2,
 			"toolbarLayout:width", 175,
 			"label", "",
 
@@ -160,7 +186,7 @@ Gaffer.Metadata.registerNode(
 			""",
 
 			"plugValueWidget:type", "GafferImageUI.ImageViewUI._SoloChannelPlugValueWidget",
-			"toolbarLayout:index", 1,
+			"toolbarLayout:index", 3,
 			"toolbarLayout:divider", True,
 			"label", "",
 
@@ -237,6 +263,19 @@ class _TogglePlugValueWidget( GafferUI.PlugValueWidget ) :
 ##########################################################################
 # _ColorInspectorPlugValueWidget
 ##########################################################################
+
+def _hsvString( color ) :
+
+	if any( math.isinf( x ) or math.isnan( x ) for x in color ) :
+		# The conventional thing to do would be to call `color.rgb2hsv()`
+		# and catch the exception that PyImath throws. But PyImath's
+		# exception handling involves a signal handler for SIGFPE. And
+		# Arnold likes to install its own handler for that, somehow
+		# breaking everything so that the entire application terminates.
+		return "- - -"
+	else :
+		hsv = color.rgb2hsv()
+		return "%.3f %.3f %.3f" % ( hsv.r, hsv.g, hsv.b )
 
 class _ColorInspectorPlugValueWidget( GafferUI.PlugValueWidget ) :
 
@@ -354,8 +393,7 @@ class _ColorInspectorPlugValueWidget( GafferUI.PlugValueWidget ) :
 		else :
 			self.__rgbLabel.setText( "<b>RGB : %.3f %.3f %.3f</b>" % ( color.r, color.g, color.b ) )
 
-		hsv = color.rgb2hsv()
-		self.__hsvLabel.setText( "<b>HSV : %.3f %.3f %.3f</b>" % ( hsv.r, hsv.g, hsv.b ) )
+		self.__hsvLabel.setText( "<b>HSV : %s</b>" % _hsvString( color ) )
 
 	def __mouseMove( self, viewportGadget, event ) :
 
@@ -465,6 +503,85 @@ class _SoloChannelPlugValueWidget( GafferUI.PlugValueWidget ) :
 		self.getPlug().setValue( value )
 
 ##########################################################################
+# _LutGPUPlugValueWidget
+##########################################################################
+
+class _LutGPUPlugValueWidget( GafferUI.PlugValueWidget ) :
+
+	def __init__( self, plug, **kw ) :
+
+		self.__button = GafferUI.MenuButton(
+			image = "lutGPU.png",
+			hasFrame = False,
+			menu = GafferUI.Menu(
+				Gaffer.WeakMethod( self.__menuDefinition ),
+				title = "LUT Mode",
+			)
+		)
+
+		GafferUI.PlugValueWidget.__init__( self, self.__button, plug, **kw )
+
+		plug.node().plugSetSignal().connect( Gaffer.WeakMethod( self.__plugSet ), scoped = False )
+
+		self._updateFromPlug()
+
+	def getToolTip( self ) :
+		text = "# LUT Mode\n\n"
+		if self.__button.getEnabled():
+			if self.getPlug().getValue():
+				text += "Running LUT on GPU ( fast mode )."
+			else:
+				text += "Running LUT on CPU ( slow but accurate mode )."
+			text += "\n\nAlt+G to toggle"
+		else:
+			text += "GPU not supported by current DisplayTransform"
+		return text
+
+	def __plugSet( self, plug ) :
+		n = plug.node()
+		if plug == n["displayTransform"] :
+			self._updateFromPlug()
+
+	def _updateFromPlug( self ) :
+
+		with self.getContext() :
+			gpuSupported = isinstance(
+				GafferImageUI.ImageView.createDisplayTransform( self.getPlug().node()["displayTransform"].getValue() ),
+				GafferImage.OpenColorIOTransform
+			)
+
+			gpuOn = gpuSupported and self.getPlug().getValue()
+			self.__button.setImage( "lutGPU.png" if gpuOn else "lutCPU.png" )
+			self.__button.setEnabled( gpuSupported )
+
+	def __menuDefinition( self ) :
+
+		with self.getContext() :
+			lutGPU = self.getPlug().getValue()
+
+		n = self.getPlug().node()["displayTransform"].getValue()
+		gpuSupported = isinstance( GafferImageUI.ImageView.createDisplayTransform( n ), GafferImage.OpenColorIOTransform )
+		m = IECore.MenuDefinition()
+		for name, value in [
+			( "GPU (fast)", True ),
+			( "CPU (accurate)", False )
+		] :
+			m.append(
+				"/" + name,
+				{
+					"command" : functools.partial( Gaffer.WeakMethod( self.__setValue ), value ),
+					"checkBox" : lutGPU == value,
+					"active" : gpuSupported
+				}
+			)
+
+		return m
+
+	def __setValue( self, value, *unused ) :
+
+		self.getPlug().setValue( value )
+
+##########################################################################
 # _StateWidget
 ##########################################################################
 
@@ -473,6 +590,19 @@ class _Spacer( GafferUI.Spacer ) :
 	def __init__( self, imageView, **kw ) :
 
 		GafferUI.Spacer.__init__( self, size = imath.V2i( 0, 25 ) )
+
+class _StateWidgetBalancingSpacer( GafferUI.Spacer ) :
+
+	def __init__( self, imageView, **kw ) :
+
+		width = 25 + 4 + 20
+		GafferUI.Spacer.__init__(
+			self,
+			imath.V2i( 0 ), # Minimum
+			preferredSize = imath.V2i( width, 1 ),
+			maximumSize = imath.V2i( width, 1 )
+		)
+
 
 ## \todo This widget is basically the same as the SceneView and UVView ones. Perhaps the
 # View base class should provide standard functionality for pausing and state, and we could
@@ -486,8 +616,8 @@ class _StateWidget( GafferUI.Widget ) :
 
 		with row :
 
-			self.__busyWidget = GafferUI.BusyWidget( size = 20 )
 			self.__button = GafferUI.Button( hasFrame = False )
+			self.__busyWidget = GafferUI.BusyWidget( size = 20 )
 
 		self.__imageGadget = imageView.viewportGadget().getPrimaryChild()
 

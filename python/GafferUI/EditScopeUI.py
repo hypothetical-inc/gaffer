@@ -135,14 +135,19 @@ class EditScopePlugValueWidget( GafferUI.PlugValueWidget ) :
 	def _updateFromPlug( self ) :
 
 		editScope = self.__editScope()
+		editScopeActive = editScope is not None
 		self.__updateMenuButton( editScope )
-		self.__navigationMenuButton.setEnabled( editScope is not None )
-		if editScope is not None :
+		self.__navigationMenuButton.setEnabled( editScopeActive )
+		if editScopeActive :
 			self.__editScopeNameChangedConnection = editScope.nameChangedSignal().connect(
 				Gaffer.WeakMethod( self.__editScopeNameChanged ), scoped = True
 			)
 		else :
 			self.__editScopeNameChangedConnection = None
+
+		if self._qtWidget().property( "editScopeActive" ) != editScopeActive :
+			self._qtWidget().setProperty( "editScopeActive", GafferUI._Variant.toVariant( editScopeActive ) )
+			self._repolish()
 
 	def __updateMenuButton( self, editScope ) :
 
@@ -189,10 +194,13 @@ class EditScopePlugValueWidget( GafferUI.PlugValueWidget ) :
 		def addItem( editScope, enabled = True ) :
 
 			result.append(
-				"/" + editScope.relativeName( editScope.scriptNode() ).replace( ".", "/" ),
+				# The underscore suffix prevents collisions with a node and
+				# it's submenu if it has nested edit scopes.
+				"/%s_" % editScope.relativeName( editScope.scriptNode() ).replace( ".", "/" ),
 				{
 					"command" : functools.partial( Gaffer.WeakMethod( self.__connectEditScope ), editScope ),
 					"active" : enabled,
+					"label" : editScope.getName(),
 					"checkBox" : editScope == currentEditScope,
 				}
 			)
@@ -233,12 +241,16 @@ class EditScopePlugValueWidget( GafferUI.PlugValueWidget ) :
 			)
 			return result
 
-		if editScope.processors() :
-			for processor in editScope.processors() :
+		nodes = editScope.processors()
+		nodes.extend( self.__userNodes( editScope ) )
+
+		if nodes :
+			for node in nodes :
+				path = node.relativeName( editScope ).replace( ".", "/" )
 				result.append(
-					"/" + processor.getName(),
+					"/" + path,
 					{
-						"command" : functools.partial( GafferUI.NodeEditor.acquire, processor )
+						"command" : functools.partial( GafferUI.NodeEditor.acquire, node )
 					}
 				)
 		else :
@@ -248,3 +260,9 @@ class EditScopePlugValueWidget( GafferUI.PlugValueWidget ) :
 			)
 
 		return result
+
+	@staticmethod
+	def __userNodes( editScope ) :
+
+		nodes = Gaffer.Metadata.nodesWithMetadata( editScope, "editScope:includeInNavigationMenu" )
+		return [ n for n in nodes if n.ancestor( Gaffer.EditScope ).isSame( editScope ) ]

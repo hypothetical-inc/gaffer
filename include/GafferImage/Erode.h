@@ -37,6 +37,7 @@
 #ifndef GAFFERIMAGE_ERODE_H
 #define GAFFERIMAGE_ERODE_H
 
+#include "GafferImage/Export.h"
 #include "GafferImage/RankFilter.h"
 
 namespace GafferImage
@@ -50,7 +51,7 @@ class GAFFERIMAGE_API Erode : public RankFilter
 		Erode( const std::string &name=defaultName<Erode>() );
 		~Erode() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferImage::Erode, ErodeTypeId, RankFilter );
+		GAFFER_NODE_DECLARE_TYPE( GafferImage::Erode, ErodeTypeId, RankFilter );
 
 };
 

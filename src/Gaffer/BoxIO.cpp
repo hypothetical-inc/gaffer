@@ -130,7 +130,7 @@ void applyDynamicFlag( Plug *plug )
 		for( RecursivePlugIterator it( plug ); !it.done(); ++it )
 		{
 			(*it)->setFlags( Plug::Dynamic, true );
-			if( find( begin( compoundTypes ), end( compoundTypes ), (Gaffer::TypeId)(*it)->typeId() ) != end( compoundTypes ) )
+			if( find( begin( compoundTypes ), end( compoundTypes ), (Gaffer::TypeId)(*it)->typeId() ) == end( compoundTypes ) )
 			{
 				it.prune();
 			}
@@ -167,7 +167,7 @@ void setFrom( Plug *dst, const Plug *src )
 // BoxIO
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( BoxIO );
+GAFFER_NODE_DEFINE_TYPE( BoxIO );
 
 size_t BoxIO::g_firstPlugIndex = 0;
 

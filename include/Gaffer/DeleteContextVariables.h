@@ -37,7 +37,6 @@
 #ifndef GAFFER_DELETECONTEXTVARIABLES_H
 #define GAFFER_DELETECONTEXTVARIABLES_H
 
-#include "Gaffer/CompoundDataPlug.h"
 #include "Gaffer/ContextProcessor.h"
 #include "Gaffer/StringPlug.h"
 
@@ -49,7 +48,7 @@ class IECORE_EXPORT DeleteContextVariables : public ContextProcessor
 
 	public :
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( Gaffer::DeleteContextVariables, DeleteContextVariablesTypeId, ContextProcessor );
+		GAFFER_NODE_DECLARE_TYPE( Gaffer::DeleteContextVariables, DeleteContextVariablesTypeId, ContextProcessor );
 
 		DeleteContextVariables( const std::string &name=GraphComponent::defaultName<DeleteContextVariables>() );
 		~DeleteContextVariables() override;

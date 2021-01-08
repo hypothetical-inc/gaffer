@@ -37,7 +37,15 @@
 #ifndef GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 #define GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 
-#include "GafferScene/FilteredSceneProcessor.h"
+#include "GafferScene/SceneElementProcessor.h"
+#include "GafferScene/Export.h"
+
+namespace Gaffer
+{
+
+IE_CORE_FORWARDDECLARE( StringPlug )
+
+} // namespace Gaffer
 
 namespace GafferScene
 {
@@ -50,7 +58,7 @@ class GAFFERSCENE_API AttributeProcessor : public FilteredSceneProcessor
 
 		~AttributeProcessor() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::AttributeProcessor, AttributeProcessorTypeId, FilteredSceneProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::AttributeProcessor, AttributeProcessorTypeId, FilteredSceneProcessor );
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

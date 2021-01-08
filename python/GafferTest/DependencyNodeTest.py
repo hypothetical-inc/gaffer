@@ -38,6 +38,7 @@
 import unittest
 import threading
 import collections
+import six
 
 import IECore
 
@@ -554,6 +555,22 @@ class DependencyNodeTest( GafferTest.TestCase ) :
 		del n["in"]
 		self.assertEqual( valuesWhenDirtied, [ 0 ] )
 
+		# Check that dirty propagation still operates even if
+		# the plugs don't have the Dynamic flag set. Although
+		# DynamicAddNode would require the flag for serialisation
+		# to work, other nodes may not, and we don't want to mix
+		# up dirty propagation with serialisation.
+
+		del valuesWhenDirtied[:]
+		n["in"] = Gaffer.IntPlug( defaultValue = 1 )
+		n["in1"] = Gaffer.IntPlug( defaultValue = 2 )
+		self.assertEqual( valuesWhenDirtied, [ 1, 3 ] )
+
+		del valuesWhenDirtied[:]
+		del n["in"]
+		del n["in1"]
+		self.assertEqual( valuesWhenDirtied, [ 2, 0 ] )
+
 	def testThrowInAffects( self ) :
 		# Dirty propagation is a secondary process that
 		# is triggered by primary operations like adding
@@ -675,6 +692,39 @@ class DependencyNodeTest( GafferTest.TestCase ) :
 		self.assertEqual( mh.messages[0].level, IECore.Msg.Level.Error )
 		self.assertEqual( mh.messages[0].context, "BadAffects::affects()" )
 		self.assertEqual( mh.messages[0].message, "TypeError: No registered converter was able to extract a C++ reference to type Gaffer::Plug from this Python object of type NoneType\n" )
+
+	def testDependencyCyclesDontStopPlugsDirtying( self ) :
+
+		nodes = [ GafferTest.MultiplyNode( "node{}".format( i ) ) for i in range( 0, 10 ) ]
+		cs = GafferTest.CapturingSlot( *[ n.plugDirtiedSignal() for n in nodes ] )
+
+		with IECore.CapturingMessageHandler() as mh :
+			for i, node in enumerate( nodes ) :
+				node["op1"].setInput( nodes[i-1]["product"] )
+
+		self.assertEqual(
+			{ x[0] for x in cs },
+			{ n["op1"] for n in nodes } | { n["product"] for n in nodes }
+		)
+
+		self.assertEqual( len( mh.messages ), 1 )
+		self.assertEqual( mh.messages[0].level, IECore.Msg.Level.Error )
+		self.assertEqual( mh.messages[0].context, "Plug dirty propagation" )
+		six.assertRegex( self, mh.messages[0].message, r"Cycle detected between node.* and node.*" )
+
+		del cs[:]
+		with IECore.CapturingMessageHandler() as mh :
+			nodes[0]["op2"].setValue( 10 )
+
+		self.assertEqual(
+			{ x[0] for x in cs },
+			{ n["op1"] for n in nodes } | { n["product"] for n in nodes } | { nodes[0]["op2"] }
+		)
+
+		self.assertEqual( len( mh.messages ), 1 )
+		self.assertEqual( mh.messages[0].level, IECore.Msg.Level.Error )
+		self.assertEqual( mh.messages[0].context, "Plug dirty propagation" )
+		six.assertRegex( self, mh.messages[0].message, r"Cycle detected between node.* and node.*" )
 
 if __name__ == "__main__":
 	unittest.main()

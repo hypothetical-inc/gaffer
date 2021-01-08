@@ -48,8 +48,6 @@
 #include "GafferUI/DragDropEvent.h"
 #include "GafferUI/Tool.h"
 
-#include "Gaffer/CompoundDataPlug.h"
-
 namespace GafferSceneUI
 {
 
@@ -65,11 +63,13 @@ class GAFFERSCENEUI_API CropWindowTool : public GafferUI::Tool
 		~CropWindowTool() override;
 
 		std::string status() const;
+		Gaffer::Box2fPlug *plug();
+		Gaffer::BoolPlug *enabledPlug();
 
 		using StatusChangedSignal = boost::signal<void (CropWindowTool &)>;
 		StatusChangedSignal &statusChangedSignal();
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferSceneUI::CropWindowTool, CropWindowToolTypeId, GafferUI::Tool );
+		GAFFER_NODE_DECLARE_TYPE( GafferSceneUI::CropWindowTool, CropWindowToolTypeId, GafferUI::Tool );
 
 	private :
 

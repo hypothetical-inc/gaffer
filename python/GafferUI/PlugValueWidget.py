@@ -242,6 +242,11 @@ class PlugValueWidget( GafferUI.Widget ) :
 			creators = { cls.__creator( plugs, useTypeOnly ) }
 		else :
 			creators = { cls.__creator( p, useTypeOnly ) for p in plugs }
+			# Not all PlugValueWidgets support multiple plugs, and some
+			# except in their constructors if passed a sequence type.
+			# Unwrap where possible.
+			if len( plugs ) == 1 :
+				plugs = next( iter( plugs ) )
 
 		if len( creators ) > 1 :
 			raise Exception( "Multiple widget creators" )
@@ -425,13 +430,14 @@ class PlugValueWidget( GafferUI.Widget ) :
 				}
 			)
 
-		if any( Gaffer.NodeAlgo.presets( p ) for p in self.getPlugs() ) :
-			menuDefinition.append(
-				"/Preset", {
-					"subMenu" : Gaffer.WeakMethod( self.__presetsSubMenu ),
-					"active" : self._editable()
-				}
-			)
+		with self.getContext() :
+			if any( Gaffer.NodeAlgo.presets( p ) for p in self.getPlugs() ) :
+				menuDefinition.append(
+					"/Preset", {
+						"subMenu" : Gaffer.WeakMethod( self.__presetsSubMenu ),
+						"active" : self._editable()
+					}
+				)
 
 		if len( menuDefinition.items() ) :
 			menuDefinition.append( "/LockDivider", { "divider" : True } )
@@ -639,7 +645,6 @@ class PlugValueWidget( GafferUI.Widget ) :
 		# any which aren't available for all plugs.
 		result = IECore.MenuDefinition()
 		for presetName in presets :
-
 			menuPath = presetName if presetName.startswith( "/" ) else "/" + presetName
 			result.append(
 				menuPath, {
@@ -653,9 +658,10 @@ class PlugValueWidget( GafferUI.Widget ) :
 
 	def __applyPreset( self, presetName, *unused ) :
 
-		with Gaffer.UndoScope( next( iter( self.getPlugs() ) ).ancestor( Gaffer.ScriptNode ) ) :
-			for p in self.getPlugs() :
-				Gaffer.NodeAlgo.applyPreset( p, presetName )
+		with self.getContext() :
+			with Gaffer.UndoScope( next( iter( self.getPlugs() ) ).ancestor( Gaffer.ScriptNode ) ) :
+				for p in self.getPlugs() :
+					Gaffer.NodeAlgo.applyPreset( p, presetName )
 
 	def __applyReadOnly( self, readOnly ) :
 

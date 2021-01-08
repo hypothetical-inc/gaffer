@@ -203,7 +203,14 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		instancer["parent"].setValue( "/plane" )
 		instancer["name"].setValue( "" )
 
-		self.assertScenesEqual( instancer["out"], plane["out"], pathsToIgnore = ( "/plane", ) )
+		f = GafferScene.PathFilter()
+		f["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
+
+		deleteObject = GafferScene.DeleteObject()
+		deleteObject["in"].setInput( plane["out"] )
+		deleteObject["filter"].setInput( f["out"] )
+
+		self.assertScenesEqual( instancer["out"], deleteObject["out"] )
 
 	def testEmptyParent( self ) :
 
@@ -1581,6 +1588,29 @@ class InstancerTest( GafferSceneTest.SceneTestCase ) :
 		self.assertSceneValid( instancer["out"] )
 		self.assertEqual( instancer["out"].childNames( "/group/instances" ) , IECore.InternedStringVectorData() )
 		self.assertEqual( instancer["out"].set( "setA" ) , IECore.PathMatcherData() )
+
+	def testSetPassThroughs( self ) :
+
+		# If the prototypes don't provide a set, then we should do a perfect
+		# pass through.
+
+		plane = GafferScene.Plane()
+		plane["sets"].setValue( "A" )
+
+		planeFilter = GafferScene.PathFilter()
+		planeFilter["paths"].setValue( IECore.StringVectorData( [ "/plane" ] ) )
+
+		sphere = GafferScene.Sphere()
+
+		instancer = GafferScene.Instancer()
+		instancer["in"].setInput( plane["out"] )
+		instancer["prototypes"].setInput( sphere["out"] )
+		instancer["filter"].setInput( planeFilter["out"] )
+
+		self.assertTrue( instancer["out"].exists( "/plane/instances/sphere/0" ) )
+		self.assertEqual( instancer["out"].setHash( "A" ), instancer["in"].setHash( "A" ) )
+		self.assertEqual( instancer["out"].set( "A" ), instancer["in"].set( "A" ) )
+		self.assertEqual( instancer["out"].set( "A" ).value.paths(), [ "/plane" ] )
 
 if __name__ == "__main__":
 	unittest.main()

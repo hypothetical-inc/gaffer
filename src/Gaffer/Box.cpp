@@ -89,7 +89,7 @@ std::unordered_set<const Node *> boxOutPassThroughSources( const Node *parent )
 // Box
 //////////////////////////////////////////////////////////////////////////
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Box );
+GAFFER_NODE_DEFINE_TYPE( Box );
 
 Box::Box( const std::string &name )
 	:	SubGraph( name )
@@ -168,7 +168,7 @@ void Box::exportForReference( const std::string &fileName ) const
 	}
 
 	ContextPtr context = new Context;
-	context->set( "valuePlugSerialiser:resetParentPlugDefaults", true );
+	context->set( "valuePlugSerialiser:omitParentNodePlugValues", true );
 	context->set( "serialiser:includeParentMetadata", true );
 	Context::Scope scopedContext( context.get() );
 

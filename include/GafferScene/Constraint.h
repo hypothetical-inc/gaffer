@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_CONSTRAINT_H
 #define GAFFERSCENE_CONSTRAINT_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer
@@ -57,7 +58,7 @@ class GAFFERSCENE_API Constraint : public SceneElementProcessor
 		Constraint( const std::string &name=defaultName<Constraint>() );
 		~Constraint() override;
 
-		GAFFER_GRAPHCOMPONENT_DECLARE_TYPE( GafferScene::Constraint, ConstraintTypeId, SceneElementProcessor );
+		GAFFER_NODE_DECLARE_TYPE( GafferScene::Constraint, ConstraintTypeId, SceneElementProcessor );
 
 		enum TargetMode
 		{
@@ -69,6 +70,9 @@ class GAFFERSCENE_API Constraint : public SceneElementProcessor
 
 		Gaffer::StringPlug *targetPlug();
 		const Gaffer::StringPlug *targetPlug() const;
+
+		Gaffer::BoolPlug *ignoreMissingTargetPlug();
+		const Gaffer::BoolPlug *ignoreMissingTargetPlug() const;
 
 		Gaffer::IntPlug *targetModePlug();
 		const Gaffer::IntPlug *targetModePlug() const;
@@ -95,7 +99,7 @@ class GAFFERSCENE_API Constraint : public SceneElementProcessor
 
 	private :
 
-		void tokenizeTargetPath( ScenePath &path ) const;
+		boost::optional<ScenePath> targetPath() const;
 
 		static size_t g_firstPlugIndex;
 

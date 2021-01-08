@@ -105,9 +105,7 @@ class LRUCache : private boost::noncopyable
 		/// The optional RemovalCallback is called whenever an item is discarded from the cache.
 		typedef boost::function<void ( const Key &key, const Value &data )> RemovalCallback;
 
-		LRUCache( GetterFunction getter );
-		LRUCache( GetterFunction getter, Cost maxCost );
-		LRUCache( GetterFunction getter, RemovalCallback removalCallback, Cost maxCost );
+		LRUCache( GetterFunction getter, Cost maxCost, RemovalCallback removalCallback = RemovalCallback(), bool cacheErrors = true );
 		virtual ~LRUCache();
 
 		/// Retrieves an item from the cache, computing it if necessary.
@@ -116,6 +114,10 @@ class LRUCache : private boost::noncopyable
 		/// even be stored in the cache if it exceeds the maximum cost.
 		/// Throws if the item can not be computed.
 		Value get( const GetterKey &key );
+
+		/// Retrieves an item from the cache if it has been computed or set
+		/// previously. Throws if a previous call to `get()` failed.
+		boost::optional<Value> getIfCached( const Key &key );
 
 		/// Adds an item to the cache directly, bypassing the GetterFunction.
 		/// Returns true for success and false on failure - failure can occur
@@ -178,7 +180,7 @@ class LRUCache : private boost::noncopyable
 			//
 			// - Uncached : A boost::blank instance
 			// - Cached : The Value itself
-			// - Failed ; The exception thrown by the GetterFn
+			// - Failed : The exception thrown by the GetterFn
 			typedef boost::variant<boost::blank, Value, std::exception_ptr> State;
 
 			State state;
@@ -193,6 +195,7 @@ class LRUCache : private boost::noncopyable
 		Policy<LRUCache> m_policy;
 
 		Cost m_maxCost;
+		bool m_cacheErrors;
 
 		// Methods
 		// =======
@@ -208,8 +211,6 @@ class LRUCache : private boost::noncopyable
 		// Removes items from the cache until the current cost is
 		// at or below the specified limit.
 		void limitCost( Cost cost );
-
-		static void nullRemovalCallback( const Key &key, const Value &value );
 
 };
 

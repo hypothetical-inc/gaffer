@@ -150,13 +150,13 @@ struct TestLRUCacheRemovalCallback
 			[]( int key, size_t &cost ) {
 				cost = 1; return key * 2;
 			},
+			/* maxCost = */ 5,
 			// Removal callback
 			[&removed]( int key, int value ) {
 				removed.push_back(
 					std::make_pair( key, value )
 				);
-			},
-			/* maxCost = */ 5
+			}
 		);
 
 		GAFFERTEST_ASSERTEQUAL( cache.get( 1 ), 2 );
@@ -478,6 +478,54 @@ struct TestLRUCacheExceptions
 		GAFFERTEST_ASSERTEQUAL( calls.size(), 3 );
 		GAFFERTEST_ASSERTEQUAL( calls.back(), 10 );
 
+		// Check that if we don't cache errors, then it gets called twice
+		calls.clear();
+		Cache noErrorsCache(
+			[&calls]( int key, size_t &cost ) {
+				calls.push_back( key );
+				throw IECore::Exception( boost::str(
+					boost::format( "Get failed for %1%" ) % key
+				) );
+				return 0;
+			},
+			1000,
+			typename Cache::RemovalCallback(),
+			/* cacheErrors = */ false
+		);
+
+		caughtException = false;
+		try
+		{
+			noErrorsCache.get( 10 );
+		}
+		catch( const IECore::Exception &e )
+		{
+			caughtException = true;
+			GAFFERTEST_ASSERTEQUAL(
+				e.what(),
+				std::string( "Get failed for 10" )
+			);
+		}
+
+		GAFFERTEST_ASSERT( caughtException );
+		GAFFERTEST_ASSERTEQUAL( calls.size(), 1 );
+
+		caughtException = false;
+		try
+		{
+			noErrorsCache.get( 10 );
+		}
+		catch( const IECore::Exception &e )
+		{
+			caughtException = true;
+			GAFFERTEST_ASSERTEQUAL(
+				e.what(),
+				std::string( "Get failed for 10" )
+			);
+		}
+
+		GAFFERTEST_ASSERT( caughtException );
+		GAFFERTEST_ASSERTEQUAL( calls.size(), 2 );
 	}
 
 };
@@ -560,6 +608,105 @@ void testLRUCacheCancellation( const std::string &policy )
 	DispatchTest<TestLRUCacheCancellation>()( policy );
 }
 
+// This test exposes a potential source of bugs when some items
+// are too big to store in the cache, and their getter recurses
+// to pull another item from the cache. This leads to `Handle::acquire`
+// taking an optimistic read lock on the item, only to find it
+// is uncached and the lock must be upgraded to a writer. If multiple
+// threads do this at once, and we are not careful, deadlock can
+// ensue.
+template<template<typename> class Policy>
+struct TestLRUCacheUncacheableItem
+{
+
+	void operator()()
+	{
+		using Cache = IECorePreview::LRUCache<int, int, Policy>;
+		using CachePtr = std::unique_ptr<Cache>;
+
+		CachePtr cache;
+		cache.reset(
+			new Cache(
+				[&cache]( int key, size_t &cost ) {
+					if( key == 0 )
+					{
+						// Too big to cache
+						cost = std::numeric_limits<size_t>::max();
+						// Recursive call to cache, with new key chosen to require
+						// the same bin as this key.
+						return cache->get( key + tbb::tbb_thread::hardware_concurrency() );
+					}
+					else
+					{
+						cost = 1;
+						return key;
+					}
+				},
+				1000
+			)
+		);
+
+		for( int i = 0; i < 10000; ++i )
+		{
+			cache->clear();
+			tbb::parallel_for(
+				tbb::blocked_range<size_t>( 0, 100 ),
+				[&]( const tbb::blocked_range<size_t> &r ) {
+					for( size_t i = r.begin(); i < r.end(); ++i )
+					{
+						cache->get( 0 );
+					}
+				}
+			);
+		}
+	}
+
+};
+
+void testLRUCacheUncacheableItem( const std::string &policy )
+{
+	DispatchTest<TestLRUCacheUncacheableItem>()( policy );
+}
+
+template<template<typename> class Policy>
+struct TestLRUCacheGetIfCached
+{
+
+	void operator()()
+	{
+		using Cache = IECorePreview::LRUCache<int, int, Policy>;
+
+		Cache cache(
+			[]( int key, size_t &cost ) {
+				cost = 1;
+				return key;
+			},
+			1000
+		);
+
+		GAFFERTEST_ASSERT( !cache.getIfCached( 0 ) );
+		GAFFERTEST_ASSERT( !cache.getIfCached( 1 ) );
+
+		GAFFERTEST_ASSERTEQUAL( cache.get( 0 ), 0 );
+		cache.set( 1, 1, 1 );
+		GAFFERTEST_ASSERTEQUAL( cache.get( 1 ), 1 );
+
+		GAFFERTEST_ASSERTEQUAL( *cache.getIfCached( 0 ), 0 );
+		GAFFERTEST_ASSERTEQUAL( *cache.getIfCached( 1 ), 1 );
+
+		cache.erase( 0 );
+		GAFFERTEST_ASSERT( !cache.getIfCached( 0 ) );
+		GAFFERTEST_ASSERTEQUAL( *cache.getIfCached( 1 ), 1 );
+
+	}
+
+};
+
+void testLRUCacheGetIfCached( const std::string &policy )
+{
+	DispatchTest<TestLRUCacheGetIfCached>()( policy );
+}
+
 } // namespace
 
 void GafferTestModule::bindLRUCacheTest()
@@ -572,4 +719,6 @@ void GafferTestModule::bindLRUCacheTest()
 	def( "testLRUCacheClearFromGet", &testLRUCacheClearFromGet );
 	def( "testLRUCacheExceptions", &testLRUCacheExceptions );
 	def( "testLRUCacheCancellation", &testLRUCacheCancellation );
+	def( "testLRUCacheUncacheableItem", &testLRUCacheUncacheableItem );
+	def( "testLRUCacheGetIfCached", &testLRUCacheGetIfCached );
 }

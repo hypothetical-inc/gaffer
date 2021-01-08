@@ -43,7 +43,7 @@ using namespace IECore;
 using namespace Gaffer;
 using namespace GafferScene;
 
-GAFFER_GRAPHCOMPONENT_DEFINE_TYPE( Prune );
+GAFFER_NODE_DEFINE_TYPE( Prune );
 
 size_t Prune::g_firstPlugIndex = 0;
 
@@ -52,6 +52,11 @@ Prune::Prune( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new BoolPlug( "adjustBounds", Plug::In, false ) );
+
+	// Our `out.bound -> out.childBounds -> out.bound` dependency cycle
+	// is legitimate, because `childBounds` evaluates `out.bound` in a
+	// different context (at child locations).
+	outPlug()->childBoundsPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
 
 	// Direct pass-throughs
 	outPlug()->transformPlug()->setInput( inPlug()->transformPlug() );
@@ -79,19 +84,30 @@ void Prune::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs 
 {
 	FilteredSceneProcessor::affects( input, outputs );
 
-	const ScenePlug *in = inPlug();
-	if( input->parent<ScenePlug>() == in )
-	{
-		outputs.push_back( outPlug()->getChild<ValuePlug>( input->getName() ) );
-	}
-	else if( input == filterPlug() )
-	{
-		outputs.push_back( outPlug()->childNamesPlug() );
-		outputs.push_back( outPlug()->setPlug() );
-	}
-	else if( input == adjustBoundsPlug() )
+	if(
+		input == adjustBoundsPlug() ||
+		input == filterPlug() ||
+		input == outPlug()->childBoundsPlug() ||
+		input == inPlug()->boundPlug()
+	)
 	{
 		outputs.push_back( outPlug()->boundPlug() );
+	}
+
+	if(
+		input == filterPlug() ||
+		input == inPlug()->childNamesPlug()
+	)
+	{
+		outputs.push_back( outPlug()->childNamesPlug() );
+	}
+
+	if(
+		input == inPlug()->setPlug() ||
+		input == filterPlug()
+	)
+	{
+		outputs.push_back( outPlug()->setPlug() );
 	}
 }
 
@@ -101,7 +117,7 @@ void Prune::hashBound( const ScenePath &path, const Gaffer::Context *context, co
 	{
 		if( filterValue( context ) & IECore::PathMatcher::DescendantMatch )
 		{
-			h = outPlug()->childBoundsHash();
+			h = outPlug()->childBoundsPlug()->hash();
 			return;
 		}
 	}
@@ -116,7 +132,7 @@ Imath::Box3f Prune::computeBound( const ScenePath &path, const Gaffer::Context *
 	{
 		if( filterValue( context ) & IECore::PathMatcher::DescendantMatch )
 		{
-			return outPlug()->childBounds();
+			return outPlug()->childBoundsPlug()->getValue();
 		}
 	}
 
