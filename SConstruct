@@ -1217,6 +1217,40 @@ for library in ( "GafferUI", ) :
 	if int( env["QT_VERSION"] ) > 4 :
 		addQtLibrary( library, "Widgets" )
 
+#########################################################################################################
+# Repair Symlinks on Windows
+#########################################################################################################
+
+# Windows does not support symlinks except with special (non-default) privileges.
+# When cloning the repository git will create symlink source files as a text
+# file with the symlink target as its content. 'fileOrigin' is a dictionary of the form
+# fileSource: fileTarget used by installers to check for overriding the file's origin.
+
+fileOrigin = {}
+
+if env["PLATFORM"] == "win32" :
+
+	fileList = runCommand( "git ls-files -s" )
+
+	for file in fileList.split( '\n' ) :
+		fileInfo = file.split()
+		if len( fileInfo ) == 4 or len( fileInfo ) == 5:
+			# ls-files output format: [<tag> ]<mode> <object> <stage> <file>
+			# The magic code for symlinks in git is 120000
+			fileMode = fileInfo[1] if len( fileInfo ) == 5 else fileInfo[0]
+			filePath = fileInfo[4] if len( fileInfo ) == 5 else fileInfo[3]
+			filePath = filePath.replace( "/", "\\" )  # filePath comes in from git with /
+			if fileMode == "120000" and os.path.exists( filePath ):
+				with open( filePath, "r" ) as f :
+					fileOrigin[
+						os.path.join( env.subst( "$BUILD_DIR" ), filePath )
+					] = os.path.abspath(
+						os.path.join(
+							os.path.dirname( filePath ),
+							f.readline().replace( "/", "\\" )
+						) 
+					)
+
 ###############################################################################################
 # The stuff that actually builds the libraries and python modules
 ###############################################################################################
@@ -1365,14 +1399,24 @@ for libraryName, libraryDef in libraries.items() :
 	# apps
 
 	for app in libraryDef.get( "apps", [] ) :
-		appInstall = env.InstallAs("$BUILD_DIR/apps/{app}/{app}-1.py".format( app=app ), "apps/{app}/{app}-1.py".format( app=app ) )
+		destinationFile = env.subst( os.path.join( "$BUILD_DIR", "apps", app, "{app}-1.py".format( app=app ) ) )
+		appInstall = env.InstallAs(
+			destinationFile,
+			fileOrigin.get(destinationFile, os.path.join( "apps", app, "{app}-1.py".format( app=app ) ) )
+		)
 		env.Alias( "build", appInstall )
 
 	# startup files
 
 	for startupDir in libraryDef.get( "apps", [] ) + [ libraryName ] :
-		for startupFile in glob.glob( "startup/{startupDir}/*.py".format( startupDir=startupDir ) ) :
-			startupFileInstall = env.InstallAs( "$BUILD_DIR/" + startupFile, startupFile )
+		for startupFile in glob.glob(
+			os.path.join( "startup", "{startupDir}".format( startupDir=startupDir ), "*.py" )
+		) :
+			destinationFile = env.subst( os.path.join( "$BUILD_DIR", startupFile ) )
+			startupFileInstall = env.InstallAs(
+				destinationFile,
+				fileOrigin.get( destinationFile, startupFile )
+			)
 			env.Alias( "build", startupFileInstall )
 
 	# additional files
@@ -1380,13 +1424,21 @@ for libraryName, libraryDef in libraries.items() :
 	for additionalFile in libraryDef.get( "additionalFiles", [] ) :
 		if additionalFile in pythonFiles :
 			continue
-		additionalFileInstall = env.InstallAs( os.path.join( "$BUILD_DIR", additionalFile ), additionalFile )
+		destinationFile = env.subst( os.path.join( "$BUILD_DIR", additionalFile ) )
+		additionalFileInstall = env.InstallAs(
+			destinationFile,
+			fileOrigin.get( destinationFile, additionalFile)
+		)
 		env.Alias( "build", additionalFileInstall )
 
 	# osl headers
 
 	for oslHeader in libraryDef.get( "oslHeaders", [] ) :
-		oslHeaderInstall = env.InstallAs( os.path.join( "$BUILD_DIR", oslHeader ), oslHeader )
+		destinationFile = env.subst( os.path.join( "$BUILD_DIR", oslHeader ) )
+		oslHeaderInstall = env.InstallAs(
+			destinationFile,
+			fileOrigin.get( destinationFile, oslHeader )
+		)
 		env.Alias( "oslHeaders", oslHeaderInstall )
 		env.Alias( "build", oslHeaderInstall )
 
