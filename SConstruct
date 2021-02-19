@@ -47,6 +47,8 @@ import platform
 import py_compile
 import subprocess
 
+EnsureSConsVersion( 3, 0, 2 )  # Substfile is a default builder as of 3.0.2
+
 ###############################################################################################
 # Version
 ###############################################################################################
@@ -361,24 +363,6 @@ env = Environment(
 	FRAMEWORKPATH = "$BUILD_DIR/lib",
 
 )
-
-# Take a dictionary of the form {"old": "new", "old2": "new2",...}
-# and perform platform-specific substitutions on the given file
-def substituteFileText( sourceFile, destFile, subs ) :
-	if len(subs.keys()) == 0:
-		return None
-
-	if env["PLATFORM"] != "win32" :
-		sedSubstitutions = "s/{}/{}/g".format( subs.keys()[ 0 ], subs[ subs.keys()[ 0 ] ] )
-		for i in range( 1, len(subs.keys() ) ) :
-			sedSubstitutions += "; s/{}/{}/g".format( subs.keys()[ i ], subs[subs.keys()[ i ] ] )
-		return env.Command( destFile, sourceFile, "sed \"" + sedSubstitutions + "\" $SOURCE > $TARGET" )
-	else :
-		psSubstitutions = ""
-		for key in subs.keys() :
-			psSubstitutions += " -replace \\\"{}\\\",\\\"{}\\\"".format( key.replace( "!", "\!" ), subs[ key ].replace( "!", "\!" ) )
-		return env.Command( destFile, sourceFile, "powershell -Command \"cat $SOURCE | % {{ $$_{} }} | Out-File -Encoding utf8 $TARGET\"".format( psSubstitutions ) )
-		
 
 
 # include 3rd party headers with -isystem rather than -I.
@@ -1242,7 +1226,12 @@ for libraryName, libraryDef in libraries.items() :
 	)
 
 	for header in headers :
-		headerInstall = substituteFileText( header, "$BUILD_DIR/" + header, fileSubstitutions )
+		headerInstall = env.Substfile(
+			os.path.join( "$BUILD_DIR", header ),
+			header,
+			SUBST_DICT = fileSubstitutions
+		)
+		
 		libEnv.Alias( "build", headerInstall )
 
 	# bindings library
@@ -1270,7 +1259,11 @@ for libraryName, libraryDef in libraries.items() :
 	)
 
 	for header in bindingsHeaders :
-		headerInstall = substituteFileText( header, "$BUILD_DIR/" + header, fileSubstitutions )
+		headerInstall = env.Substfile(
+			os.path.join( "$BUILD_DIR", header ),
+			header,
+			SUBST_DICT = fileSubstitutions
+		)
 		bindingsEnv.Alias( "build", headerInstall )
 
 	# python module binary component
@@ -1308,7 +1301,11 @@ for libraryName, libraryDef in libraries.items() :
 
 	pythonFiles = glob.glob( "python/" + libraryName + "/*.py" ) + glob.glob( "python/" + libraryName + "/*/*.py" )
 	for pythonFile in pythonFiles :
-		pythonFileInstall = substituteFileText( pythonFile, "$BUILD_DIR/" + pythonFile, fileSubstitutions )
+		pythonFileInstall = env.Substfile(
+			os.path.join( "$BUILD_DIR", pythonFile ),
+			pythonFile,
+			SUBST_DICT = fileSubstitutions
+		)
 		env.Alias( "build", pythonFileInstall )
 
 	# apps
