@@ -34,6 +34,8 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+#include "GafferArnoldUI/Export.h"
+
 #include "GafferArnoldUI/Private/VisualiserAlgo.h"
 
 #include "GafferOSL/ShadingEngineAlgo.h"
@@ -111,6 +113,11 @@ T parameterOrDefault( const IECore::CompoundData *parameters, const IECore::Inte
 	}
 }
 
+}	// namespace
+
+namespace GafferArnoldUI
+{
+
 struct OSLTextureCacheGetterKey
 {
 
@@ -187,7 +194,7 @@ const char *constantFragSource()
 }
 
 
-class GoboVisualiser final : public LightFilterVisualiser
+class GAFFERARNOLDUI_API GoboVisualiser final : public LightFilterVisualiser
 {
 
 	public :
