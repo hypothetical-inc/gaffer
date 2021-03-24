@@ -700,7 +700,7 @@ def runCommand( command ) :
 
 	command = commandEnv.subst( command )
 	sys.stderr.write( command + "\n" )
-	return subprocess.check_output( command, shell=True, env=commandEnv["ENV"] )
+	return subprocess.check_output( command, shell=True, env=commandEnv["ENV"] ).decode()
 
 ###############################################################################################
 # The basic environment for building libraries
@@ -763,13 +763,13 @@ basePythonEnv = baseLibEnv.Clone()
 basePythonEnv["PYTHON_VERSION"] = subprocess.check_output(
 	[ "python", "-c", "import sys; print( '{}.{}'.format( *sys.version_info[:2] ) )" ],
 	env=commandEnv["ENV"]
-).strip()
+).decode().strip()
 
 basePythonEnv["PYTHON_ABI_VERSION"] = basePythonEnv["PYTHON_VERSION"]
 basePythonEnv["PYTHON_ABI_VERSION"] += subprocess.check_output(
 	[ "python", "-c", "import sysconfig; print( sysconfig.get_config_var( 'abiflags' ) or '' )" ],
 	env=commandEnv["ENV"]
-).strip()
+).decode().strip()
 
 basePythonEnv["BOOST_PYTHON_LIB_SUFFIX"] = ""
 if ( int( basePythonEnv["BOOST_MAJOR_VERSION"] ), int( basePythonEnv["BOOST_MINOR_VERSION"] ) ) >= ( 1, 67 ) :
@@ -800,7 +800,7 @@ if basePythonEnv["PLATFORM"]=="darwin" :
 else :
 
 	basePythonEnv.Append(
-		CPPPATH = [ os.path.join( "$BUILD_DIR", "include", "python$PYTHON_ABI_VERSION" ) ]
+		LIBPATH = [ os.path.join( "$BUILD_DIR", "libs" ) ]
 	)
 
 ###############################################################################################
