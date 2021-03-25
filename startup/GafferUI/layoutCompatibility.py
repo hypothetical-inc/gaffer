@@ -64,7 +64,7 @@ if Gaffer.About.compatibilityVersion() < 54 :
 		# first try to import the modules the layout needs
 		contextDict = { "scriptNode" : scriptNode, "imath" : imath }
 		imported = set()
-		classNameRegex = re.compile( "[a-zA-Z]*Gaffer[^(,]*\(" )
+		classNameRegex = re.compile( r"[a-zA-Z]*Gaffer[^(,]*\(" )
 		for className in classNameRegex.findall( layout.repr ) :
 			moduleName = className.partition( "." )[0]
 			if moduleName not in imported :
