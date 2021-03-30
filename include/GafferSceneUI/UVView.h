@@ -48,7 +48,6 @@
 
 #include "Gaffer/BackgroundTask.h"
 #include "Gaffer/StringPlug.h"
-#include "Gaffer/FileSystemPathPlug.h"
 
 #include <unordered_set>
 
@@ -72,8 +71,8 @@ class GAFFERSCENEUI_API UVView : public GafferUI::View
 		Gaffer::StringPlug *uvSetPlug();
 		const Gaffer::StringPlug *uvSetPlug() const;
 
-		Gaffer::FileSystemPathPlug *textureFileNamePlug();
-		const Gaffer::FileSystemPathPlug *textureFileNamePlug() const;
+		Gaffer::StringPlug *textureFileNamePlug();
+		const Gaffer::StringPlug *textureFileNamePlug() const;
 
 		Gaffer::StringPlug *displayTransformPlug();
 		const Gaffer::StringPlug *displayTransformPlug() const;

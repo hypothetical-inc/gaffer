@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_GLOBALSPROCESSOR_H
 #define GAFFERSCENE_GLOBALSPROCESSOR_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace GafferScene

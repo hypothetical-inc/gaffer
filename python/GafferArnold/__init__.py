@@ -50,20 +50,16 @@ try :
 
 	import sys
 	import ctypes
-	import os
-
-	if os.name == "posix":
-		originalDLOpenFlags = sys.getdlopenflags()
-		sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
+	originalDLOpenFlags = sys.getdlopenflags()
+	sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
 
 	__import__( "IECoreArnold" )
 	from ._GafferArnold import *
 
 finally :
 
-	if os.name == "posix":
-		sys.setdlopenflags( originalDLOpenFlags )
-		del sys, ctypes, originalDLOpenFlags
+	sys.setdlopenflags( originalDLOpenFlags )
+	del sys, ctypes, originalDLOpenFlags
 
 from .ArnoldShaderBall import ArnoldShaderBall
 from .ArnoldTextureBake import ArnoldTextureBake

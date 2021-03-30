@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_COLLECTSCENES_H
 #define GAFFERSCENE_COLLECTSCENES_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer

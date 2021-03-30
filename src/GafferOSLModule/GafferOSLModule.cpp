@@ -113,8 +113,8 @@ IECore::CompoundDataPtr shadeWrapper( ShadingEngine &shadingEngine, const IECore
 {
 	ShadingEngine::Transforms transforms;
 
-	boost::python::list values = pythonTransforms.values();
-	boost::python::list keys = pythonTransforms.keys();
+	list values = pythonTransforms.values();
+	list keys = pythonTransforms.keys();
 
 	for (int i = 0; i < boost::python::len( keys ); i++)
 	{
@@ -169,9 +169,9 @@ BOOST_PYTHON_MODULE( _GafferOSL )
 	PlugClass<ClosurePlug>()
 		.def( init<const std::string &, Gaffer::Plug::Direction, unsigned>(
 				(
-					boost::python::arg( "name" ) = Gaffer::GraphComponent::defaultName<ClosurePlug>(),
-					boost::python::arg( "direction" ) = Gaffer::Plug::In,
-					boost::python::arg( "flags" ) = Gaffer::Plug::Default
+					arg( "name" ) = Gaffer::GraphComponent::defaultName<ClosurePlug>(),
+					arg( "direction" ) = Gaffer::Plug::In,
+					arg( "flags" ) = Gaffer::Plug::Default
 				)
 			)
 		)

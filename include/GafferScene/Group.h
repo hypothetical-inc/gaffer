@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_GROUP_H
 #define GAFFERSCENE_GROUP_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 namespace Gaffer

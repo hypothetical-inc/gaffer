@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_MAPOFFSET_H
 #define GAFFERSCENE_MAPOFFSET_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/ObjectProcessor.h"
 
 namespace Gaffer

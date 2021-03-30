@@ -41,8 +41,6 @@
 
 #include "Gaffer/Node.h"
 
-#include "GafferBindings/Export.h"
-
 namespace GafferBindings
 {
 

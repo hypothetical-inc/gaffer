@@ -48,7 +48,6 @@
 #include "DirtyPropagationScopeBinding.h"
 #include "DotBinding.h"
 #include "ExpressionBinding.h"
-#include "FileSystemPathPlugBinding.h"
 #include "GraphComponentBinding.h"
 #include "ProcessMessageHandlerBinding.h"
 #include "MetadataAlgoBinding.h"
@@ -107,8 +106,6 @@ bool isDebug()
 	return true;
 #endif
 }
-
-#ifndef _WIN32
 
 int g_argc = 0;
 char **g_argv = nullptr;
@@ -169,15 +166,12 @@ void clobberArgv()
 	g_argv[g_argc-1] = c;
 	memset( c, 0, end - c );
 }
-#endif
 
 void nameProcess()
 {
 	// Some things (for instance, `ps` in default mode) look at `argv` to get
 	// the name.
-#ifndef _WIN32
 	clobberArgv();
-#endif
 	// Others (for instance, `top` in default mode) use other methods.
 	// Cater to everyone as best we can.
 #ifdef __linux__
@@ -246,7 +240,6 @@ BOOST_PYTHON_MODULE( _Gaffer )
 	bindNodeAlgo();
 	bindShuffles();
 	bindMessages();
-	bindFileSystemPathPlug();
 
 	NodeClass<Backdrop>();
 

@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_OPENGLRENDER_H
 #define GAFFERSCENE_OPENGLRENDER_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/Render.h"
 
 namespace GafferScene

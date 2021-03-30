@@ -70,13 +70,13 @@ class GAFFER_API Spreadsheet : public ComputeNode
 		///
 		/// > Note : It is strongly recommended that the child RowPlugs are
 		/// > accessed via their numeric indices and never via their names.
-		class GAFFER_API RowsPlug : public ValuePlug
+		class RowsPlug : public ValuePlug
 		{
 
 			public :
 
 				RowsPlug( const std::string &name = defaultName<RowsPlug>(), Direction direction = In, unsigned flags = Default );
-				~RowsPlug() override;
+				virtual ~RowsPlug();
 
 				GAFFER_PLUG_DECLARE_TYPE( Gaffer::Spreadsheet::RowsPlug, Gaffer::SpreadsheetRowsPlugTypeId, Gaffer::ValuePlug );
 
@@ -143,7 +143,7 @@ class GAFFER_API Spreadsheet : public ComputeNode
 
 		/// Defines a single row of the spreadsheet. Access using
 		/// `RowPlug::Range( *rowsPlug() )` or via `rowsPlug()->getChild<RowPlug>()`.
-		class GAFFER_API RowPlug : public ValuePlug
+		class RowPlug : public ValuePlug
 		{
 
 			public :
@@ -171,7 +171,7 @@ class GAFFER_API Spreadsheet : public ComputeNode
 		/// Defines a single cell in the spreadsheet. Access using
 		/// `CellPlug::Range( *rowPlug->cellsPlug() )` or via
 		/// `rowPlug->cellsPlug()->getChild<CellPlug>()`.
-		class GAFFER_API CellPlug : public ValuePlug
+		class CellPlug : public ValuePlug
 		{
 
 			public :

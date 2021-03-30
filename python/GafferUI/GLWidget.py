@@ -35,7 +35,6 @@
 #
 ##########################################################################
 
-import os
 import sys
 import logging
 import collections
@@ -256,9 +255,8 @@ class _GLGraphicsView( QtWidgets.QGraphicsView ) :
 
 			# clear any existing errors that may trigger
 			# error checking code in _resize implementations.
-			if os.name == 'posix':
-				while GL.glGetError() :
-					pass
+			while GL.glGetError() :
+				pass
 
 			owner._makeCurrent()
 

@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_DELETEFACES_H
 #define GAFFERSCENE_DELETEFACES_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/Deformer.h"
 
 namespace Gaffer

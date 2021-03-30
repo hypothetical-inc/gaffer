@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_COORDINATESYSTEM_H
 #define GAFFERSCENE_COORDINATESYSTEM_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
 
 namespace GafferScene

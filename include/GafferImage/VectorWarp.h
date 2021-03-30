@@ -37,7 +37,6 @@
 #ifndef GAFFERIMAGE_UVWARP_H
 #define GAFFERIMAGE_UVWARP_H
 
-#include "GafferImage/Export.h"
 #include "GafferImage/Warp.h"
 
 namespace GafferImage

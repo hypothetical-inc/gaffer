@@ -38,7 +38,6 @@
 #ifndef GAFFERIMAGE_COLORSPACE_H
 #define GAFFERIMAGE_COLORSPACE_H
 
-#include "GafferImage/Export.h"
 #include "GafferImage/OpenColorIOTransform.h"
 
 namespace Gaffer

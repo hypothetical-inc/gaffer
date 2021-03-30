@@ -164,8 +164,6 @@ from .NameSwitchTest import NameSwitchTest
 from .SpreadsheetTest import SpreadsheetTest
 from .ShufflePlugTest import ShufflePlugTest
 from .EditScopeTest import EditScopeTest
-from .FileSystemPathInOutNode import FileSystemPathInOutNode
-from .FileSystemPathPlugTest import FileSystemPathPlugTest
 
 from .IECorePreviewTest import *
 

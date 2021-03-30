@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_LIGHTTOCAMERA_H
 #define GAFFERSCENE_LIGHTTOCAMERA_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace GafferScene

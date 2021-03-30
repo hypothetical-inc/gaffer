@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_CONSTRAINT_H
 #define GAFFERSCENE_CONSTRAINT_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneElementProcessor.h"
 
 namespace Gaffer

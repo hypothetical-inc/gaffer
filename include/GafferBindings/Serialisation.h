@@ -100,7 +100,7 @@ class GAFFERBINDINGS_API Serialisation
 
 		/// The Serialiser class may be implemented differently for specific types to customise
 		/// their serialisation.
-		class GAFFERBINDINGS_API Serialiser : public IECore::RefCounted
+		class Serialiser : public IECore::RefCounted
 		{
 
 			public :

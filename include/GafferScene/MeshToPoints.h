@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_MESHTOPOINTS_H
 #define GAFFERSCENE_MESHTOPOINTS_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/Deformer.h"
 
 namespace Gaffer

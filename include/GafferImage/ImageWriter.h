@@ -50,7 +50,6 @@ namespace Gaffer
 {
 	IE_CORE_FORWARDDECLARE( ValuePlug )
 	IE_CORE_FORWARDDECLARE( StringPlug )
-	IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 } // namespace Gaffer
 
 namespace GafferImage
@@ -75,8 +74,8 @@ class GAFFERIMAGE_API ImageWriter : public GafferDispatch::TaskNode
 
 		GAFFER_NODE_DECLARE_TYPE( GafferImage::ImageWriter, ImageWriterTypeId, TaskNode );
 
-		Gaffer::FileSystemPathPlug *fileNamePlug();
-		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
+		Gaffer::StringPlug *fileNamePlug();
+		const Gaffer::StringPlug *fileNamePlug() const;
 
 		GafferImage::ImagePlug *inPlug();
 		const GafferImage::ImagePlug *inPlug() const;

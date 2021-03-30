@@ -53,7 +53,6 @@ def appendPlugCreationMenuDefinitions( plugParent, menuDefinition, prefix = "" )
 	menuDefinition.append( prefix + "/NumericDivider", { "divider" : True } )
 
 	menuDefinition.append( prefix + "/String", { "command" : functools.partial( __addPlug, plugParent, Gaffer.StringPlug ), "active" : active } )
-	menuDefinition.append( prefix + "/FileSystemPath", { "command" : functools.partial(__addPlug, plugParent, Gaffer.FileSystemPathPlug ), "active" : active } )
 	menuDefinition.append( prefix + "/StringDivider", { "divider" : True } )
 
 	menuDefinition.append( prefix + "/V2i", { "command" : functools.partial( __addPlug, plugParent, Gaffer.V2iPlug ), "active" : active } )

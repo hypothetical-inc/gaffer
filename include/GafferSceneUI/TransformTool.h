@@ -73,7 +73,7 @@ class GAFFERSCENEUI_API TransformTool : public GafferSceneUI::SelectionTool
 		Gaffer::FloatPlug *sizePlug();
 		const Gaffer::FloatPlug *sizePlug() const;
 
-		struct GAFFERSCENEUI_API Selection
+		struct Selection
 		{
 
 			// Constructs an empty selection.

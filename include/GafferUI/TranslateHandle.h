@@ -38,7 +38,6 @@
 #ifndef GAFFERUI_TRANSLATEHANDLE_H
 #define GAFFERUI_TRANSLATEHANDLE_H
 
-#include "GafferUI/Export.h"
 #include "GafferUI/Handle.h"
 
 namespace GafferUI

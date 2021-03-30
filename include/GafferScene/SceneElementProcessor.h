@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_SCENEELEMENTPROCESSOR_H
 #define GAFFERSCENE_SCENEELEMENTPROCESSOR_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/FilteredSceneProcessor.h"
 
 namespace GafferScene

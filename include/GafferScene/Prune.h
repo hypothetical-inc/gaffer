@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_PRUNE_H
 #define GAFFERSCENE_PRUNE_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/FilteredSceneProcessor.h"
 
 namespace GafferScene

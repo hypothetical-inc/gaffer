@@ -43,8 +43,6 @@
 
 #include "IECore/Data.h"
 
-#include "GafferBindings/Export.h"
-
 namespace GafferBindings
 {
 

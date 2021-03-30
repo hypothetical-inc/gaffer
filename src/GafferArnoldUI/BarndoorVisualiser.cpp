@@ -34,8 +34,6 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "GafferArnoldUI/Export.h"
-
 #include "GafferSceneUI/StandardLightVisualiser.h"
 
 #include "GafferScene/Private/IECoreGLPreview/LightFilterVisualiser.h"
@@ -60,25 +58,20 @@ using namespace IECoreGL;
 using namespace IECoreGLPreview;
 using namespace GafferSceneUI;
 
-namespace BarndoorVisualiserUtils
+namespace
 {
 
-float parameterOrDefault(const IECore::CompoundData *data, const char *key, const float def)
+enum class BarndoorLocation { Top, Right, Left, Bottom };
+
+float parameterOrDefault( const IECore::CompoundData *data, const char *key, const float def )
 {
-	ConstFloatDataPtr member = data->member<const FloatData>(key);
-	if (member)
+	ConstFloatDataPtr member = data->member<const FloatData>( key );
+	if( member )
 	{
 		return member->readable();
 	}
 	return def;
 }
-
-} // namespace BarndoorVisualiserUtils
-
-namespace GafferArnoldUI
-{
-
-enum class BarndoorLocation { Top, Right, Left, Bottom };
 
 const char *barndoorFragSource()
 {
@@ -154,7 +147,7 @@ void addBarndoor( IECoreGL::GroupPtr result, BarndoorLocation location, float co
 	result->addChild( barndoorGroup );
 }
 
-class GAFFERARNOLDUI_API BarndoorVisualiser final : public LightFilterVisualiser
+class BarndoorVisualiser final : public LightFilterVisualiser
 {
 
 	public :
@@ -191,17 +184,17 @@ Visualisations BarndoorVisualiser::visualise( const IECore::InternedString &attr
 
 	const IECore::CompoundData *filterShaderParameters = shaderNetwork->outputShader()->parametersData();
 
-	float topLeft = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_top_left", 0.0f );
-	float topRight = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_top_right", 0.0f );
+	float topLeft = parameterOrDefault( filterShaderParameters, "barndoor_top_left", 0.0f );
+	float topRight = parameterOrDefault( filterShaderParameters, "barndoor_top_right", 0.0f );
 
-	float rightTop = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_right_top", 1.0f );
-	float rightBottom = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_right_bottom", 1.0f );
+	float rightTop = parameterOrDefault( filterShaderParameters, "barndoor_right_top", 1.0f );
+	float rightBottom = parameterOrDefault( filterShaderParameters, "barndoor_right_bottom", 1.0f );
 
-	float bottomLeft = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_bottom_left", 1.0f );
-	float bottomRight = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_bottom_right", 1.0f );
+	float bottomLeft = parameterOrDefault( filterShaderParameters, "barndoor_bottom_left", 1.0f );
+	float bottomRight = parameterOrDefault( filterShaderParameters, "barndoor_bottom_right", 1.0f );
 
-	float leftTop = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_left_top", 0.0f );
-	float leftBottom = BarndoorVisualiserUtils::parameterOrDefault( filterShaderParameters, "barndoor_left_bottom", 0.0f );
+	float leftTop = parameterOrDefault( filterShaderParameters, "barndoor_left_top", 0.0f );
+	float leftBottom = parameterOrDefault( filterShaderParameters, "barndoor_left_bottom", 0.0f );
 
 
 	addBarndoor( result, BarndoorLocation::Top, topLeft, topRight );
@@ -244,4 +237,4 @@ Visualisations BarndoorVisualiser::visualise( const IECore::InternedString &attr
 
 }
 
-} // namespace GafferArnoldUI
+} // namespace

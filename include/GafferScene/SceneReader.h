@@ -47,7 +47,6 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( StringPlug )
-IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 IE_CORE_FORWARDDECLARE( TransformPlug )
 
 } // namespace Gaffer
@@ -66,8 +65,8 @@ class GAFFERSCENE_API SceneReader : public SceneNode
 		GAFFER_NODE_DECLARE_TYPE( GafferScene::SceneReader, SceneReaderTypeId, SceneNode )
 
 		/// Holds the name of the file to be loaded.
-		Gaffer::FileSystemPathPlug *fileNamePlug();
-		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
+		Gaffer::StringPlug *fileNamePlug();
+		const Gaffer::StringPlug *fileNamePlug() const;
 
 		/// Number of times the node has been refreshed.
 		Gaffer::IntPlug *refreshCountPlug();

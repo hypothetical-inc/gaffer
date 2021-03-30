@@ -37,7 +37,6 @@
 #ifndef GAFFERIMAGE_ERODE_H
 #define GAFFERIMAGE_ERODE_H
 
-#include "GafferImage/Export.h"
 #include "GafferImage/RankFilter.h"
 
 namespace GafferImage

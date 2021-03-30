@@ -138,7 +138,7 @@ _themeVariables = {
 }
 
 substitutions = {
-	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"] if os.name == 'posix' else os.environ["GAFFER_ROOT"].replace("\\", "/"),
+	"GAFFER_ROOT" : os.environ["GAFFER_ROOT"]
 }
 
 for k, v in _styleColors.items() :

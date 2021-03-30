@@ -37,8 +37,6 @@
 #ifndef GAFFERSCENE_SPHERELEVELSET_H
 #define GAFFERSCENE_SPHERELEVELSET_H
 
-#include "GafferVDB/Export.h"
-
 #include "GafferScene/ObjectSource.h"
 
 #include "Gaffer/CompoundNumericPlug.h"
@@ -48,7 +46,7 @@
 namespace GafferVDB
 {
 
-class GAFFERVDB_API SphereLevelSet : public GafferScene::ObjectSource
+class GAFFERSCENE_API SphereLevelSet : public GafferScene::ObjectSource
 {
 
 	public :

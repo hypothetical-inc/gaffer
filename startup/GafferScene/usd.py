@@ -57,13 +57,11 @@ if moduleSearchPath.find( "IECoreUSD" ) and moduleSearchPath.find( "pxr/Usd" ) :
 	# > https://github.com/ImageEngine/cortex/pull/810.
 
 	try :
-		if os.name != "nt" :
-			originalDLOpenFlags = sys.getdlopenflags()
-			sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
+		originalDLOpenFlags = sys.getdlopenflags()
+		sys.setdlopenflags( originalDLOpenFlags & ~ctypes.RTLD_GLOBAL )
 		from pxr import Usd
 	finally :
-		if os.name != "nt" :
-			sys.setdlopenflags( originalDLOpenFlags )
+		sys.setdlopenflags( originalDLOpenFlags )
 
 	# Import IECoreUSD so that we get the USD SceneInterface registered,
 	# providing USD functionality to both the SceneReader and SceneWriter.

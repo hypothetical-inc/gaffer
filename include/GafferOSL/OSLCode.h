@@ -37,7 +37,6 @@
 #ifndef GAFFEROSL_OSLCODE_H
 #define GAFFEROSL_OSLCODE_H
 
-#include "GafferOSL/Export.h"
 #include "GafferOSL/OSLShader.h"
 
 namespace GafferOSL

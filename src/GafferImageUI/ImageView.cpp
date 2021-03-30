@@ -353,7 +353,7 @@ class ImageView::ColorInspector : public boost::signals::trackable
 
 GAFFER_NODE_DEFINE_TYPE( ImageView );
 
-GAFFERIMAGEUI_API ImageView::ViewDescription<ImageView> ImageView::g_viewDescription( GafferImage::ImagePlug::staticTypeId() );
+ImageView::ViewDescription<ImageView> ImageView::g_viewDescription( GafferImage::ImagePlug::staticTypeId() );
 
 ImageView::ImageView( const std::string &name )
 	:	View( name, new GafferImage::ImagePlug() ),

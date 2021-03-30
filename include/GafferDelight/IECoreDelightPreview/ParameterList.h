@@ -44,10 +44,6 @@
 
 #include <nsi.h>
 
-// Change this to "IECoreDelight/Export.h" and remove the define when it goes into Cortex.
-#include "GafferDelight/Export.h"
-#define IECOREDELIGHT_API GAFFERDELIGHT_API
-
 namespace IECoreDelight
 {
 
@@ -55,7 +51,7 @@ namespace IECoreDelight
 /// NSI API. The ParameterList does not copy any of the data passed
 /// to it; it is the caller's responsibility to keep all data alive
 /// for as long as the ParameterList is used.
-class IECOREDELIGHT_API ParameterList
+class ParameterList
 {
 
 	public :
