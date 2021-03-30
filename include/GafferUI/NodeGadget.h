@@ -38,7 +38,6 @@
 #ifndef GAFFERUI_NODEGADGET_H
 #define GAFFERUI_NODEGADGET_H
 
-#include "GafferUI/Export.h"
 #include "GafferUI/IndividualContainer.h"
 
 #include "Gaffer/Set.h"

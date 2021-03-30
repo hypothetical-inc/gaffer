@@ -44,7 +44,7 @@
 namespace Gaffer
 {
 
-IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
+IE_CORE_FORWARDDECLARE( StringPlug )
 
 } // namespace Gaffer
 
@@ -75,8 +75,8 @@ class GAFFERIMAGE_API LUT : public OpenColorIOTransform
 			Inverse
 		};
 
-		Gaffer::FileSystemPathPlug *fileNamePlug();
-		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
+		Gaffer::StringPlug *fileNamePlug();
+		const Gaffer::StringPlug *fileNamePlug() const;
 
 		Gaffer::IntPlug *interpolationPlug();
 		const Gaffer::IntPlug *interpolationPlug() const;

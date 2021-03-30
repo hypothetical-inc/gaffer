@@ -39,8 +39,6 @@
 
 #include "Gaffer/Export.h"
 #include "Gaffer/ThreadState.h"
-#include "Gaffer/Plug.h"
-#include "Gaffer/Context.h"
 
 #include "IECore/InternedString.h"
 

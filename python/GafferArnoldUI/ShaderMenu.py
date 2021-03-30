@@ -136,7 +136,7 @@ def __colorManagerCreator( colorManagerName, nodeName ) :
 
 def __aiMetadataGetStr( nodeEntry, paramName, name ) :
 
-	value = arnold.AtStringStruct()
+	value = arnold.AtStringReturn()
 	if arnold.AiMetaDataGetStr( nodeEntry, paramName, name, value ) :
 		return arnold.AtStringToStr( value )
 

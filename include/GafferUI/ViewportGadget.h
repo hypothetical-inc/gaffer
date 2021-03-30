@@ -176,7 +176,7 @@ class GAFFERUI_API ViewportGadget : public Gadget
 
 		/// The SelectionScope class can be used by child Gadgets to perform
 		/// OpenGL selection from event signal callbacks.
-		class GAFFERUI_API SelectionScope : boost::noncopyable
+		class SelectionScope : boost::noncopyable
 		{
 
 			public :
@@ -218,7 +218,7 @@ class GAFFERUI_API ViewportGadget : public Gadget
 		};
 
 		/// The RasterScope class can be used to perform drawing in raster space.
-		class GAFFERUI_API RasterScope : boost::noncopyable
+		class RasterScope : boost::noncopyable
 		{
 
 			public :

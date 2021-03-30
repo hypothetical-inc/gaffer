@@ -60,7 +60,6 @@ namespace Gaffer
 {
 
 IE_CORE_FORWARDDECLARE( StringPlug )
-IE_CORE_FORWARDDECLARE( FileSystemPathPlug )
 
 } // namespace Gaffer
 
@@ -171,8 +170,8 @@ class GAFFERDISPATCH_API Dispatcher : public Gaffer::Node
 		const Gaffer::StringPlug *jobNamePlug() const;
 		/// Returns the plug which specifies the directory used by dispatchers to store temporary
 		/// files on a per-job basis.
-		Gaffer::FileSystemPathPlug *jobsDirectoryPlug();
-		const Gaffer::FileSystemPathPlug *jobsDirectoryPlug() const;
+		Gaffer::StringPlug *jobsDirectoryPlug();
+		const Gaffer::StringPlug *jobsDirectoryPlug() const;
 		/// At the start of dispatch(), a directory is created under jobsDirectoryPlug + jobNamePlug
 		/// which the dispatcher writes temporary files to. This method returns the most recent created directory.
 		const std::string jobDirectory() const;
@@ -225,7 +224,7 @@ class GAFFERDISPATCH_API Dispatcher : public Gaffer::Node
 		/// All tasks within a batch are from the same plug
 		/// and have identical contexts except for the frame
 		/// number.
-		class GAFFERDISPATCH_API TaskBatch : public IECore::RefCounted
+		class TaskBatch : public IECore::RefCounted
 		{
 			public :
 

@@ -39,13 +39,9 @@ import gc
 import sys
 import time
 import tempfile
+import resource
 import collections
 import six
-
-if sys.platform != "win32":
-	import resource
-else:
-	import subprocess
 
 import IECore
 
@@ -750,9 +746,6 @@ class _Memory( object ) :
 
 		if sys.platform == "darwin" :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss )
-		elif sys.platform == "win32" :
-			result = subprocess.check_output( ["wmic", "process", "where", "processid={}".format(os.getpid()), "get", "PeakWorkingSetSize"] )
-			return cls( long( result.split()[1] ) * 1024 )
 		else :
 			return cls( resource.getrusage( resource.RUSAGE_SELF ).ru_maxrss * 1024 )
 

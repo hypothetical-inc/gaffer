@@ -65,7 +65,7 @@ class GAFFER_API PerformanceMonitor : public Monitor
 
 		IE_CORE_DECLAREMEMBERPTR( PerformanceMonitor )
 
-		struct GAFFER_API Statistics
+		struct Statistics
 		{
 
 			Statistics(

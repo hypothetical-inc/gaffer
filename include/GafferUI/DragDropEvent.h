@@ -37,7 +37,6 @@
 #ifndef GAFFERUI_DRAGDROPEVENT_H
 #define GAFFERUI_DRAGDROPEVENT_H
 
-#include "GafferUI/Export.h"
 #include "GafferUI/ButtonEvent.h"
 
 #include "IECore/RunTimeTyped.h"

@@ -62,7 +62,7 @@ class GAFFER_API GlobalScope : boost::noncopyable
 		GlobalScope( const Context *context, const Plug *plug );
 		~GlobalScope();
 
-		struct GAFFER_API Registration
+		struct Registration
 		{
 			Registration( IECore::TypeId plugTypeId, const std::initializer_list<IECore::InternedString> &variablesToRemove );
 		};

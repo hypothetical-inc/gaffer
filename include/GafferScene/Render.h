@@ -44,7 +44,6 @@
 
 #include "Gaffer/NumericPlug.h"
 #include "Gaffer/StringPlug.h"
-#include "Gaffer/FileSystemPathPlug.h"
 
 namespace GafferScene
 {
@@ -76,8 +75,8 @@ class GAFFERSCENE_API Render : public GafferDispatch::TaskNode
 		Gaffer::IntPlug *modePlug();
 		const Gaffer::IntPlug *modePlug() const;
 
-		Gaffer::FileSystemPathPlug *fileNamePlug();
-		const Gaffer::FileSystemPathPlug *fileNamePlug() const;
+		Gaffer::StringPlug *fileNamePlug();
+		const Gaffer::StringPlug *fileNamePlug() const;
 
 		ScenePlug *outPlug();
 		const ScenePlug *outPlug() const;

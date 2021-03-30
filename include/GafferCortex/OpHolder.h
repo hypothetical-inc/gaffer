@@ -37,7 +37,6 @@
 #ifndef GAFFERCORTEX_OPHOLDER_H
 #define GAFFERCORTEX_OPHOLDER_H
 
-#include "GafferCortex/Export.h"
 #include "GafferCortex/ParameterisedHolder.h"
 
 namespace IECore

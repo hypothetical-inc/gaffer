@@ -50,7 +50,7 @@ namespace GafferArnold
 
 class ArnoldShader;
 
-class GAFFERARNOLD_API ArnoldColorManager : public GafferScene::GlobalsProcessor
+class GAFFERSCENE_API ArnoldColorManager : public GafferScene::GlobalsProcessor
 {
 
 	public :

@@ -37,7 +37,6 @@
 #ifndef GAFFERUI_NAMEGADGET_H
 #define GAFFERUI_NAMEGADGET_H
 
-#include "GafferUI/Export.h"
 #include "GafferUI/TextGadget.h"
 
 #include "IECoreScene/Font.h"

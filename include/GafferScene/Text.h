@@ -37,18 +37,10 @@
 #ifndef GAFFERSCENE_TEXT_H
 #define GAFFERSCENE_TEXT_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
-#include "Gaffer/FileSystemPathPlug.h"
 
 namespace GafferScene
 {
-
-#ifdef _WIN32
-	#define ENVSEP ";"
-#else
-	#define ENVSEP ":"
-#endif
 
 class GAFFERSCENE_API Text : public ObjectSource
 {
@@ -63,8 +55,8 @@ class GAFFERSCENE_API Text : public ObjectSource
 		Gaffer::StringPlug *textPlug();
 		const Gaffer::StringPlug *textPlug() const;
 
-		Gaffer::FileSystemPathPlug *fontPlug();
-		const Gaffer::FileSystemPathPlug *fontPlug() const;
+		Gaffer::StringPlug *fontPlug();
+		const Gaffer::StringPlug *fontPlug() const;
 
 		void affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const override;
 

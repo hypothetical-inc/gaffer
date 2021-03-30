@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_OPENGLATTRIBUTES_H
 #define GAFFERSCENE_OPENGLATTRIBUTES_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/Attributes.h"
 
 namespace GafferScene

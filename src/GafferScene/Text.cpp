@@ -38,7 +38,6 @@
 
 #include "Gaffer/StringPlug.h"
 #include "Gaffer/Private/IECorePreview/LRUCache.h"
-#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreScene/Font.h"
 #include "IECoreScene/MeshPrimitive.h"
@@ -101,7 +100,7 @@ Text::Text( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new StringPlug( "text", Plug::In, "Hello World" ) );
-	addChild( new FileSystemPathPlug( "font", Plug::In, "Vera.ttf" ) );
+	addChild( new StringPlug( "font", Plug::In, "Vera.ttf" ) );
 }
 
 Text::~Text()
@@ -118,14 +117,14 @@ const Gaffer::StringPlug *Text::textPlug() const
 	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-Gaffer::FileSystemPathPlug *Text::fontPlug()
+Gaffer::StringPlug *Text::fontPlug()
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
+	return getChild<StringPlug>( g_firstPlugIndex + 1 );
 }
 
-const Gaffer::FileSystemPathPlug *Text::fontPlug() const
+const Gaffer::StringPlug *Text::fontPlug() const
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
+	return getChild<StringPlug>( g_firstPlugIndex + 1 );
 }
 
 void Text::affects( const Plug *input, AffectedPlugsContainer &outputs ) const

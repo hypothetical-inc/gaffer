@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_SUBTREE_H
 #define GAFFERSCENE_SUBTREE_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/SceneProcessor.h"
 
 #include "Gaffer/StringPlug.h"

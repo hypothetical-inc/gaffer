@@ -284,10 +284,10 @@ def __shaderSubMenu( searchPaths, extensions, nodeCreator, matchExpression, sear
 		if path in pathsVisited :
 			continue
 
-		for root, dirs, files in os.walk( path ) :	
+		for root, dirs, files in os.walk( path ) :
 			for file in files :
 				if os.path.splitext( file )[1][1:] in extensions :
-					shaderPath = os.path.join( root, file ).partition( path )[-1].lstrip( os.path.sep )
+					shaderPath = os.path.join( root, file ).partition( path )[-1].lstrip( "/" )
 					if __hiddenShadersPathMatcher.match( shaderPath ) & IECore.PathMatcher.Result.ExactMatch :
 						continue
 					if shaderPath not in shaders and matchExpression.match( shaderPath ) :
@@ -296,18 +296,18 @@ def __shaderSubMenu( searchPaths, extensions, nodeCreator, matchExpression, sear
 		pathsVisited.add( path )
 
 	shaders = sorted( list( shaders ) )
-	categorisedShaders = [ x for x in shaders if os.path.sep in x ]
-	uncategorisedShaders = [ x for x in shaders if os.path.sep not in x ]
+	categorisedShaders = [ x for x in shaders if "/" in x ]
+	uncategorisedShaders = [ x for x in shaders if "/" not in x ]
 
 	shadersAndMenuPaths = []
 	for shader in categorisedShaders :
-		shadersAndMenuPaths.append( ( shader.replace("\\", "/"), "/" + shader.replace("\\", "/") ) )
+		shadersAndMenuPaths.append( ( shader, "/" + shader ) )
 
 	for shader in uncategorisedShaders :
 		if not categorisedShaders :
-			shadersAndMenuPaths.append( ( shader.replace("\\", "/"), "/" + shader.replace("\\", "/") ) )
+			shadersAndMenuPaths.append( ( shader, "/" + shader ) )
 		else :
-			shadersAndMenuPaths.append( ( shader.replace("\\", "/"), "/Other/" + shader.replace("\\", "/")	 ) )
+			shadersAndMenuPaths.append( ( shader, "/Other/" + shader ) )
 
 	result = IECore.MenuDefinition()
 	for shader, menuPath in shadersAndMenuPaths :

@@ -45,7 +45,7 @@
 #include "Gaffer/DependencyNode.h"
 #include "Gaffer/MetadataAlgo.h"
 #include "Gaffer/StandardSet.h"
-#include "Gaffer/FileSystemPathPlug.h"
+#include "Gaffer/StringPlug.h"
 #include "Gaffer/TypedPlug.h"
 
 #include "IECore/Exception.h"
@@ -58,6 +58,8 @@
 #include "boost/filesystem/path.hpp"
 
 #include <fstream>
+
+#include <unistd.h>
 
 using namespace Gaffer;
 
@@ -258,7 +260,7 @@ ScriptNode::ScriptNode( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
-	addChild( new FileSystemPathPlug( "fileName", Plug::In, "", Plug::Default & ~Plug::Serialisable ) );
+	addChild( new StringPlug( "fileName", Plug::In, "", Plug::Default & ~Plug::Serialisable ) );
 	addChild( new BoolPlug( "unsavedChanges", Plug::In, false, Plug::Default & ~Plug::Serialisable ) );
 
 	ValuePlugPtr frameRangePlug = new ValuePlug( "frameRange", Plug::In );
@@ -286,14 +288,14 @@ ScriptNode::~ScriptNode()
 {
 }
 
-FileSystemPathPlug *ScriptNode::fileNamePlug()
+StringPlug *ScriptNode::fileNamePlug()
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
+	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-const FileSystemPathPlug *ScriptNode::fileNamePlug() const
+const StringPlug *ScriptNode::fileNamePlug() const
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
+	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
 BoolPlug *ScriptNode::unsavedChangesPlug()
@@ -827,20 +829,10 @@ void ScriptNode::plugSet( Plug *plug )
 	else if( plug == fileNamePlug() )
 	{
 		const boost::filesystem::path fileName( fileNamePlug()->getValue() );
-
 		context()->set( g_scriptName, fileName.stem().string() );
-
-		bool isReadOnly = false;
-		if( boost::filesystem::exists( fileName ) )
-		{
-			std::ofstream testOpen( fileName.c_str(), std::fstream::app );
-			isReadOnly = !testOpen.is_open();
-			testOpen.close();
-		}
-
 		MetadataAlgo::setReadOnly(
 			this,
-			isReadOnly,
+			boost::filesystem::exists( fileName ) && 0 != access( fileName.c_str(), W_OK ),
 			/* persistent = */ false
 		);
 	}

@@ -37,15 +37,7 @@
 #ifndef GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 #define GAFFERSCENE_ATTRIBUTEPROCESSOR_H
 
-#include "GafferScene/SceneElementProcessor.h"
-#include "GafferScene/Export.h"
-
-namespace Gaffer
-{
-
-IE_CORE_FORWARDDECLARE( StringPlug )
-
-} // namespace Gaffer
+#include "GafferScene/FilteredSceneProcessor.h"
 
 namespace GafferScene
 {

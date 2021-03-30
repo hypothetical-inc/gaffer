@@ -37,7 +37,6 @@
 #ifndef GAFFERUI_MODIFIABLEEVENT_H
 #define GAFFERUI_MODIFIABLEEVENT_H
 
-#include "GafferUI/Export.h"
 #include "GafferUI/Event.h"
 
 namespace GafferUI

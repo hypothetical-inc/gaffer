@@ -169,17 +169,17 @@ plugsMetadata = {
 
 		"layout:visibilityActivator", "perspectiveModeFocalLength",
 
-		"preset:Academy 35mm   	21.946 \u00D7 16.000",			imath.V2f( 21.946, 16 ),
-		"preset:Super 35mm   	24.892 \u00D7 18.669",			imath.V2f( 24.892, 18.669 ),
-		"preset:Micro Four Thirds   	17.30 \u00D7 13.00",		imath.V2f( 17.3, 13 ),
-		"preset:APS-C   	22.30 \u00D7 14.90",					imath.V2f( 22.3, 14.9 ),
-		"preset:Full Frame 35mm   	36.00 \u00D7 24.00",			imath.V2f( 36, 24 ),
-		"preset:Alexa SXT 4:3 2.8k   	23.76 \u00D7 17.82",		imath.V2f( 23.76, 17.82 ),
-		"preset:Alexa SXT Open Gate 3.4k   	28.25 \u00D7 18.17",	imath.V2f( 28.25, 18.17 ),
-		"preset:Alexa 65 16:9 5.1k   	42.24 \u00D7 23.76",		imath.V2f( 42.24, 23.76 ),
-		"preset:Alexa 65 Open Gate 6.5k   	54.12 \u00D7 25.58",	imath.V2f( 54.12, 25.58 ),
-		"preset:RED EPIC-W 5K S35   	30.72 \u00D7 18.00",		imath.V2f( 30.72, 18 ),
-		"preset:RED EPIC-W 8K S35   	29.90 \u00D7 15.77",		imath.V2f( 29.9, 15.77 ),
+		"preset:Academy 35mm   	21.946 × 16.000",			imath.V2f( 21.946, 16 ),
+		"preset:Super 35mm   	24.892 × 18.669",			imath.V2f( 24.892, 18.669 ),
+		"preset:Micro Four Thirds   	17.30 × 13.00",		imath.V2f( 17.3, 13 ),
+		"preset:APS-C   	22.30 × 14.90",					imath.V2f( 22.3, 14.9 ),
+		"preset:Full Frame 35mm   	36.00 × 24.00",			imath.V2f( 36, 24 ),
+		"preset:Alexa SXT 4:3 2.8k   	23.76 × 17.82",		imath.V2f( 23.76, 17.82 ),
+		"preset:Alexa SXT Open Gate 3.4k   	28.25 × 18.17",	imath.V2f( 28.25, 18.17 ),
+		"preset:Alexa 65 16:9 5.1k   	42.24 × 23.76",		imath.V2f( 42.24, 23.76 ),
+		"preset:Alexa 65 Open Gate 6.5k   	54.12 × 25.58",	imath.V2f( 54.12, 25.58 ),
+		"preset:RED EPIC-W 5K S35   	30.72 × 18.00",		imath.V2f( 30.72, 18 ),
+		"preset:RED EPIC-W 8K S35   	29.90 × 15.77",		imath.V2f( 29.9, 15.77 ),
 
 		"presetsPlugValueWidget:allowCustom", True,
 

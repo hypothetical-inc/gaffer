@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_MESHTANGENTS_H
 #define GAFFERSCENE_MESHTANGENTS_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/ObjectProcessor.h"
 
 #include "Gaffer/StringPlug.h"

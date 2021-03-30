@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_CUSTOMATTRIBUTES_H
 #define GAFFERSCENE_CUSTOMATTRIBUTES_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/Attributes.h"
 
 namespace GafferScene

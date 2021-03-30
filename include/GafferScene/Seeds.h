@@ -38,7 +38,6 @@
 #ifndef GAFFERSCENE_SEEDS_H
 #define GAFFERSCENE_SEEDS_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/BranchCreator.h"
 
 namespace GafferScene

@@ -45,7 +45,6 @@
 
 #include "Gaffer/Context.h"
 #include "Gaffer/StringPlug.h"
-#include "Gaffer/FileSystemPathPlug.h"
 
 #include "IECoreImage/OpenImageIOAlgo.h"
 
@@ -700,8 +699,7 @@ FilePtr retrieveFile( std::string &fileName, OpenImageIOReader::MissingFrameMode
 		return nullptr;
 	}
 
-	// All other substitutions are handled in the FileSystemPathPlug
-	const std::string resolvedFileName = context->substitute( fileName, IECore::StringAlgo::Substitutions::FrameSubstitutions );
+	const std::string resolvedFileName = context->substitute( fileName );
 
 	FileHandleCache *cache = fileCache();
 	CacheEntry cacheEntry = cache->get( resolvedFileName );
@@ -763,9 +761,10 @@ OpenImageIOReader::OpenImageIOReader( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild(
-		new FileSystemPathPlug(
+		new StringPlug(
 			"fileName", Plug::In, "",
-			/* flags */ Plug::Default
+			/* flags */ Plug::Default,
+			/* substitutions */ IECore::StringAlgo::AllSubstitutions & ~IECore::StringAlgo::FrameSubstitutions
 		)
 	);
 	addChild( new IntPlug( "refreshCount" ) );
@@ -780,14 +779,14 @@ OpenImageIOReader::~OpenImageIOReader()
 {
 }
 
-Gaffer::FileSystemPathPlug *OpenImageIOReader::fileNamePlug()
+Gaffer::StringPlug *OpenImageIOReader::fileNamePlug()
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
+	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
-const Gaffer::FileSystemPathPlug *OpenImageIOReader::fileNamePlug() const
+const Gaffer::StringPlug *OpenImageIOReader::fileNamePlug() const
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex );
+	return getChild<StringPlug>( g_firstPlugIndex );
 }
 
 Gaffer::IntPlug *OpenImageIOReader::refreshCountPlug()

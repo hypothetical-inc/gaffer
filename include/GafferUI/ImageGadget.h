@@ -54,12 +54,6 @@ IE_CORE_FORWARDDECLARE( Texture )
 namespace GafferUI
 {
 
-#ifdef _WIN32
-	#define ENVSEP ";"
-#else
-	#define ENVSEP ":"
-#endif
-
 class GAFFERUI_API ImageGadget : public Gadget
 {
 

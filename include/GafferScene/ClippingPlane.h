@@ -37,7 +37,6 @@
 #ifndef GAFFERSCENE_CLIPPINGPLANE_H
 #define GAFFERSCENE_CLIPPINGPLANE_H
 
-#include "GafferScene/Export.h"
 #include "GafferScene/ObjectSource.h"
 
 namespace GafferScene

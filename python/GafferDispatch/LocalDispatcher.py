@@ -38,11 +38,7 @@ import os
 import errno
 import signal
 import shlex
-import sys
-if os.name == 'posix' and sys.version_info[0] < 3:
-    import subprocess32 as subprocess
-else:
-    import subprocess
+import subprocess32 as subprocess
 import threading
 import time
 import traceback
@@ -263,9 +259,8 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 			taskContext = batch.context()
 			frames = str( IECore.frameListFromList( [ int(x) for x in batch.frames() ] ) )
 
-			args = [ "gaffer.bat" ] if os.name == "nt" else [ "gaffer" ]
-			args = args + [
-				"execute",
+			args = [
+				"gaffer", "execute",
 				"-script", self.__scriptFile,
 				"-nodes", batch.blindData()["nodeName"].value,
 				"-frames", frames,
@@ -286,10 +281,7 @@ class LocalDispatcher( GafferDispatch.Dispatcher ) :
 
 			self.__setStatus( batch, LocalDispatcher.Job.Status.Running )
 			IECore.msg( IECore.MessageHandler.Level.Info, self.__messageTitle, " ".join( args ) )
-			if os.name == "nt":
-				process = subprocess.Popen( args )
-			else:
-				process = subprocess.Popen( args, start_new_session=True )
+			process = subprocess.Popen( args, start_new_session=True )
 			batch.blindData()["pid"] = IECore.IntData( process.pid )
 
 			while process.poll() is None :

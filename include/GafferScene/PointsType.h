@@ -37,8 +37,6 @@
 #ifndef GAFFERSCENE_POINTSTYPE_H
 #define GAFFERSCENE_POINTSTYPE_H
 
-#include "GafferScene/Export.h"
-
 #include "GafferScene/ObjectProcessor.h"
 
 namespace Gaffer

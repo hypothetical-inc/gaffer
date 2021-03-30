@@ -39,7 +39,7 @@
 #include "GafferScene/SceneAlgo.h"
 
 #include "Gaffer/Context.h"
-#include "Gaffer/FileSystemPathPlug.h"
+#include "Gaffer/StringPlug.h"
 
 #include "IECoreScene/SceneInterface.h"
 
@@ -160,7 +160,7 @@ SceneWriter::SceneWriter( const std::string &name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 	addChild( new ScenePlug( "in", Plug::In ) );
-	addChild( new FileSystemPathPlug( "fileName" ) );
+	addChild( new StringPlug( "fileName" ) );
 	addChild( new ScenePlug( "out", Plug::Out, Plug::Default & ~Plug::Serialisable ) );
 	outPlug()->setInput( inPlug() );
 }
@@ -179,14 +179,14 @@ const ScenePlug *SceneWriter::inPlug() const
 	return getChild<ScenePlug>( g_firstPlugIndex );
 }
 
-FileSystemPathPlug *SceneWriter::fileNamePlug()
+StringPlug *SceneWriter::fileNamePlug()
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
+	return getChild<StringPlug>( g_firstPlugIndex + 1 );
 }
 
-const FileSystemPathPlug *SceneWriter::fileNamePlug() const
+const StringPlug *SceneWriter::fileNamePlug() const
 {
-	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 1 );
+	return getChild<StringPlug>( g_firstPlugIndex + 1 );
 }
 
 ScenePlug *SceneWriter::outPlug()
