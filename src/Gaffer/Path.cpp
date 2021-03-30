@@ -95,6 +95,18 @@ const IECore::InternedString &Path::root() const
 	return m_root;
 }
 
+void Path::setRoot( IECore::InternedString &newRoot )
+{
+
+	if ( newRoot == m_root )
+	{
+		return;
+	}
+
+	m_root = newRoot;
+	emitPathChanged();
+}
+
 bool Path::isEmpty() const
 {
 	return m_names.empty() && m_root.string().empty();
