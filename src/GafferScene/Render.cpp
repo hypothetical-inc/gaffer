@@ -108,7 +108,7 @@ Render::Render( const IECore::InternedString &rendererType, const std::string &n
 	addChild( new ScenePlug( "in" ) );
 	addChild( new StringPlug( rendererType.string().empty() ? "renderer" : "__renderer", Plug::In, rendererType.string() ) );
 	addChild( new IntPlug( "mode", Plug::In, RenderMode, RenderMode, SceneDescriptionMode ) );
-	addChild( new StringPlug( "fileName" ) );
+	addChild( new FileSystemPathPlug( "fileName" ) );
 	addChild( new ScenePlug( "out", Plug::Out, Plug::Default & ~Plug::Serialisable ) );
 	addChild( new ScenePlug( "__adaptedIn", Plug::In, Plug::Default & ~Plug::Serialisable ) );
 
@@ -154,14 +154,14 @@ const Gaffer::IntPlug *Render::modePlug() const
 	return getChild<IntPlug>( g_firstPlugIndex + 2 );
 }
 
-Gaffer::StringPlug *Render::fileNamePlug()
+Gaffer::FileSystemPathPlug *Render::fileNamePlug()
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
-const Gaffer::StringPlug *Render::fileNamePlug() const
+const Gaffer::FileSystemPathPlug *Render::fileNamePlug() const
 {
-	return getChild<StringPlug>( g_firstPlugIndex + 3 );
+	return getChild<FileSystemPathPlug>( g_firstPlugIndex + 3 );
 }
 
 ScenePlug *Render::outPlug()
