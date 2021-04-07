@@ -2,7 +2,7 @@
 
 ##########################################################################
 #
-#  Copyright (c) 2017, Image Engine Design Inc. All rights reserved.
+#  Copyright (c) 2021, Hypothetical Inc. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are
@@ -34,72 +34,32 @@
 #
 ##########################################################################
 
-import os
 import sys
-import argparse
-import hashlib
+import os
+import urllib
 import zipfile
 
-if sys.version_info[0] < 3 :
-	from urllib import urlretrieve
-else :
-	from urllib.request import urlretrieve
+arnoldVersion="6.0.1.0"
 
-# Determine default archive URL.
+arnoldPlatform = { "darwin" : "osx", "win32" : "windows" }.get( sys.platform, "linux" )
+archiveFormat = { "win32" : "zip" }.get( sys.platform, "tar.gz" )
 
-platform = { "darwin" : "osx", "win32" : "windows" }.get( sys.platform, "linux" )
-defaultURL = "https://github.com/ImageEngine/cortex/releases/download/10.2.0.0-a2/cortex-10.2.0.0-a2-" + platform + "-python2.tar.gz"
-
-# Parse command line arguments.
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-	"--archiveURL",
-	help = "The URL to download the dependencies archive from.",
-	default = defaultURL,
+arnoldArchive = "Arnold-{arnoldVersion}-{arnoldPlatform}.{archiveFormat}".format(
+    arnoldVersion = arnoldVersion,
+    arnoldPlatform = arnoldPlatform,
+    archiveFormat = archiveFormat
 )
 
-parser.add_argument(
-	"--dependenciesDir",
-	help = "The directory to unpack the dependencies into.",
-	default = "dependencies",
-)
+url="forgithubci.solidangle.com/arnold/{}".format( arnoldArchive )
 
-parser.add_argument(
-	"--outputFormat",
-	help = "A format string that specifies the output printed "
-		"by this script. May contain {archiveURL} and {archiveDigest} "
-		"tokens that will be substituted appropriately.",
-	default = "",
-)
+os.makedirs( "arnoldRoot" )
+os.chdir( "arnoldRoot" )
 
-args = parser.parse_args()
+print( "Downloading Arnold \"https://{}\"".format( url ) )
+urllib.urlretrieve( url )
 
-# Download and unpack the archive.
-
-sys.stderr.write( "Downloading dependencies \"%s\"\n" % args.archiveURL )
-archiveFileName, headers = urlretrieve( args.archiveURL )
-
-os.makedirs( args.dependenciesDir )
-if platform != "windows":
-	os.system( "tar xf %s -C %s --strip-components=1" % ( archiveFileName, args.dependenciesDir ) )
-else:
-	with zipfile.ZipFile( archiveFileName ) as f :
-		f.extractall( path = args.dependenciesDir )
-
-
-# Tell the world
-
-if args.outputFormat :
-
-	md5 = hashlib.md5()
-	with open( archiveFileName ) as f :
-		md5.update( f.read() )
-
-	print(
-		args.outputFormat.format(
-			archiveURL = args.archiveURL,
-			archiveDigest = md5.hexdigest()
-		)
-	)
+if archiveFormat == "tar.gz" :
+    os.system( "tar -xzf {}".format( arnoldArchive ) )
+elif archiveFormat == "zip":
+    with zipfile.ZipFile( arnoldArchive ) as f :
+        f.extractall()
