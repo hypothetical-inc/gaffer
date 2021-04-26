@@ -97,7 +97,7 @@ std::string substitutionsRepr( unsigned substitutions )
 	return result;
 }
 
-std::string serialisationRepr( const Gaffer::FileSystemPathPlug *plug, const Serialisation *serialisation )
+std::string serialisationRepr( const Gaffer::FileSystemPathPlug *plug, Serialisation *serialisation )
 {
 	std::string extraArguments;
 	if( plug->substitutions() != IECore::StringAlgo::AllSubstitutions )
@@ -117,7 +117,7 @@ class FileSystemPathPlugSerialiser : public ValuePlugSerialiser
 
 	public :
 
-		std::string constructor( const Gaffer::GraphComponent *graphComponent, const Serialisation &serialisation ) const override
+		std::string constructor( const Gaffer::GraphComponent *graphComponent, Serialisation &serialisation ) const override
 		{
 			return serialisationRepr( static_cast<const FileSystemPathPlug *>( graphComponent ), &serialisation );
 		}
