@@ -71,7 +71,7 @@ if "%ARNOLD_ROOT%" NEQ "" (
 )
 
 rem Set up 3rd party extensions
-for %%A in (%GAFFER_EXTENSION_PATHS%) do (
+for /f "delims=" %%A in ("%GAFFER_EXTENSION_PATHS%" ) do (
 	call :appendToPath "%%A\bin" PATH
 	call :appendToPath "%%A\lib" PATH
 	call :appendToPath "%%A\python" PYTHONPATH
