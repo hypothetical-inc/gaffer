@@ -301,7 +301,7 @@ class GAFFER_API Context : public IECore::RefCounted
 		// along with the `IECore::TypeId` for `TypedData<T>`, which is used to
 		// validate type-safe access. Does not manage memory or ownership in any
 		// way : this is the responsibility of calling code.
-		struct Value
+		struct GAFFER_API Value
 		{
 
 			inline Value();
@@ -343,7 +343,7 @@ class GAFFER_API Context : public IECore::RefCounted
 				const void *m_value;
 				IECore::MurmurHash m_hash;
 
-				struct TypeFunctions
+				struct GAFFER_API TypeFunctions
 				{
 					IECore::DataPtr (*makeData)( const Value &value, const void **dataValue );
 					bool (*isEqual)( const Value &a, const Value &b );

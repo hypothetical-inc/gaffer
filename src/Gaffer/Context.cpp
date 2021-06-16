@@ -168,7 +168,7 @@ void Context::Value::validate( const IECore::InternedString &name ) const
 	typeFunctions( m_typeId ).validate( name, *this );
 }
 
-Context::Value::TypeMap &Context::Value::typeMap()
+GAFFER_API Context::Value::TypeMap &Context::Value::typeMap()
 {
 	static TypeMap m_map;
 	return m_map;
