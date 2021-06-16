@@ -576,7 +576,7 @@ std::string FileSystemPath::getOwner( const std::string &pathString ) const
 
 
 	// Get the handle of the file object.
-	hFile = CreateFile( pathString.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	hFile = CreateFile( pathString.c_str(), 0, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	// Check GetLastError for CreateFile error code.
 	if (hFile == INVALID_HANDLE_VALUE) {
