@@ -147,7 +147,7 @@ void FilterPlug::sceneAffects( const Gaffer::Plug *scenePlugChild, Gaffer::Depen
 		{
 			// Switch with context-varying input. Any input branch could be
 			// relevant.
-			for( InputFilterPlugIterator it( switchNode->inPlugs() ); !it.done(); ++it )
+			for( FilterPlug::InputIterator it( switchNode->inPlugs() ); !it.done(); ++it )
 			{
 				(*it)->sceneAffects( scenePlugChild, outputs );
 			}
@@ -164,5 +164,6 @@ unsigned FilterPlug::match( const ScenePlug *scene ) const
 FilterPlug::SceneScope::SceneScope( const Gaffer::Context *context, const ScenePlug *scenePlug )
 	:	EditableScope( context )
 {
-	set( inputSceneContextName, (uint64_t)scenePlug );
+	m_scenePlug = scenePlug;
+	set<uint64_t>( inputSceneContextName, (uint64_t*)&m_scenePlug );
 }

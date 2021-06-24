@@ -170,7 +170,6 @@ from .InfoPathFilterWidget import InfoPathFilterWidget
 from .MatchPatternPathFilterWidget import MatchPatternPathFilterWidget
 from .FileSequencePathFilterWidget import FileSequencePathFilterWidget
 from .BusyWidget import BusyWidget
-from .NumericSlider import NumericSlider
 from .ColorChooser import ColorChooser
 from .ColorChooserDialogue import ColorChooserDialogue
 from .MessageWidget import MessageWidget, MessageSummaryWidget
@@ -271,6 +270,7 @@ from .NameValuePlugValueWidget import NameValuePlugValueWidget
 from .ShufflePlugValueWidget import ShufflePlugValueWidget
 from .ShufflePlugValueWidget import ShufflesPlugValueWidget
 from .BackgroundTaskDialogue import BackgroundTaskDialogue
+from . import AnnotationsUI
 
 # and then specific node uis
 

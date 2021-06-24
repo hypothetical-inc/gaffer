@@ -67,9 +67,9 @@
 #include "boost/unordered_map.hpp"
 
 #include "tbb/concurrent_unordered_set.h"
+#include "tbb/enumerable_thread_specific.h"
 #include "tbb/parallel_for.h"
 #include "tbb/spin_mutex.h"
-#include "tbb/task.h"
 
 using namespace std;
 using namespace Imath;
@@ -116,17 +116,27 @@ void filteredNodesWalk( Plug *filterPlug, std::unordered_set<FilteredSceneProces
 
 struct ThreadablePathAccumulator
 {
-	ThreadablePathAccumulator( PathMatcher &result): m_result( result ){}
 
 	bool operator()( const GafferScene::ScenePlug *scene, const GafferScene::ScenePlug::ScenePath &path )
 	{
-		tbb::spin_mutex::scoped_lock lock( m_mutex );
-		m_result.addPath( path );
+		m_threadResults.local().addPath( path );
 		return true;
 	}
 
-	tbb::spin_mutex m_mutex;
-	PathMatcher &m_result;
+	IECore::PathMatcher result()
+	{
+		return m_threadResults.combine(
+			[] ( const PathMatcher &a, const PathMatcher &b ) {
+				PathMatcher c = a;
+				c.addPaths( b );
+				return c;
+			}
+		);
+	}
+
+	private :
+
+		tbb::enumerable_thread_specific<PathMatcher> m_threadResults;
 
 };
 
@@ -145,7 +155,14 @@ struct ThreadablePathHashAccumulator
 		// as good ( the only weakness I can see is that if you summed 2**64 identical hashes, they would
 		// cancel out, but I can't see that arising here ).
 		IECore::MurmurHash h;
-		h.append( &path.front(), path.size() );
+		if( path.size() )
+		{
+			h.append( path.data(), path.size() );
+		}
+		else
+		{
+			h.append( 0 );
+		}
 		m_h1Accum += h.h1();
 		m_h2Accum += h.h2();
 		return true;
@@ -168,16 +185,25 @@ void GafferScene::SceneAlgo::matchingPaths( const Filter *filter, const ScenePlu
 	matchingPaths( filter->outPlug(), scene, paths );
 }
 
-void GafferScene::SceneAlgo::matchingPaths( const Gaffer::IntPlug *filterPlug, const ScenePlug *scene, PathMatcher &paths )
+void GafferScene::SceneAlgo::matchingPaths( const FilterPlug *filterPlug, const ScenePlug *scene, PathMatcher &paths )
 {
-	ThreadablePathAccumulator f( paths );
+	ThreadablePathAccumulator f;
 	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filterPlug, f );
+	paths = f.result();
+}
+
+void GafferScene::SceneAlgo::matchingPaths( const FilterPlug *filterPlug, const ScenePlug *scene, const ScenePlug::ScenePath &root, IECore::PathMatcher &paths )
+{
+	ThreadablePathAccumulator f;
+	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filterPlug, f, root );
+	paths = f.result();
 }
 
 void GafferScene::SceneAlgo::matchingPaths( const PathMatcher &filter, const ScenePlug *scene, PathMatcher &paths )
 {
-	ThreadablePathAccumulator f( paths );
+	ThreadablePathAccumulator f;
 	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filter, f );
+	paths = f.result();
 }
 
 IECore::MurmurHash GafferScene::SceneAlgo::matchingPathsHash( const Filter *filter, const ScenePlug *scene )
@@ -189,6 +215,13 @@ IECore::MurmurHash GafferScene::SceneAlgo::matchingPathsHash( const GafferScene:
 {
 	ThreadablePathHashAccumulator f;
 	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filterPlug, f );
+	return IECore::MurmurHash( f.m_h1Accum, f.m_h2Accum );
+}
+
+IECore::MurmurHash GafferScene::SceneAlgo::matchingPathsHash( const GafferScene::FilterPlug *filterPlug, const ScenePlug *scene, const ScenePlug::ScenePath &root )
+{
+	ThreadablePathHashAccumulator f;
+	GafferScene::SceneAlgo::filteredParallelTraverse( scene, filterPlug, f, root );
 	return IECore::MurmurHash( f.m_h1Accum, f.m_h2Accum );
 }
 
@@ -228,9 +261,6 @@ IECore::ConstCompoundObjectPtr GafferScene::SceneAlgo::globalAttributes( const I
 
 Imath::V2f GafferScene::SceneAlgo::shutter( const IECore::CompoundObject *globals, const ScenePlug *scene )
 {
-	const BoolData *cameraBlurData = globals->member<BoolData>( "option:render:cameraBlur" );
-	const bool cameraBlur = cameraBlurData ? cameraBlurData->readable() : false;
-
 	const BoolData *transformBlurData = globals->member<BoolData>( "option:render:transformBlur" );
 	const bool transformBlur = transformBlurData ? transformBlurData->readable() : false;
 
@@ -238,7 +268,7 @@ Imath::V2f GafferScene::SceneAlgo::shutter( const IECore::CompoundObject *global
 	const bool deformationBlur = deformationBlurData ? deformationBlurData->readable() : false;
 
 	V2f shutter( Context::current()->getFrame() );
-	if( cameraBlur || transformBlur || deformationBlur )
+	if( transformBlur || deformationBlur )
 	{
 		ConstCameraPtr camera = nullptr;
 		const StringData *cameraOption = globals->member<StringData>( "option:render:camera" );
@@ -302,7 +332,7 @@ IECore::ConstCompoundDataPtr GafferScene::SceneAlgo::sets( const ScenePlug *scen
 			ScenePlug::SetScope setScope( threadState );
 			for( size_t i=r.begin(); i!=r.end(); ++i )
 			{
-				setScope.setSetName( setNames[i] );
+				setScope.setSetName( &setNames[i] );
 				setsVector[i] = scene->setPlug()->getValue();
 			}
 
@@ -414,7 +444,7 @@ class CapturingMonitor : public Monitor
 
 IE_CORE_DECLAREPTR( CapturingMonitor )
 
-uint64_t g_historyID = 0;
+std::atomic<uint64_t> g_historyID( 0 );
 
 SceneAlgo::History::Ptr historyWalk( const CapturedProcess *process, InternedString scenePlugChildName, SceneAlgo::History *parent )
 {
@@ -429,7 +459,7 @@ SceneAlgo::History::Ptr historyWalk( const CapturedProcess *process, InternedStr
 		ScenePlug *scene = plug->parent<ScenePlug>();
 		if( scene && plug == scene->getChild( scenePlugChildName ) )
 		{
-			ContextPtr cleanContext = new Context( *process->context, Context::Copied );
+			ContextPtr cleanContext = new Context( *process->context );
 			cleanContext->remove( SceneAlgo::historyIDContextName() );
 			SceneAlgo::History::Ptr history = new SceneAlgo::History( scene, cleanContext );
 			if( !result )
@@ -652,9 +682,10 @@ SceneAlgo::History::Ptr SceneAlgo::history( const Gaffer::ValuePlug *scenePlugCh
 
 	CapturingMonitorPtr monitor = new CapturingMonitor;
 	{
-		ScenePlug::PathScope pathScope( Context::current(), path );
+		ScenePlug::PathScope pathScope( Context::current(), &path );
+		uint64_t historyID = g_historyID++;
 		// Trick to bypass the hash cache and get a full upstream evaluation.
-		pathScope.set( historyIDContextName(), g_historyID++ );
+		pathScope.set( historyIDContextName(), &historyID );
 		Monitor::Scope monitorScope( monitor );
 		scenePlugChild->hash();
 	}
@@ -890,7 +921,7 @@ IECore::PathMatcher findAttributes( const ScenePlug *scene, const AttributesPred
 	tbb::spin_mutex resultMutex;
 	IECore::PathMatcher result;
 	AttributesFinder<AttributesPredicate> attributesFinder( predicate, resultMutex, result );
-	parallelProcessLocations( scene, attributesFinder );
+	SceneAlgo::parallelProcessLocations( scene, attributesFinder );
 	return result;
 }
 
@@ -990,7 +1021,7 @@ bool GafferScene::SceneAlgo::visible( const ScenePlug *scene, const ScenePlug::S
 	for( ScenePlug::ScenePath::const_iterator it = path.begin(), eIt = path.end(); it != eIt; ++it )
 	{
 		p.push_back( *it );
-		pathScope.setPath( p );
+		pathScope.setPath( &p );
 
 		ConstCompoundObjectPtr attributes = scene->attributesPlug()->getValue();
 		const BoolData *visibilityData = attributes->member<BoolData>( "scene:visible" );
@@ -1029,4 +1060,162 @@ Imath::Box3f GafferScene::SceneAlgo::bound( const IECore::Object *object )
 	{
 		return Imath::Box3f();
 	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Render Adaptor Registry
+//////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+typedef boost::container::flat_map<string, SceneAlgo::RenderAdaptor> RenderAdaptors;
+
+RenderAdaptors &renderAdaptors()
+{
+	static RenderAdaptors a;
+	return a;
+}
+
+}
+
+void GafferScene::SceneAlgo::registerRenderAdaptor( const std::string &name, SceneAlgo::RenderAdaptor adaptor )
+{
+	renderAdaptors()[name] = adaptor;
+}
+
+void GafferScene::SceneAlgo::deregisterRenderAdaptor( const std::string &name )
+{
+	renderAdaptors().erase( name );
+}
+
+SceneProcessorPtr GafferScene::SceneAlgo::createRenderAdaptors()
+{
+	SceneProcessorPtr result = new SceneProcessor;
+
+	ScenePlug *in = result->inPlug();
+
+	const RenderAdaptors &a = renderAdaptors();
+	for( RenderAdaptors::const_iterator it = a.begin(), eIt = a.end(); it != eIt; ++it )
+	{
+		SceneProcessorPtr adaptor = it->second();
+		if( adaptor )
+		{
+			result->addChild( adaptor );
+			adaptor->inPlug()->setInput( in );
+			in = adaptor->outPlug();
+		}
+		else
+		{
+			IECore::msg(
+				IECore::Msg::Warning, "SceneAlgo::createRenderAdaptors",
+				boost::format( "Adaptor \"%1%\" returned null" ) % it->first
+			);
+		}
+	}
+
+	result->outPlug()->setInput( in );
+	return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Apply Camera Globals
+//////////////////////////////////////////////////////////////////////////
+
+void GafferScene::SceneAlgo::applyCameraGlobals( IECoreScene::Camera *camera, const IECore::CompoundObject *globals, const ScenePlug *scene )
+{
+	// Set any camera-relevant render globals that haven't been overridden on the camera
+	const IntData *filmFitData = globals->member<IntData>( "option:render:filmFit" );
+	if( !camera->hasFilmFit() && filmFitData )
+	{
+		camera->setFilmFit( (IECoreScene::Camera::FilmFit)filmFitData->readable() );
+	}
+
+	const V2iData *resolutionData = globals->member<V2iData>( "option:render:resolution" );
+	if( !camera->hasResolution() && resolutionData )
+	{
+		camera->setResolution( resolutionData->readable() );
+	}
+
+	const FloatData *resolutionMultiplierData = globals->member<FloatData>( "option:render:resolutionMultiplier" );
+	if( !camera->hasResolutionMultiplier() && resolutionMultiplierData )
+	{
+		camera->setResolutionMultiplier( resolutionMultiplierData->readable() );
+	}
+
+	const FloatData *pixelAspectRatioData = globals->member<FloatData>( "option:render:pixelAspectRatio" );
+	if( !camera->hasPixelAspectRatio() && pixelAspectRatioData )
+	{
+		camera->setPixelAspectRatio( pixelAspectRatioData->readable() );
+	}
+
+	const BoolData *overscanData = globals->member<BoolData>( "option:render:overscan" );
+	bool overscan = overscanData && overscanData->readable();
+	if( camera->hasOverscan() ) overscan = camera->getOverscan();
+	if( overscan )
+	{
+		if( !camera->hasOverscan() )
+		{
+			camera->setOverscan( true );
+		}
+		const FloatData *overscanLeftData = globals->member<FloatData>( "option:render:overscanLeft" );
+		if( !camera->hasOverscanLeft() && overscanLeftData )
+		{
+			camera->setOverscanLeft( overscanLeftData->readable() );
+		}
+		const FloatData *overscanRightData = globals->member<FloatData>( "option:render:overscanRight" );
+		if( !camera->hasOverscanRight() && overscanRightData )
+		{
+			camera->setOverscanRight( overscanRightData->readable() );
+		}
+		const FloatData *overscanTopData = globals->member<FloatData>( "option:render:overscanTop" );
+		if( !camera->hasOverscanTop() && overscanTopData )
+		{
+			camera->setOverscanTop( overscanTopData->readable() );
+		}
+		const FloatData *overscanBottomData = globals->member<FloatData>( "option:render:overscanBottom" );
+		if( !camera->hasOverscanBottom() && overscanBottomData )
+		{
+			camera->setOverscanBottom( overscanBottomData->readable() );
+		}
+	}
+
+	const Box2fData *cropWindowData = globals->member<Box2fData>( "option:render:cropWindow" );
+	if( !camera->hasCropWindow() && cropWindowData )
+	{
+		camera->setCropWindow( cropWindowData->readable() );
+	}
+
+	const BoolData *depthOfFieldData = globals->member<BoolData>( "option:render:depthOfField" );
+	/*if( !camera->hasDepthOfField() && depthOfFieldData )
+	{
+		camera->setDepthOfField( depthOfFieldData->readable() );
+	}*/
+	// \todo - switch to the form above once we have officially added the depthOfField parameter to Cortex.
+	// The plan then would be that the renderer backends should respect camera->getDepthOfField.
+	// For the moment we bake into fStop instead
+	bool depthOfField = false;
+	if( depthOfFieldData )
+	{
+		// First set from render globals
+		depthOfField = depthOfFieldData->readable();
+	}
+	if( const BoolData *d = camera->parametersData()->member<BoolData>( "depthOfField" ) )
+	{
+		// Override based on camera setting
+		depthOfField = d->readable();
+	}
+	if( !depthOfField )
+	{
+		// If there is no depth of field, bake that into the fStop
+		camera->setFStop( 0.0f );
+	}
+
+	// Bake the shutter from the globals into the camera before passing it to the renderer backend
+	//
+	// Before this bake, the shutter is an optional render setting override, with the shutter start
+	// and end relative to the current frame.  After baking, the shutter is currently an absolute
+	// shutter, with the frame added on.  Feels like it might be more consistent if we switched to
+	// always storing a relative shutter in camera->setShutter()
+	camera->setShutter( SceneAlgo::shutter( globals, scene ) );
 }

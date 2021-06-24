@@ -147,7 +147,6 @@ class CropWindowTool::Rectangle : public GafferUI::Gadget
 
 		Imath::Box3f bound() const override
 		{
-			return Box3f();
 			if( m_rasterSpace )
 			{
 				// We draw in raster space so don't have a sensible bound
@@ -951,7 +950,7 @@ bool CropWindowTool::findCropWindowPlugFromNode( GafferScene::ScenePlug *scene, 
 		return false;
 	}
 
-	for( NameValuePlugIterator it( options->optionsPlug() ); !it.done(); ++it )
+	for( NameValuePlug::Iterator it( options->optionsPlug() ); !it.done(); ++it )
 	{
 		NameValuePlug *memberPlug = it->get();
 		if( memberPlug->namePlug()->getValue() != "render:cropWindow" )

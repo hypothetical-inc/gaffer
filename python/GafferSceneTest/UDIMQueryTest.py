@@ -138,7 +138,7 @@ class UDIMQueryTest( GafferSceneTest.SceneTestCase ) :
 			[(i, {'/group/plane': {'attributeA': IECore.StringData( 'test' ), 'attributeC': IECore.StringData( 'inherited' )}}) for i in [ "1002", "1003", "1012", "1013" ]] +
 			[("1027", {'/group/plane1': {'attributeA': IECore.StringData( 'baz' ), 'attributeB': IECore.IntData( 12 ), 'attributeC': IECore.StringData( 'inherited' )}})] +
 			[(i, {'/group/plane2': {'attributeC': IECore.StringData( 'inherited' )}}) for i in ["1038", "1039", "1048", "1049"]]
- ) )
+		) )
 
 		# Switch back to default uv set so that everything lands on top of each other
 		udimQuery["uvSet"].setValue( 'uv' )
@@ -173,6 +173,51 @@ class UDIMQueryTest( GafferSceneTest.SceneTestCase ) :
 		plane0["name"].setValue( "test" )
 		self.assertNotEqual( initialHash, udimQuery["out"].hash() )
 		self.assertEqual( dictResult(), {'1001': {'/test': {}}} )
+
+	@GafferTest.TestRunner.PerformanceTestMethod( repeat = 1)
+	def testCollaboratePerf( self ) :
+
+		# Set up a scene with lots of spheres with different UVs
+		uvSphere = GafferScene.Sphere()
+		uvSphere["divisions"].setValue( imath.V2i( 2000 ) )
+		uvSphere["expression"] = Gaffer.Expression()
+		uvSphere["expression"].setExpression( 'parent["transform"]["translate"]["y"] = 2 * int( context["collect:rootName"] )' )
+
+		camera = GafferScene.Camera()
+		camera["projection"].setValue( 'orthographic' )
+
+		parent = GafferScene.Parent()
+		parent["parent"].setValue( '/' )
+		parent["children"][0].setInput( camera["out"] )
+		parent["in"].setInput( uvSphere["out"] )
+
+		sphereFilter = GafferScene.PathFilter()
+		sphereFilter["paths"].setValue( IECore.StringVectorData( [ '/sphere' ] ) )
+
+		mapProjection = GafferScene.MapProjection()
+		mapProjection["in"].setInput( parent["out"] )
+		mapProjection["filter"].setInput( sphereFilter["out"] )
+		mapProjection["camera"].setValue( '/camera' )
+
+		collectScenes = GafferScene.CollectScenes()
+		collectScenes["in"].setInput( mapProjection["out"] )
+		collectScenes["rootNames"].setValue( IECore.StringVectorData( [ str(i) for i in range( 50 ) ] ) )
+
+		allFilter = GafferScene.PathFilter()
+		allFilter["paths"].setValue( IECore.StringVectorData( [ '/...' ] ) )
+
+		# Set up query
+		query = GafferScene.UDIMQuery()
+		query["in"].setInput( collectScenes["out"] )
+		query["filter"].setInput( allFilter["out"] )
+		query["outInt"] = Gaffer.IntPlug()
+		query["outIntExpression"] = Gaffer.Expression()
+
+		query["outIntExpression"].setExpression( 'parent["outInt"] = len( parent["out"] ) + context["iteration"]' )
+
+		with GafferTest.TestRunner.PerformanceScope() :
+			GafferTest.parallelGetValue( query["outInt"], 400, "iteration" )
+
 
 if __name__ == "__main__":
 	unittest.main()

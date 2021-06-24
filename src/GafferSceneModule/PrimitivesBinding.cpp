@@ -68,7 +68,7 @@ namespace {
 class LightSerialiser : public GafferBindings::NodeSerialiser
 {
 
-	std::string postConstructor( const Gaffer::GraphComponent *graphComponent, const std::string &identifier, const GafferBindings::Serialisation &serialisation ) const override
+	std::string postConstructor( const Gaffer::GraphComponent *graphComponent, const std::string &identifier, GafferBindings::Serialisation &serialisation ) const override
 	{
 		std::string defaultPC = GafferBindings::NodeSerialiser::postConstructor( graphComponent, identifier, serialisation );
 		const GafferScene::Light *light = static_cast<const GafferScene::Light *>( graphComponent );
@@ -76,7 +76,7 @@ class LightSerialiser : public GafferBindings::NodeSerialiser
 		// \todo - Remove this once old scripts have been converted
 		// Before we start serialization, clean up any old scripts that might have dynamic parameters on lights
 		// ( Now we create the parameters with a loadShader after the constructor, so they don't need to be dynamic )
-		for( PlugIterator it( light->parametersPlug() ); !it.done(); ++it )
+		for( Plug::Iterator it( light->parametersPlug() ); !it.done(); ++it )
 		{
 			(*it)->setFlags( Gaffer::Plug::Dynamic, false );
 		}
@@ -119,7 +119,7 @@ namespace GafferSceneModule {
 class LightFilterSerialiser : public GafferBindings::NodeSerialiser
 {
 
-	std::string postConstructor( const Gaffer::GraphComponent *graphComponent, const std::string &identifier, const GafferBindings::Serialisation &serialisation ) const override
+	std::string postConstructor( const Gaffer::GraphComponent *graphComponent, const std::string &identifier, GafferBindings::Serialisation &serialisation ) const override
 	{
 		std::string defaultPostConstructor = GafferBindings::NodeSerialiser::postConstructor( graphComponent, identifier, serialisation );
 

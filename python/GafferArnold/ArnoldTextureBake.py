@@ -361,7 +361,6 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 		self["__OptionOverrides"]["options"]["resolutionMultiplier"]["enabled"].setValue( True )
 		self["__OptionOverrides"]["options"]["overscan"]["enabled"].setValue( True )
 		self["__OptionOverrides"]["options"]["renderCropWindow"]["enabled"].setValue( True )
-		self["__OptionOverrides"]["options"]["cameraBlur"]["enabled"].setValue( True )
 		self["__OptionOverrides"]["options"]["transformBlur"]["enabled"].setValue( True )
 		self["__OptionOverrides"]["options"]["deformationBlur"]["enabled"].setValue( True )
 
@@ -608,4 +607,3 @@ class ArnoldTextureBake( GafferDispatch.TaskNode ) :
 
 
 IECore.registerRunTimeTyped( ArnoldTextureBake, typeName = "GafferArnold::ArnoldTextureBake" )
-

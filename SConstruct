@@ -51,8 +51,8 @@ import subprocess
 ###############################################################################################
 
 gafferMilestoneVersion = 0 # for announcing major milestones - may contain all of the below
-gafferMajorVersion = 59 # backwards-incompatible changes
-gafferMinorVersion = 6 # new backwards-compatible features
+gafferMajorVersion = 60 # backwards-incompatible changes
+gafferMinorVersion = 0 # new backwards-compatible features
 gafferPatchVersion = 0 # bug fixes
 
 # All of the following must be considered when determining
@@ -100,8 +100,8 @@ options.Add(
 
 options.Add(
 	"CXXSTD",
-	"The C++ standard to build against. A minimum of C++11 is required.",
-	"c++11",
+	"The C++ standard to build against. A minimum of C++14 is required.",
+	"c++14",
 )
 
 options.Add(
@@ -398,7 +398,12 @@ elif env["PLATFORM"] == "posix" :
 
 	if "g++" in os.path.basename( env["CXX"] ) :
 
+		# Get GCC version.
 		gccVersion = subprocess.check_output( [ env["CXX"], "-dumpversion" ], env=env["ENV"] ).decode().strip()
+		if "." not in gccVersion :
+			# GCC 7 onwards requires `-dumpfullversion` to get minor/patch, but this
+			# flag does not exist on earlier GCCs, where minor/patch was provided by `-dumpversion`.
+			gccVersion = subprocess.check_output( [ env["CXX"], "-dumpfullversion" ], env=env["ENV"] ).decode().strip()
 		gccVersion = [ int( v ) for v in gccVersion.split( "." ) ]
 
 		# GCC 4.1.2 in conjunction with boost::flat_map produces crashes when
@@ -420,6 +425,9 @@ elif env["PLATFORM"] == "posix" :
 
 		if gccVersion >= [ 5, 1 ] :
 			env.Append( CXXFLAGS = [ "-D_GLIBCXX_USE_CXX11_ABI=0" ] )
+
+		if gccVersion >= [ 9, 2 ] :
+			env.Append( CXXFLAGS = [ "-Wsuggest-override" ] )
 
 	env["GAFFER_PLATFORM"] = "linux"
 
@@ -818,7 +826,7 @@ libraries = {
 
 	"GafferImageUI" : {
 		"envAppends" : {
-			"LIBS" : [ "IECoreGL$CORTEX_LIB_SUFFIX", "Gaffer", "GafferImage", "GafferUI", "OpenColorIO$OCIO_LIB_SUFFIX" ],
+			"LIBS" : [ "IECoreGL$CORTEX_LIB_SUFFIX", "Gaffer", "GafferImage", "GafferUI", "OpenColorIO$OCIO_LIB_SUFFIX", "IECoreScene$CORTEX_LIB_SUFFIX" ],
 		},
 		"pythonEnvAppends" : {
 			"LIBS" : [ "GafferBindings", "GafferUI", "GafferImage", "GafferImageUI" ],

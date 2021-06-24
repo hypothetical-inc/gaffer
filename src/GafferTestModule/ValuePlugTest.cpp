@@ -38,29 +38,55 @@
 
 #include "ValuePlugTest.h"
 
-#include "GafferTest/MultiplyNode.h"
-
+#include "Gaffer/Context.h"
+#include "Gaffer/NumericPlug.h"
 #include "Gaffer/ValuePlug.h"
 
 #include "tbb/parallel_for.h"
 
+#include "IECorePython/ScopedGILRelease.h"
+
+
 using namespace boost::python;
 using namespace Gaffer;
-using namespace GafferTest;
 
 namespace
 {
 
-void testValuePlugContentionForOneItem()
+// Call getValue() on the given plug many times in parallel.
+//
+// Evaluating the same value over and over again is obviously not useful,
+// but it can help turn up performance issues that can happen when a
+// downstream graph ends up repeatedly evaluating something which turn out
+// not to vary.
+void parallelGetValue( const IntPlug *plug, int iterations )
 {
-	MultiplyNodePtr node = new MultiplyNode;
-
+	IECorePython::ScopedGILRelease gilRelease;
 	tbb::parallel_for(
-		tbb::blocked_range<int>( 0, 10000000 ),
-		[&node]( const tbb::blocked_range<int> &r ) {
+		tbb::blocked_range<int>( 0, iterations ),
+		[&plug]( const tbb::blocked_range<int> &r ) {
 			for( int i = r.begin(); i < r.end(); ++i )
 			{
-				node->productPlug()->getValue();
+				plug->getValue();
+			}
+		}
+	);
+}
+
+// Variant of the above which stores the iteration in a context variable, allowing
+// the parallel evaluates to vary
+void parallelGetValueWithVar( const IntPlug *plug, int iterations, const IECore::InternedString iterationVar )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	const ThreadState &threadState = ThreadState::current();
+	tbb::parallel_for(
+		tbb::blocked_range<int>( 0, iterations ),
+		[&plug, &iterationVar, &threadState]( const tbb::blocked_range<int> &r ) {
+			Context::EditableScope scope( threadState );
+			for( int i = r.begin(); i < r.end(); ++i )
+			{
+				scope.set( iterationVar, &i );
+				plug->getValue();
 			}
 		}
 	);
@@ -70,5 +96,6 @@ void testValuePlugContentionForOneItem()
 
 void GafferTestModule::bindValuePlugTest()
 {
-	def( "testValuePlugContentionForOneItem", &testValuePlugContentionForOneItem );
+	def( "parallelGetValue", &parallelGetValue );
+	def( "parallelGetValue", &parallelGetValueWithVar );
 }

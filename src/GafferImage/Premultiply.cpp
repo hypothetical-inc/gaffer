@@ -74,8 +74,9 @@ void Premultiply::affects( const Gaffer::Plug *input, AffectedPlugsContainer &ou
 {
 	ChannelDataProcessor::affects( input, outputs );
 
-	if( input == inPlug()->channelDataPlug() ||
-	    input == alphaChannelPlug() )
+	if(
+		input == inPlug()->channelDataPlug() ||
+		input == alphaChannelPlug() )
 	{
 		outputs.push_back( outPlug()->channelDataPlug() );
 	}
@@ -90,7 +91,7 @@ void Premultiply::hashChannelData( const GafferImage::ImagePlug *output, const G
 	inPlug()->channelDataPlug()->hash( h );
 
 	ImagePlug::ChannelDataScope channelDataScope( context );
-	channelDataScope.setChannelName( alphaChannel );
+	channelDataScope.setChannelName( &alphaChannel );
 
 	inPlug()->channelDataPlug()->hash( h );
 }
@@ -119,7 +120,7 @@ void Premultiply::processChannelData( const Gaffer::Context *context, const Imag
 	}
 
 	ImagePlug::ChannelDataScope channelDataScope( context );
-	channelDataScope.setChannelName( alphaChannel );
+	channelDataScope.setChannelName( &alphaChannel );
 
 	ConstFloatVectorDataPtr aData = inPlug()->channelDataPlug()->getValue();
 	const std::vector<float> &a = aData->readable();

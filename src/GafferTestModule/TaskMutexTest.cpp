@@ -40,10 +40,7 @@
 
 #include "GafferTest/Assert.h"
 
-#include "Gaffer/Private/IECorePreview/ParallelAlgo.h"
 #include "Gaffer/Private/IECorePreview/TaskMutex.h"
-
-#include "boost/make_unique.hpp"
 
 #include "tbb/enumerable_thread_specific.h"
 #include "tbb/parallel_for.h"
@@ -134,7 +131,7 @@ void testTaskMutexWithinIsolate()
 
 	auto getMutexWithinIsolate = [&mutex]() {
 
-		ParallelAlgo::isolate(
+		tbb::this_task_arena::isolate(
 			[&mutex]() {
 				TaskMutex::ScopedLock lock( mutex );
 				GAFFERTEST_ASSERT( lock.lockType() == TaskMutex::ScopedLock::LockType::Write )
@@ -144,7 +141,7 @@ void testTaskMutexWithinIsolate()
 
 	};
 
-	ParallelAlgo::isolate(
+	tbb::this_task_arena::isolate(
 		[&]() {
 			tbb::parallel_for(
 				tbb::blocked_range<size_t>( 0, 1000000 ),
@@ -207,7 +204,7 @@ void testTaskMutexJoiningOuterTasks()
 	std::vector<TaskMutexPtr> independentTasks;
 	for( size_t i = 0; i < tbb::tbb_thread::hardware_concurrency() * 1000; ++i )
 	{
-		independentTasks.push_back( boost::make_unique<TaskMutex>() );
+		independentTasks.push_back( std::make_unique<TaskMutex>() );
 	}
 
 	tbb::parallel_for(

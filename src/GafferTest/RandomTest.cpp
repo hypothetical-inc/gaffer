@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2019, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2021, Image Engine Design Inc. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,35 +34,31 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef IECOREPREVIEW_PARALLELALGO_H
-#define IECOREPREVIEW_PARALLELALGO_H
+#include "GafferTest/RandomTest.h"
 
-#include "tbb/task_arena.h"
+#include "GafferTest/Assert.h"
 
-namespace IECorePreview
+#include "Gaffer/Context.h"
+#include "Gaffer/Random.h"
+#include "Gaffer/StringPlug.h"
+
+using namespace std;
+using namespace boost;
+using namespace IECore;
+using namespace Gaffer;
+
+void GafferTest::testRandomPerf()
 {
+	ContextPtr base = new Context();
+	InternedString varName = "varName";
 
-namespace ParallelAlgo
-{
+	Gaffer::RandomPtr random = new Gaffer::Random();
+	random->contextEntryPlug()->setValue( varName.string() );
 
-// Calls `f` such that any TBB tasks it spawns will run in isolation,
-// and cannot steal work from outer tasks. This is of fundamental importance
-// if you hold a lock while running any TBB code. See :
-//
-//  https://software.intel.com/en-us/blogs/2018/08/16/the-work-isolation-functionality-in-intel-threading-building-blocks-intel-tbb
-template<typename F>
-void isolate( const F &f )
-{
-#if TBB_INTERFACE_VERSION >= 10000
-	tbb::this_task_arena::isolate( f );
-#else
-	tbb::task_arena arena;
-	arena.execute( f );
-#endif
+	Context::EditableScope scope( base.get() );
+	for( int i = 0; i < 100000; ++i )
+	{
+		scope.set( varName, &i );
+		random->outColorPlug()->getValue();
+	}
 }
-
-} // namespace ParallelAlgo
-
-} // namespace IECorePreview
-
-#endif // IECOREPREVIEW_PARALLELALGO_H

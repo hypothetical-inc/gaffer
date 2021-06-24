@@ -82,8 +82,8 @@ namespace
 
 struct Signals
 {
-	Metadata::NodeValueChangedSignal2 nodeSignal;
-	Metadata::PlugValueChangedSignal2 plugSignal;
+	Metadata::NodeValueChangedSignal nodeSignal;
+	Metadata::PlugValueChangedSignal plugSignal;
 };
 
 using SignalsMap = std::unordered_map<Node *, unique_ptr<Signals>>;
@@ -112,7 +112,7 @@ Signals *nodeSignals( Node *node, bool createIfMissing )
 		{
 			return nullptr;
 		}
-		it = m.emplace( node, new Signals ).first;
+		it = m.emplace( node, std::make_unique<Signals>() ).first;
 	}
 	return it->second.get();
 }
@@ -150,7 +150,7 @@ void emitValueChangedSignals( IECore::TypeId typeId, IECore::InternedString key,
 	}
 }
 
-void emitMatchingPlugValueChangedSignals( Metadata::PlugValueChangedSignal2 &signal, Plug *plug, const vector<InternedString> &path, const StringAlgo::MatchPatternPath &matchPath, IECore::InternedString key, Metadata::ValueChangedReason reason )
+void emitMatchingPlugValueChangedSignals( Metadata::PlugValueChangedSignal &signal, Plug *plug, const vector<InternedString> &path, const StringAlgo::MatchPatternPath &matchPath, IECore::InternedString key, Metadata::ValueChangedReason reason )
 {
 	/// \todo There is scope for pruning the recursion here early if we
 	/// reproduce the logic of StringAlgo::match ourselves. We don't
@@ -612,7 +612,7 @@ std::vector<Node*> Metadata::nodesWithMetadata( GraphComponent *root, IECore::In
 	}
 	else
 	{
-		for( RecursiveNodeIterator it( root ); !it.done(); ++it )
+		for( Node::RecursiveIterator it( root ); !it.done(); ++it )
 		{
 			if( valueInternal( it->get(), key, instanceOnly ) )
 			{
@@ -840,25 +840,25 @@ Metadata::ValueChangedSignal &Metadata::valueChangedSignal()
 	return *s;
 }
 
-Metadata::NodeValueChangedSignal2 &Metadata::nodeValueChangedSignal( Node *node )
+Metadata::NodeValueChangedSignal &Metadata::nodeValueChangedSignal( Node *node )
 {
 	return nodeSignals( node, /* createIfMissing = */ true )->nodeSignal;
 }
 
-Metadata::PlugValueChangedSignal2 &Metadata::plugValueChangedSignal( Node *node )
+Metadata::PlugValueChangedSignal &Metadata::plugValueChangedSignal( Node *node )
 {
 	return nodeSignals( node, /* createIfMissing = */ true )->plugSignal;
 }
 
-Metadata::NodeValueChangedSignal &Metadata::nodeValueChangedSignal()
+Metadata::LegacyNodeValueChangedSignal &Metadata::nodeValueChangedSignal()
 {
-	static NodeValueChangedSignal *s = new NodeValueChangedSignal;
+	static LegacyNodeValueChangedSignal *s = new LegacyNodeValueChangedSignal;
 	return *s;
 }
 
-Metadata::PlugValueChangedSignal &Metadata::plugValueChangedSignal()
+Metadata::LegacyPlugValueChangedSignal &Metadata::plugValueChangedSignal()
 {
-	static PlugValueChangedSignal *s = new PlugValueChangedSignal;
+	static LegacyPlugValueChangedSignal *s = new LegacyPlugValueChangedSignal;
 	return *s;
 }
 

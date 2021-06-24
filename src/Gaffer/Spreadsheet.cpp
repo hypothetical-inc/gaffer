@@ -103,6 +103,10 @@ class RowsMap : public IECore::Data
 				}
 
 				const std::string name = row->namePlug()->getValue();
+				if( name.empty() )
+				{
+					continue;
+				}
 				activeRowNames.push_back( name );
 
 				const bool hasWildcards = StringAlgo::hasWildcards( name );
@@ -279,9 +283,9 @@ class RowsMapScope : boost::noncopyable, public Context::SubstitutionProvider
 			{
 				// Special case for `scene:path`, which users will expect to use PathMatcher
 				// style matching rather than `StringAlgo::match()`.
-				if( auto path = context->get<InternedStringVectorData>( g_scenePath, nullptr ) )
+				if( auto path = context->getIfExists< std::vector<InternedString> >( g_scenePath ) )
 				{
-					m_selector = &path->readable();
+					m_selector = path;
 				}
 				else
 				{
@@ -1081,7 +1085,7 @@ void Spreadsheet::compute( ValuePlug *output, const Context *context ) const
 			}
 
 			const string name = rowPlug->namePlug()->getValue();
-			if( result->members().count( name ) )
+			if( name.empty() || result->members().count( name ) )
 			{
 				continue;
 			}

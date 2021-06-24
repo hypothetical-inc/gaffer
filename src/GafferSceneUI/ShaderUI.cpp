@@ -125,7 +125,7 @@ class ShaderPlugAdder : public PlugAdder
 		{
 			vector<Plug *> result;
 
-			for( PlugIterator it( m_plugsParent.get() ); !it.done(); ++it )
+			for( Plug::Iterator it( m_plugsParent.get() ); !it.done(); ++it )
 			{
 				Plug *plug = it->get();
 				if( !plug->getFlags( Plug::AcceptsInputs ) )
@@ -208,4 +208,3 @@ struct Registration
 Registration g_registration;
 
 } // namespace
-

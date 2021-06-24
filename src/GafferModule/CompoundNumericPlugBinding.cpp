@@ -58,7 +58,7 @@ namespace
 {
 
 template<typename T>
-std::string serialisationRepr( const T *plug, const Serialisation *serialisation = nullptr )
+std::string serialisationRepr( const T *plug, Serialisation *serialisation = nullptr )
 {
 	std::string extraArgs = "";
 
@@ -70,6 +70,11 @@ std::string serialisationRepr( const T *plug, const Serialisation *serialisation
 		boost::python::object interpretationRepr = interpretationAsPythonObject.attr( "__repr__" )();
 		extraArgs = "interpretation = " + std::string( boost::python::extract<std::string>( interpretationRepr ) );
 		boost::replace_first( extraArgs, "_IECore", "GeometricData" );
+
+		if( serialisation )
+		{
+			serialisation->addModule( "IECore" );
+		}
 	}
 
 	return ValuePlugSerialiser::repr( plug, extraArgs, serialisation );
@@ -87,7 +92,7 @@ class CompoundNumericPlugSerialiser : public ValuePlugSerialiser
 
 	public :
 
-		std::string constructor( const Gaffer::GraphComponent *graphComponent, const Serialisation &serialisation ) const override
+		std::string constructor( const Gaffer::GraphComponent *graphComponent, Serialisation &serialisation ) const override
 		{
 			return serialisationRepr( static_cast<const T *>( graphComponent ), &serialisation );
 		}

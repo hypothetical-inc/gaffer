@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2016, Image Engine Design Inc. All rights reserved.
+//  Copyright (c) 2021, Cinesite VFX Ltd. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,14 +34,50 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef GAFFERSCENEMODULE_RENDERERALGOBINDING_H
-#define GAFFERSCENEMODULE_RENDERERALGOBINDING_H
+#ifndef GAFFERSCENE_EXISTENCEQUERY_H
+#define GAFFERSCENE_EXISTENCEQUERY_H
 
-namespace GafferSceneModule
+#include "GafferScene/Export.h"
+#include "GafferScene/ScenePlug.h"
+#include "GafferScene/TypeIds.h"
+
+#include "Gaffer/ComputeNode.h"
+#include "Gaffer/StringPlug.h"
+#include "Gaffer/TypedPlug.h"
+
+#include <string>
+
+namespace GafferScene
 {
 
-void bindRendererAlgo();
+struct GAFFERSCENE_API ExistenceQuery : Gaffer::ComputeNode
+{
+	ExistenceQuery( const std::string& name = defaultName< ExistenceQuery >() );
+	~ExistenceQuery() override;
 
-} // namespace GafferSceneModule
+	GAFFER_NODE_DECLARE_TYPE( GafferScene::ExistenceQuery, ExistenceQueryTypeId, Gaffer::ComputeNode );
 
-#endif // GAFFERSCENEMODULE_RENDERERALGOBINDING_H
+	ScenePlug* scenePlug();
+	const ScenePlug* scenePlug() const;
+	Gaffer::StringPlug* locationPlug();
+	const Gaffer::StringPlug* locationPlug() const;
+	Gaffer::BoolPlug* existsPlug();
+	const Gaffer::BoolPlug* existsPlug() const;
+	Gaffer::StringPlug* closestAncestorPlug();
+	const Gaffer::StringPlug* closestAncestorPlug() const;
+
+	void affects( const Gaffer::Plug* input, AffectedPlugsContainer& outputs ) const override;
+
+protected:
+
+	void hash( const Gaffer::ValuePlug* output, const Gaffer::Context* context, IECore::MurmurHash& h ) const override;
+	void compute( Gaffer::ValuePlug* output, const Gaffer::Context* context ) const override;
+
+private:
+
+	static size_t g_firstPlugIndex;
+};
+
+} // GafferScene
+
+#endif // GAFFERSCENE_EXISTENCEQUERY_H

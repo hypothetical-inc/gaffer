@@ -93,8 +93,7 @@
 #include "boost/thread.hpp"
 
 #include "tbb/atomic.h"
-#include "tbb/concurrent_unordered_map.h"
-
+#include "tbb/concurrent_hash_map.h"
 
 namespace asf = foundation;
 namespace asr = renderer;
@@ -2677,7 +2676,7 @@ class AppleseedRenderer final : public AppleseedRendererBase
 						}
 					}
 					return;
-				 }
+				}
 
 				// general case.
 				const IECore::Data *dataValue = IECore::runTimeCast<const IECore::Data>( value );

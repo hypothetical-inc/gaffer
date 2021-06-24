@@ -169,7 +169,7 @@ bool ShaderPlug::acceptsInput( const Gaffer::Plug *input ) const
 		)
 		{
 			// Reject switches which have inputs from non-shader nodes.
-			for( PlugIterator it( switchNode->inPlugs() ); !it.done(); ++it )
+			for( Plug::Iterator it( switchNode->inPlugs() ); !it.done(); ++it )
 			{
 				if( (*it)->getInput() && !isShaderOutPlug( (*it)->source() ) )
 				{
@@ -217,9 +217,11 @@ IECore::MurmurHash ShaderPlug::attributesHash() const
 		if( auto s = runTimeCast<const GafferScene::Shader>( p->node() ) )
 		{
 			Context::EditableScope scope( Context::current() );
+			std::string outputParameter;
 			if( p != s->outPlug() )
 			{
-				scope.set( Shader::g_outputParameterContextName, p->relativeName( s->outPlug() ) );
+				outputParameter = p->relativeName( s->outPlug() );
+				scope.set( Shader::g_outputParameterContextName, &outputParameter );
 			}
 			h = s->outAttributesPlug()->hash();
 		}
@@ -235,9 +237,11 @@ IECore::ConstCompoundObjectPtr ShaderPlug::attributes() const
 		if( auto s = runTimeCast<const GafferScene::Shader>( p->node() ) )
 		{
 			Context::EditableScope scope( Context::current() );
+			std::string outputParameter;
 			if( p != s->outPlug() )
 			{
-				scope.set( Shader::g_outputParameterContextName, p->relativeName( s->outPlug() ) );
+				outputParameter = p->relativeName( s->outPlug() );
+				scope.set( Shader::g_outputParameterContextName, &outputParameter );
 			}
 			return s->outAttributesPlug()->getValue();
 		}

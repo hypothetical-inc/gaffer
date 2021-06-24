@@ -940,6 +940,72 @@ class SpreadsheetTest( GafferTest.TestCase ) :
 			"row1" : [ 10, "", imath.V2i( 0 ) ],
 		} )
 
+	def testReorderRows( self ) :
+
+		spreadsheet = Gaffer.Spreadsheet()
+		spreadsheet["rows"].addColumn( Gaffer.IntPlug( "c1", defaultValue = 10 ) )
+		spreadsheet["selector"].setValue( "test" )
+
+		# Two rows with the same name. The first one should win.
+
+		spreadsheet["rows"].addRows( 2 )
+		spreadsheet["rows"][1]["name"].setValue( "test" )
+		spreadsheet["rows"][1]["cells"]["c1"]["value"].setValue( 20 )
+		spreadsheet["rows"][2]["name"].setValue( "test" )
+		spreadsheet["rows"][2]["cells"]["c1"]["value"].setValue( 30 )
+
+		self.assertEqual( spreadsheet["out"]["c1"].getValue(), 20 )
+		self.assertEqual( spreadsheet["rows"].row( "test" ), spreadsheet["rows"][1] )
+
+		# And if you reorder them, the (new) first one should still win.
+
+		spreadsheet["rows"].reorderChildren( [ spreadsheet["rows"][0], spreadsheet["rows"][2], spreadsheet["rows"][1] ] )
+		self.assertEqual( spreadsheet["out"]["c1"].getValue(), 30 )
+		self.assertEqual( spreadsheet["rows"].row( "test" ), spreadsheet["rows"][1] )
+
+	def testUnnamedRowsNeverMatch( self ) :
+
+		s = Gaffer.Spreadsheet()
+		s["rows"].addColumn( Gaffer.IntPlug( "i" ) )
+		row = s["rows"].addRow()
+
+		row["name"].setValue( "" )
+		row["cells"]["i"]["value"].setValue( 1 )
+
+		# Selector is "", but we shouldn't match it to the unnamed row because
+		# that is unintuitive. As a general rule in Gaffer, if something
+		# hasn't been given a name then it is treated as if it was disabled.
+		self.assertEqual( s["out"]["i"].getValue(), 0 )
+		# That should be reinforced by excluding the row from the `activeRows`
+		# and `resolvedRows` outputs.
+		self.assertEqual( s["activeRowNames"].getValue(), IECore.StringVectorData() )
+		self.assertNotIn( "", s["resolvedRows"].getValue() )
+
+		# The same should apply even when the selector receives the empty value
+		# via a substitution.
+		s["selector"].setValue( "${selector}" )
+		with Gaffer.Context() as c :
+			self.assertEqual( s["out"]["i"].getValue(), 0 )
+			# If the variable exists but is empty, we _still_ don't want to
+			# match the empty row. The existence of the variable is not what we
+			# care about : the existence of the row is, and we treat unnamed
+			# rows as non-existent.
+			c["selector"] = ""
+			self.assertEqual( s["out"]["i"].getValue(), 0 )
+			self.assertEqual( s["activeRowNames"].getValue(), IECore.StringVectorData() )
+			self.assertNotIn( "", s["resolvedRows"].getValue() )
+			# But by that logic, a row named '*' _should_ match the empty
+			# variable.
+			row["name"].setValue( "*" )
+			self.assertEqual( s["out"]["i"].getValue(), 1 )
+			self.assertEqual( s["activeRowNames"].getValue(), IECore.StringVectorData( [ "*" ] ) )
+			self.assertIn( "*", s["resolvedRows"].getValue() )
+			# Even if the variable doesnt exist at all.
+			del c["selector"]
+			self.assertEqual( s["out"]["i"].getValue(), 1 )
+			self.assertEqual( s["activeRowNames"].getValue(), IECore.StringVectorData( [ "*" ] ) )
+			self.assertIn( "*", s["resolvedRows"].getValue() )
+
 	@GafferTest.TestRunner.PerformanceTestMethod()
 	def testAddRowPerformance( self ) :
 

@@ -40,8 +40,6 @@
 
 #include "GafferScene/Private/IECoreScenePreview/Procedural.h"
 
-#include "Gaffer/Private/IECorePreview/ParallelAlgo.h"
-
 #include "IECoreArnold/CameraAlgo.h"
 #include "IECoreArnold/NodeAlgo.h"
 #include "IECoreArnold/ParameterAlgo.h"
@@ -204,29 +202,6 @@ std::string formatHeaderParameter( const std::string name, const IECore::Data *d
 		IECore::msg( IECore::Msg::Warning, "IECoreArnold::Renderer", boost::format( "Cannot convert data \"%s\" of type \"%s\"." ) % name % data->typeName() );
 		return "";
 	}
-}
-
-bool aiVersionLessThan( int arch, int major, int minor, int patch )
-{
-	// The Arnold API has an `AiCheckAPIVersion()` function that sounds
-	// like exactly what we need, but it doesn't support comparing for
-	// patch versions. Instead we're forced to parse the version string
-	// ourselves.
-
-	const char *arnoldVersionString = AiGetVersion( nullptr, nullptr, nullptr, nullptr );
-	int arnoldVersion[4];
-	for( int i = 0; i < 4; ++i )
-	{
-		arnoldVersion[i] = strtol( arnoldVersionString, const_cast<char **>( &arnoldVersionString ), 10 );
-		++arnoldVersionString;
-	}
-
-	auto version = { arch, major, minor, patch };
-
-	return std::lexicographical_compare(
-		begin( arnoldVersion ), end( arnoldVersion ),
-		version.begin(), version.end()
-	);
 }
 
 void substituteShaderIfNecessary( IECoreScene::ConstShaderNetworkPtr &shaderNetwork, const IECore::CompoundObject *attributes )
@@ -1739,6 +1714,32 @@ class Instance
 
 	public :
 
+		AtNode *node()
+		{
+			return m_ginstance.get() ? m_ginstance.get() : m_node.get();
+		}
+
+		void nodesCreated( vector<AtNode *> &nodes ) const
+		{
+			if( m_ginstance )
+			{
+				nodes.push_back( m_ginstance.get() );
+			}
+			else
+			{
+				// Technically the node was created in `InstanceCache.get()`
+				// rather than by us directly, but we are the sole owner and
+				// this is the most natural place to report the creation.
+				nodes.push_back( m_node.get() );
+			}
+		}
+
+	private :
+
+		// Constructors are private as they are only intended for use in
+		// `InstanceCache::get()`. See comment in `nodesCreated()`.
+		friend class InstanceCache;
+
 		// Non-instanced
 		Instance( const SharedAtNodePtr &node )
 			:	m_node( node )
@@ -1759,21 +1760,6 @@ class Instance
 				AiNodeSetPtr( m_ginstance.get(), g_nodeArnoldString, m_node.get() );
 			}
 		}
-
-		AtNode *node()
-		{
-			return m_ginstance.get() ? m_ginstance.get() : m_node.get();
-		}
-
-		void nodesCreated( vector<AtNode *> &nodes ) const
-		{
-			if( m_ginstance )
-			{
-				nodes.push_back( m_ginstance.get() );
-			}
-		}
-
-	private :
 
 		SharedAtNodePtr m_node;
 		SharedAtNodePtr m_ginstance;
@@ -1798,7 +1784,7 @@ class InstanceCache : public IECore::RefCounted
 		{
 			const ArnoldAttributes *arnoldAttributes = static_cast<const ArnoldAttributes *>( attributes );
 
-			if( !canInstance( object, arnoldAttributes ) )
+			if( !arnoldAttributes->canInstanceGeometry( object ) )
 			{
 				return Instance( convert( object, arnoldAttributes, nodeName ) );
 			}
@@ -1831,7 +1817,7 @@ class InstanceCache : public IECore::RefCounted
 		{
 			const ArnoldAttributes *arnoldAttributes = static_cast<const ArnoldAttributes *>( attributes );
 
-			if( !canInstance( samples.front(), arnoldAttributes ) )
+			if( !arnoldAttributes->canInstanceGeometry( samples.front() ) )
 			{
 				return Instance( convert( samples, times, arnoldAttributes, nodeName ) );
 			}
@@ -1900,22 +1886,6 @@ class InstanceCache : public IECore::RefCounted
 		}
 
 	private :
-
-		bool canInstance( const IECore::Object *object, const ArnoldAttributes *attributes ) const
-		{
-			if( IECore::runTimeCast<const IECoreScenePreview::Procedural>( object ) && m_nodeDeleter == AiNodeDestroy )
-			{
-				if( aiVersionLessThan( 5, 0, 1, 4 ) )
-				{
-					// Work around Arnold bug whereby deleting an instanced procedural
-					// can lead to crashes. This unfortunately means that we don't get
-					// to do instancing of procedurals during interactive renders, but
-					// we can at least do it during batch renders.
-					return false;
-				}
-			}
-			return attributes->canInstanceGeometry( object );
-		}
 
 		SharedAtNodePtr convert( const IECore::Object *object, const ArnoldAttributes *attributes, const std::string &nodeName )
 		{
@@ -2724,7 +2694,7 @@ AtNode *convertProcedural( IECoreScenePreview::ConstProceduralPtr procedural, co
 	AiNodeSetPtr( node, g_funcPtrArnoldString, (void *)procFunc );
 
 	ProceduralRendererPtr renderer = new ProceduralRenderer( node, attributes->allAttributes() );
-	IECorePreview::ParallelAlgo::isolate(
+	tbb::this_task_arena::isolate(
 		// Isolate in case procedural spawns TBB tasks, because
 		// `convertProcedural()` is called behind a lock in
 		// `InstanceCache.get()`.

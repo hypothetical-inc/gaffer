@@ -69,11 +69,6 @@ Node::UnaryPlugSignal &Node::plugInputChangedSignal()
 	return m_plugInputChangedSignal;
 }
 
-Node::UnaryPlugSignal &Node::plugFlagsChangedSignal()
-{
-	return m_plugFlagsChangedSignal;
-}
-
 Node::UnaryPlugSignal &Node::plugDirtiedSignal()
 {
 	return m_plugDirtiedSignal;
@@ -148,7 +143,7 @@ void Node::parentChanging( Gaffer::GraphComponent *newParent )
 		// process to avoid such changes invalidating our
 		// iterators.
 		vector<PlugPtr> toDisconnect;
-		for( RecursivePlugIterator it( this ); !it.done(); ++it )
+		for( Plug::RecursiveIterator it( this ); !it.done(); ++it )
 		{
 			if( Plug *input = (*it)->getInput() )
 			{

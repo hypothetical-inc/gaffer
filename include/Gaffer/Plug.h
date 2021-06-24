@@ -228,6 +228,7 @@ class GAFFER_API Plug : public GraphComponent
 
 		void parentChanging( Gaffer::GraphComponent *newParent ) override;
 		void parentChanged( Gaffer::GraphComponent *oldParent ) override;
+		void childrenReordered( const std::vector<size_t> &oldIndices ) override;
 
 		/// Initiates the propagation of dirtiness from the specified
 		/// plug to its outputs and affected plugs (as defined by
@@ -317,12 +318,17 @@ struct PlugPredicate
 	}
 };
 
-/// \deprecated Use Plug::Iterator etc instead
+[[deprecated("Use `Plug::Iterator` instead")]]
 typedef FilteredChildIterator<PlugPredicate<> > PlugIterator;
+[[deprecated("Use `Plug::InputIterator` instead")]]
 typedef FilteredChildIterator<PlugPredicate<Plug::In, Plug> > InputPlugIterator;
+[[deprecated("Use `Plug::OutputIterator` instead")]]
 typedef FilteredChildIterator<PlugPredicate<Plug::Out, Plug> > OutputPlugIterator;
+[[deprecated("Use `Plug::RecursiveIterator` instead")]]
 typedef FilteredRecursiveChildIterator<PlugPredicate<>, PlugPredicate<> > RecursivePlugIterator;
+[[deprecated("Use `Plug::RecursiveInputIterator` instead")]]
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::In, Plug>, PlugPredicate<> > RecursiveInputPlugIterator;
+[[deprecated("Use `Plug::RecursiveOutputIterator` instead")]]
 typedef FilteredRecursiveChildIterator<PlugPredicate<Plug::Out, Plug>, PlugPredicate<> > RecursiveOutputPlugIterator;
 
 } // namespace Gaffer

@@ -155,32 +155,50 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 		/// specifying the scene path.
 		struct PathScope : public Gaffer::Context::EditableScope
 		{
+			/// NOTE : Any of these calls which take a pointer are fast versions which require
+			/// the caller to keep the source memory valid for the lifetime of the PathScope.
+
 			/// Standard constructors, for modifying context on the current thread.
 			PathScope( const Gaffer::Context *context );
+			[[deprecated("Use faster pointer version")]]
 			PathScope( const Gaffer::Context *context, const ScenePath &scenePath );
+			PathScope( const Gaffer::Context *context, const ScenePath *scenePath );
 
 			/// Specialised constructors used to transfer state to TBB tasks. See
 			/// ThreadState documentation for more details.
 			PathScope( const Gaffer::ThreadState &threadState );
+			[[deprecated("Use faster pointer version")]]
 			PathScope( const Gaffer::ThreadState &threadState, const ScenePath &scenePath );
+			PathScope( const Gaffer::ThreadState &threadState, const ScenePath *scenePath );
 
+			[[deprecated("Use faster pointer version")]]
 			void setPath( const ScenePath &scenePath );
+			void setPath( const ScenePath *scenePath );
 		};
 
 		/// Utility class to scope a temporary copy of a context,
 		/// specifying the set name.
 		struct SetScope : public Gaffer::Context::EditableScope
 		{
+			/// NOTE : Any of these calls which take a pointer are fast versions which require
+			/// the caller to keep the source memory valid for the lifetime of the SetScope.
+
 			/// Standard constructors, for modifying context on the current thread.
 			SetScope( const Gaffer::Context *context );
+			[[deprecated("Use faster pointer version")]]
 			SetScope( const Gaffer::Context *context, const IECore::InternedString &setName );
+			SetScope( const Gaffer::Context *context, const IECore::InternedString *setName );
 
 			/// Specialised constructors used to transfer state to TBB tasks. See
 			/// ThreadState documentation for more details.
 			SetScope( const Gaffer::ThreadState &threadState );
+			[[deprecated("Use faster pointer version")]]
 			SetScope( const Gaffer::ThreadState &threadState, const IECore::InternedString &setName );
+			SetScope( const Gaffer::ThreadState &threadState, const IECore::InternedString *setName );
 
+			[[deprecated("Use faster pointer version")]]
 			void setSetName( const IECore::InternedString &setName );
+			void setSetName( const IECore::InternedString *setName );
 		};
 
 		/// Utility class to scope a temporary copy of a context,
@@ -261,7 +279,9 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 		/// \todo Many of the places we use this, it would be preferable if the source data was already
 		/// a path. Perhaps a ScenePathPlug could take care of this for us?
 		static void stringToPath( const std::string &s, ScenePlug::ScenePath &path );
+		static ScenePath stringToPath( const std::string &s );
 		static void pathToString( const ScenePlug::ScenePath &path, std::string &s );
+		static std::string pathToString( const ScenePlug::ScenePath &path );
 
 		/// Deprecated methods
 		/// ==================
@@ -280,12 +300,18 @@ class GAFFERSCENE_API ScenePlug : public Gaffer::ValuePlug
 
 IE_CORE_DECLAREPTR( ScenePlug );
 
+[[deprecated("Use `ScenePlug::Iterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, ScenePlug> > ScenePlugIterator;
+[[deprecated("Use `ScenePlug::InputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, ScenePlug> > InputScenePlugIterator;
+[[deprecated("Use `ScenePlug::OutputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, ScenePlug> > OutputScenePlugIterator;
 
+[[deprecated("Use `ScenePlug::RecursiveIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, ScenePlug>, Gaffer::PlugPredicate<> > RecursiveScenePlugIterator;
+[[deprecated("Use `ScenePlug::RecursiveInputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, ScenePlug>, Gaffer::PlugPredicate<> > RecursiveInputScenePlugIterator;
+[[deprecated("Use `ScenePlug::RecursiveOutputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, ScenePlug>, Gaffer::PlugPredicate<> > RecursiveOutputScenePlugIterator;
 
 } // namespace GafferScene

@@ -35,6 +35,12 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "GafferOSL/Private/CapturingErrorHandler.h"
+// `OpenImageIO/strutil.h` includes `OpenImageIO/detail/farmhash.h`, and
+// that leaks all sorts of macros, including one for `fmix` which breaks
+// the definition of Cortex's perfectly well namespaced `IECore::fmix()`
+// in `IECore/MurmurHash.inl`. So we must undefine the offending macro.
+// See https://github.com/OpenImageIO/oiio/issues/3000.
+#undef fmix
 
 #include "Gaffer/CompoundNumericPlug.h"
 #include "Gaffer/Context.h"
@@ -126,16 +132,18 @@ class RendererServices : public OSL::RendererServices
 				return false;
 			}
 
-			const Data *data = renderState->context->get<Data>( name.c_str(), nullptr );
+			// TODO - might be nice if there was some way to speed this up by directly querying the type matching
+			// the TypeDesc, instead of getting as a generic Data?
+			const DataPtr data = renderState->context->getAsData( name.c_str(), nullptr );
 			if( !data )
 			{
 				return false;
 			}
 
-			IECoreImage::OpenImageIOAlgo::DataView dataView( data, /* createUStrings = */ true );
+			IECoreImage::OpenImageIOAlgo::DataView dataView( data.get(), /* createUStrings = */ true );
 			if( !dataView.data )
 			{
-				if( auto b = runTimeCast<const BoolData>( data ) )
+				if( auto b = runTimeCast<BoolData>( data.get() ) )
 				{
 					// BoolData isn't supported by `DataView` because `OIIO::TypeDesc` doesn't
 					// have a boolean type. We could work around this in `DataView` by casting to
@@ -351,9 +359,10 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 		IECore::ConstObjectVectorPtr execute( const Gaffer::Context *context, const std::vector<const Gaffer::ValuePlug *> &proxyInputs ) const override
 		{
 			ShadingSystem *s = shadingSystem();
-			OSL::ShadingContext *shadingContext = s->get_context( /* threadInfo */ nullptr );
+			OSL::PerThreadInfo *threadInfo = s->create_thread_info();
+			OSL::ShadingContext *shadingContext = s->get_context( threadInfo );
 
-		    OSL::ShaderGlobals shaderGlobals;
+			OSL::ShaderGlobals shaderGlobals;
 			memset( (void *)&shaderGlobals, 0, sizeof( ShaderGlobals ) );
 
 			if( m_needsTime )
@@ -411,7 +420,13 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			}
 
 			s->release_context( shadingContext );
+			s->destroy_thread_info( threadInfo );
 			return result;
+		}
+
+		ValuePlug::CachePolicy executeCachePolicy() const override
+		{
+			return ValuePlug::CachePolicy::Legacy;
 		}
 
 		void apply( Gaffer::ValuePlug *proxyOutput, const Gaffer::ValuePlug *topLevelProxyOutput, const IECore::Object *value ) const override
@@ -759,7 +774,7 @@ class OSLExpressionEngine : public Gaffer::Expression::Engine
 			// prepend it to the source.
 
 			shaderName = "oslExpression" + MurmurHash().append( result ).toString();
- 			result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
+			result = "#include \"GafferOSL/Expression.h\"\n\nshader " + shaderName + " " + result;
 
 			return result;
 		}

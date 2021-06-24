@@ -100,18 +100,26 @@ class GAFFERSCENE_API FilterPlug : public Gaffer::IntPlug
 		struct SceneScope : public Gaffer::Context::EditableScope
 		{
 			SceneScope( const Gaffer::Context *context, const ScenePlug *scenePlug );
+			private :
+				const ScenePlug *m_scenePlug;
 		};
 
 };
 
 IE_CORE_DECLAREPTR( FilterPlug );
 
+[[deprecated("Use `FilterPlug::Iterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, FilterPlug> > FilterPlugIterator;
+[[deprecated("Use `FilterPlug::InputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, FilterPlug> > InputFilterPlugIterator;
+[[deprecated("Use `FilterPlug::OutputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, FilterPlug> > OutputFilterPlugIterator;
 
+[[deprecated("Use `FilterPlug::RecursiveIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, FilterPlug>, Gaffer::PlugPredicate<> > RecursiveFilterPlugIterator;
+[[deprecated("Use `FilterPlug::RecursiveInputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, FilterPlug>, Gaffer::PlugPredicate<> > RecursiveInputFilterPlugIterator;
+[[deprecated("Use `FilterPlug::RecursiveOutputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, FilterPlug>, Gaffer::PlugPredicate<> > RecursiveOutputFilterPlugIterator;
 
 } // namespace GafferScene

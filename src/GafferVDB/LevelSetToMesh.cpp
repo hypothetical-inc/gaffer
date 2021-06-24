@@ -36,17 +36,14 @@
 
 #include "GafferVDB/LevelSetToMesh.h"
 
-#include "IECoreVDB/VDBObject.h"
-
 #include "Gaffer/StringPlug.h"
+
+#include "IECoreVDB/VDBObject.h"
 
 #include "IECoreScene/MeshPrimitive.h"
 
 #include "openvdb/openvdb.h"
 #include "openvdb/tools/VolumeToMesh.h"
-
-#include "boost/mpl/for_each.hpp"
-#include "boost/mpl/list.hpp"
 
 using namespace std;
 using namespace Imath;
@@ -175,7 +172,7 @@ GAFFER_NODE_DEFINE_TYPE( LevelSetToMesh );
 size_t LevelSetToMesh::g_firstPlugIndex = 0;
 
 LevelSetToMesh::LevelSetToMesh( const std::string &name )
-	:	SceneElementProcessor( name, IECore::PathMatcher::NoMatch )
+	:	Deformer( name )
 {
 	storeIndexOfNextChild( g_firstPlugIndex );
 
@@ -183,6 +180,11 @@ LevelSetToMesh::LevelSetToMesh( const std::string &name )
 	addChild( new FloatPlug( "isoValue", Plug::In, 0.0f ) );
 	addChild( new FloatPlug( "adaptivity", Plug::In, 0.0f, 0.0f, 1.0f ) );
 
+	// The output mesh will always be bounded by the input level set, and only
+	// in rare cases will it be shrunk enough to warrant the cost of computing
+	// exact bounds. So we default `adjustBounds` to `false`.
+	adjustBoundsPlug()->setValue( false );
+	adjustBoundsPlug()->resetDefault();
 }
 
 LevelSetToMesh::~LevelSetToMesh()
@@ -198,7 +200,6 @@ const Gaffer::StringPlug *LevelSetToMesh::gridPlug() const
 {
 	return  getChild<StringPlug>( g_firstPlugIndex );
 }
-
 
 Gaffer::FloatPlug *LevelSetToMesh::isoValuePlug()
 {
@@ -220,42 +221,28 @@ const Gaffer::FloatPlug *LevelSetToMesh::adaptivityPlug() const
 	return getChild<FloatPlug>( g_firstPlugIndex + 2 );
 }
 
-void LevelSetToMesh::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outputs ) const
+bool LevelSetToMesh::affectsProcessedObject( const Gaffer::Plug *input ) const
 {
-	SceneElementProcessor::affects( input, outputs );
-
-	if(
+	return
+		Deformer::affectsProcessedObject( input ) ||
 		input == isoValuePlug() ||
 		input == adaptivityPlug() ||
 		input == gridPlug()
-	)
-	{
-		outputs.push_back( outPlug()->objectPlug() );
-	}
-
-	if( input == isoValuePlug() )
-	{
-		outputs.push_back( outPlug()->boundPlug() );
-	}
-}
-
-bool LevelSetToMesh::processesObject() const
-{
-	return true;
+	;
 }
 
 void LevelSetToMesh::hashProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const
 {
-	SceneElementProcessor::hashProcessedObject( path, context, h );
+	Deformer::hashProcessedObject( path, context, h );
 
 	gridPlug()->hash( h );
 	isoValuePlug()->hash( h );
 	adaptivityPlug()->hash( h );
 }
 
-IECore::ConstObjectPtr LevelSetToMesh::computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, IECore::ConstObjectPtr inputObject ) const
+IECore::ConstObjectPtr LevelSetToMesh::computeProcessedObject( const ScenePath &path, const Gaffer::Context *context, const IECore::Object *inputObject ) const
 {
-	const VDBObject *vdbObject = runTimeCast<const VDBObject>( inputObject.get() );
+	const VDBObject *vdbObject = runTimeCast<const VDBObject>( inputObject );
 	if( !vdbObject )
 	{
 		return inputObject;
@@ -269,21 +256,4 @@ IECore::ConstObjectPtr LevelSetToMesh::computeProcessedObject( const ScenePath &
 	}
 
 	return volumeToMesh( grid, isoValuePlug()->getValue(), adaptivityPlug()->getValue() );
-}
-
-bool LevelSetToMesh::processesBound() const
-{
-	return true;
-}
-
-void LevelSetToMesh::hashProcessedBound( const ScenePath &path, const Gaffer::Context *context, IECore::MurmurHash &h ) const
-{
-	SceneElementProcessor::hashProcessedBound( path, context, h );
-	isoValuePlug()->hash( h );
-}
-
-Imath::Box3f LevelSetToMesh::computeProcessedBound( const ScenePath &path, const Gaffer::Context *context, const Imath::Box3f &inputBound ) const
-{
-	const V3f offset( isoValuePlug()->getValue() );
-	return Box3f( inputBound.min - offset, inputBound.max + offset );
 }

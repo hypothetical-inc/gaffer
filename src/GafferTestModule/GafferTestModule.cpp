@@ -43,6 +43,7 @@
 #include "GafferTest/FilteredRecursiveChildIteratorTest.h"
 #include "GafferTest/MetadataTest.h"
 #include "GafferTest/MultiplyNode.h"
+#include "GafferTest/RandomTest.h"
 #include "GafferTest/RecursiveChildIteratorTest.h"
 
 #include "LRUCacheTest.h"
@@ -60,6 +61,13 @@ static void testMetadataThreadingWrapper()
 {
 	IECorePython::ScopedGILRelease gilRelease;
 	testMetadataThreading();
+}
+
+static boost::python::tuple countContextHash32CollisionsWrapper( int entries, int mode, int seed )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	auto result = countContextHash32Collisions( entries, mode, seed );
+	return boost::python::make_tuple( std::get<0>(result), std::get<1>(result), std::get<2>(result), std::get<3>(result) );
 }
 
 BOOST_PYTHON_MODULE( _GafferTest )
@@ -83,8 +91,14 @@ BOOST_PYTHON_MODULE( _GafferTest )
 	def( "testManyEnvironmentSubstitutions", &testManyEnvironmentSubstitutions );
 	def( "testScopingNullContext", &testScopingNullContext );
 	def( "testEditableScope", &testEditableScope );
+	def( "countContextHash32Collisions", &countContextHash32CollisionsWrapper );
+	def( "testContextHashPerformance", &testContextHashPerformance );
+	def( "testContextCopyPerformance", &testContextCopyPerformance );
+	def( "testCopyEditableScope", &testCopyEditableScope );
+	def( "testContextHashValidation", &testContextHashValidation );
 	def( "testComputeNodeThreading", &testComputeNodeThreading );
 	def( "testDownstreamIterator", &testDownstreamIterator );
+	def( "testRandomPerf", &testRandomPerf );
 
 	bindTaskMutexTest();
 	bindLRUCacheTest();

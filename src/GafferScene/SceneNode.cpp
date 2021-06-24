@@ -97,7 +97,7 @@ void SceneNode::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outp
 
 	if( input == enabledPlug() )
 	{
-		for( ValuePlugIterator it( outPlug() ); !it.done(); ++it )
+		for( ValuePlug::Iterator it( outPlug() ); !it.done(); ++it )
 		{
 			if( (*it)->getInput() )
 			{
@@ -139,7 +139,7 @@ void SceneNode::affects( const Gaffer::Plug *input, AffectedPlugsContainer &outp
 void SceneNode::hash( const ValuePlug *output, const Context *context, IECore::MurmurHash &h ) const
 {
 	const ScenePlug *scenePlug = output->parent<ScenePlug>();
-	if( scenePlug && enabledPlug()->getValue() )
+	if( scenePlug && enabled( context ) )
 	{
 		// We don't call ComputeNode::hash() immediately here, because for subclasses which
 		// want to pass through a specific hash in the hash*() methods it's a waste of time (the
@@ -156,10 +156,8 @@ void SceneNode::hash( const ValuePlug *output, const Context *context, IECore::M
 			const ScenePath &scenePath = context->get<ScenePath>( ScenePlug::scenePathContextName );
 			if( scenePath.empty() )
 			{
-				// the result of compute() will actually be different if we're at the root, so
-				// we hash an identity M44fData:
-				h.append( IECore::M44fData::staticTypeId() );
-				h.append( Imath::M44f() );
+				// Scene root must have identity transform
+				h = output->defaultHash();
 			}
 			else
 			{
@@ -276,7 +274,7 @@ void SceneNode::compute( ValuePlug *output, const Context *context ) const
 	ScenePlug *scenePlug = output->parent<ScenePlug>();
 	if( scenePlug )
 	{
-		if( enabledPlug()->getValue() )
+		if( enabled( context ) )
 		{
 			if( output == scenePlug->boundPlug() )
 			{
@@ -288,12 +286,17 @@ void SceneNode::compute( ValuePlug *output, const Context *context ) const
 			else if( output == scenePlug->transformPlug() )
 			{
 				const ScenePath &scenePath = context->get<ScenePath>( ScenePlug::scenePathContextName );
-				M44f transform;
-				if( scenePath.size() ) // scene root must have identity transform
+				if( scenePath.empty() )
 				{
-					transform = computeTransform( scenePath, context, scenePlug );
+					// Scene root must have identity transform
+					output->setToDefault();
 				}
-				static_cast<M44fPlug *>( output )->setValue( transform );
+				else
+				{
+					static_cast<M44fPlug *>( output )->setValue(
+						computeTransform( scenePath, context, scenePlug )
+					);
+				}
 			}
 			else if( output == scenePlug->attributesPlug() )
 			{
@@ -436,14 +439,45 @@ Gaffer::ValuePlug::CachePolicy SceneNode::computeCachePolicy( const Gaffer::Valu
 
 IECore::MurmurHash SceneNode::hashOfTransformedChildBounds( const ScenePath &path, const ScenePlug *out, const IECore::InternedStringVectorData *childNamesData ) const
 {
-	ScenePlug::PathScope pathScope( Context::current(), path );
+	ScenePlug::PathScope pathScope( Context::current(), &path );
 	return out->childBoundsPlug()->hash();
 }
 
 Imath::Box3f SceneNode::unionOfTransformedChildBounds( const ScenePath &path, const ScenePlug *out, const IECore::InternedStringVectorData *childNamesData ) const
 {
-	ScenePlug::PathScope pathScope( Context::current(), path );
+	ScenePlug::PathScope pathScope( Context::current(), &path );
 	return out->childBoundsPlug()->getValue();
+}
+
+bool SceneNode::enabled( const Gaffer::Context *context ) const
+{
+	const BoolPlug *plug = enabledPlug();
+	const BoolPlug *sourcePlug = plug->source<BoolPlug>();
+	if( !sourcePlug || sourcePlug->direction() == Plug::Out )
+	{
+		// Value may be computed. We use a global scope
+		// for two reasons :
+		//
+		// - Because our implementation assumes the result
+		//   is constant across the scene, and allowing it to
+		//   vary could produce scenes which are not internally
+		//   consistent. FilteredSceneProcessor provides the
+		//   concept of varying enabled-ness via filters.
+		// - To reduce pressure on the hash cache.
+		//
+		// > Note : `sourcePlug` will be null if the source is
+		// > not a BoolPlug. In this case we call `getValue()`
+		// > on `plug` and it will perform the appropriate type
+		// > conversion.
+		ScenePlug::GlobalScope globalScope( context );
+		return sourcePlug ? sourcePlug->getValue() : plug->getValue();
+	}
+	else
+	{
+		// Value is not computed so context is irrelevant.
+		// Avoid overhead of context creation.
+		return sourcePlug->getValue();
+	}
 }
 
 void SceneNode::plugInputChanged( Gaffer::Plug *plug )
@@ -486,8 +520,9 @@ void SceneNode::hashExists( const Gaffer::Context *context, const ScenePlug *par
 		return;
 	}
 
-	ScenePath parentPath( scenePath ); parentPath.pop_back();
-	ScenePlug::PathScope parentScope( context, parentPath );
+	ScenePath parentPath( scenePath );
+	parentPath.pop_back();
+	ScenePlug::PathScope parentScope( context, &parentPath );
 	if( !parent->existsPlug()->getValue() )
 	{
 		h.append( false );
@@ -507,8 +542,9 @@ bool SceneNode::computeExists( const Gaffer::Context *context, const ScenePlug *
 		return true;
 	}
 
-	ScenePath parentPath( scenePath ); parentPath.pop_back();
-	ScenePlug::PathScope parentScope( context, parentPath );
+	ScenePath parentPath( scenePath );
+	parentPath.pop_back();
+	ScenePlug::PathScope parentScope( context, &parentPath );
 	if( !parent->existsPlug()->getValue() )
 	{
 		// If `parentPath` doesn't exist, then neither can `scenePath`
@@ -570,7 +606,7 @@ void SceneNode::hashChildBounds( const Gaffer::Context *context, const ScenePlug
 			for( size_t i = range.begin(); i != range.end(); ++i )
 			{
 				childPath.back() = childNames[i];
-				pathScope.setPath( childPath );
+				pathScope.setPath( &childPath );
 				parent->boundPlug()->hash( result );
 				parent->transformPlug()->hash( result );
 			}
@@ -583,9 +619,7 @@ void SceneNode::hashChildBounds( const Gaffer::Context *context, const ScenePlug
 			result.append( y );
 			return result;
 		},
-		#if TBB_INTERFACE_VERSION >= 10001
 		simple_partitioner(),
-		#endif
 		taskGroupContext
 	);
 
@@ -618,7 +652,7 @@ Imath::Box3f SceneNode::computeChildBounds( const Gaffer::Context *context, cons
 			for( size_t i = range.begin(); i != range.end(); ++i )
 			{
 				childPath.back() = childNames[i];
-				pathScope.setPath( childPath );
+				pathScope.setPath( &childPath );
 				Box3f childBound = parent->boundPlug()->getValue();
 				childBound = transform( childBound, parent->transformPlug()->getValue() );
 				result.extendBy( childBound );

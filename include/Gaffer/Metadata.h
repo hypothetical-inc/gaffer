@@ -152,14 +152,14 @@ class GAFFER_API Metadata
 		};
 
 		using ValueChangedSignal = boost::signal<void ( IECore::InternedString target, IECore::InternedString key ), CatchingSignalCombiner<void>>;
-		using NodeValueChangedSignal2 = boost::signal<void ( Node *node, IECore::InternedString key, ValueChangedReason reason ), CatchingSignalCombiner<void>>;
-		using PlugValueChangedSignal2 = boost::signal<void ( Plug *plug, IECore::InternedString key, ValueChangedReason reason ), CatchingSignalCombiner<void>>;
+		using NodeValueChangedSignal = boost::signal<void ( Node *node, IECore::InternedString key, ValueChangedReason reason ), CatchingSignalCombiner<void>>;
+		using PlugValueChangedSignal = boost::signal<void ( Plug *plug, IECore::InternedString key, ValueChangedReason reason ), CatchingSignalCombiner<void>>;
 
 		static ValueChangedSignal &valueChangedSignal();
 		/// Returns a signal that will be emitted when metadata has changed for `node`.
-		static NodeValueChangedSignal2 &nodeValueChangedSignal( Node *node );
+		static NodeValueChangedSignal &nodeValueChangedSignal( Node *node );
 		/// Returns a signal that will be emitted when metadata has changed for any plug on `node`.
-		static PlugValueChangedSignal2 &plugValueChangedSignal( Node *node );
+		static PlugValueChangedSignal &plugValueChangedSignal( Node *node );
 
 		/// Legacy signals
 		/// ==============
@@ -168,15 +168,15 @@ class GAFFER_API Metadata
 		/// plug. Their usage leads to performance bottlenecks whereby all observers
 		/// are triggered by all edits. They will be removed in future.
 
-		using NodeValueChangedSignal = boost::signal<void ( IECore::TypeId nodeTypeId, IECore::InternedString key, Gaffer::Node *node ), CatchingSignalCombiner<void>>;
-		using PlugValueChangedSignal = boost::signal<void ( IECore::TypeId typeId, const IECore::StringAlgo::MatchPattern &plugPath, IECore::InternedString key, Gaffer::Plug *plug ), CatchingSignalCombiner<void>>;
+		using LegacyNodeValueChangedSignal = boost::signal<void ( IECore::TypeId nodeTypeId, IECore::InternedString key, Gaffer::Node *node ), CatchingSignalCombiner<void>>;
+		using LegacyPlugValueChangedSignal = boost::signal<void ( IECore::TypeId typeId, const IECore::StringAlgo::MatchPattern &plugPath, IECore::InternedString key, Gaffer::Plug *plug ), CatchingSignalCombiner<void>>;
 
 		/// Deprecated, but currently necessary for tracking inherited
 		/// changes to read-only metadata.
 		/// \deprecated
-		static NodeValueChangedSignal &nodeValueChangedSignal();
+		static LegacyNodeValueChangedSignal &nodeValueChangedSignal();
 		/// \deprecated
-		static PlugValueChangedSignal &plugValueChangedSignal();
+		static LegacyPlugValueChangedSignal &plugValueChangedSignal();
 
 	private :
 

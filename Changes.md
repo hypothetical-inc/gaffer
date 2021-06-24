@@ -1,3 +1,299 @@
+0.60.0.0
+========
+
+> Note : This version is built against Arnold 6.2.0.1, and is not compatible with earlier Arnold versions.
+
+Features
+--------
+
+- Spreadsheet : Added drag and drop reordering of rows.
+- InteractiveRender : Added support for motion blur.
+- Profiling : Added "Tools/Profiling" menu to annotate nodes with performance metrics.
+
+Improvements
+------------
+
+- Serialisation : Reduced script save times by around 50%.
+- Cancellation : Improved responsiveness by supporting cancellation of long computes in the following nodes :
+  - SceneReader
+  - LevelSetOffset
+  - MeshToLevelSet
+  - Plane
+  - Sphere
+  - DeleteFaces
+  - MeshDistortion
+  - MeshTangents
+  - MeshType
+  - PrimitiveSampler
+  - ResamplePrimitiveVariables
+  - ReverseWinding
+  - Seeds
+- Expression :
+  - Improved performance of Python expression evaluation when the same result is required in multiple threads. Specific expression benchmarks have shown a 10x speedup and some production scenes show an overall 15-30% improvement. Caution : This can expose pre-existing bugs in other nodes - see Breaking Changes for details.
+  - Improved error message when Python expression assigns an invalid value.
+- Numeric Bookmarks : Changed the Editor <kbd>1</kbd>-<kbd>9</kbd> hotkeys to follow the bookmark rather than pinning it (#4074).
+- Editors : Simplified the Editor Focus Menu, removing some seldom used (but potentially ambiguous) modes (#4074).
+- Timeline :
+  - Added support for sub-frame dragging with a <kbd>Ctrl</kbd> modifier, and fixed snapping of the frame indicator for regular drag operations.
+  - The current frame is now drawn next to the playhead.
+- Increased image processing tile size from 64 pixels to 128 pixels. This reduces per-tile overhead on large images, dramatically increasing effective image performance in many cases.
+- SceneNode/SceneProcessor : Enforced that the value of the `enabled` plug may not be varied using the `scene:path` context variable. Attempts to do so could result in the generation of invalid scenes. Filters are the appropriate way to enable or disable a node on a per-location basis, and should be used instead. This change yielded a 5-10% performance improvement for a moderately complex scene.
+- OSLImage : Avoided some unnecessary computes and hashing when calculating channel names or passing through channel data unaltered.
+- Context : Optimized `hash()` method, and reduced overhead in `EditableScope`.
+- NameSwitch/Spreadsheet : Rows with an empty name are now treated as if they were disabled. See Breaking Changes for further details.
+- ContextVariables : Improved performance by around 50%.
+- FilterResults : Improved performance.
+- SceneAlgo : Reduced threading overhead for `parallelProcessLocations()`, `parallelTraverse()` and `filteredParallelTraverse()`. This is particularly noticeable when visiting locations with many children.
+- Set : Added wildcard support to the `name` plug.
+- GraphEditor : Added tool menu with options to control visibility of annotations.
+- Render : Improved scene generation times for renders that use `dispatcher.batchSize` to
+  render multiple frames at once. Previously Gaffer's cache was cleared after scene generation
+  on each frame, but this is now only done for single-frame batches.
+
+Fixes
+-----
+
+- Instancer : Fixed variation of prototype root attributes using context variables.
+- ScriptNode : Fixed bugs that allowed global variables to remain in the context after they had been disabled, renamed or deleted.
+- SceneReader :
+  - Fixed crash when reading Alembic caches with non-scalar `userProperties`.
+  - Fixed crash when reading Alembic caches with invalid primitive variables.
+- UDIMQuery and OSLImage : Fixed incorrectly isolated TBB which could cause hang when other nodes use Standard cache policy. Now uses TaskCollaboration to improve performance.
+- Wrapper : Removed the `PYTHONHOME` environment variable. This fixes problems running Gaffer in python-enabled versions of `gdb`.
+- CompoundNumericPlug : Fixed serialisation of dynamic plugs with non-default interpretations.
+
+API
+---
+
+- Context :
+  - Refactored to allow EditableScope to avoid memory allocation where possible.
+  - Added fast non-allocating `EditableScope::set( name, const T * )` overload. This should be used in preference to the old `set( name, const T & )` method.
+  - Added `EditableScope::setAllocated()` method to replace the old `set()` method in the rare circumstance where allocation is required.
+  - Added `variableHash()` method, which returns the hash for an individual variable.
+  - Added `getIfExists()` method, which returns `nullptr` if a variable doesn't exist.
+  - Added `getAsData()` method, which returns a copy of a variable as `IECore::Data`.
+  - Added `TypeDescription` registration class, which must be used to register any custom data types used in context variables.
+- GraphComponent : Added `reorderChildren()` and `childrenReorderedSignal()` methods.
+- Serialisation : Added `addModule()` method, for adding imports to the serialisation.
+- Slider :
+  - Added optional value snapping for drag and button press operations. This is controlled via the `setSnapIncrement()` and `getSnapIncrement()` methods.
+  - Added `setHoverPositionVisible()` and `getHoverPositionVisible()` accessors to control an optional position indicator drawn under the pointer.
+- Expression : Added `Engine::executeCachePolicy()` method which must be implemented by subclasses.
+- ImageAlgo : Added constants for the default channel names - `channelNameR` etc.
+- SceneAlgo : Added optional `root` argument to `filteredParallelTraverse( scene, pathMatcher )`.
+- MetadataAlgo :
+  - Added optional `user` argument to `addAnnotationTemplate()`.
+  - Added optional `userOnly` argument to `annotationTemplates()`.
+- AnnotationsGadget : Added `setVisibleAnnotations()` and `getVisibleAnnotations()` methods to allow filtering of annotations.
+- MonitorAlgo : Added `removePerformanceAnnotations()` and `removeContextAnnotations()` methods.
+- Deformer : Added `affectsProcessedObjectBound()`, `hashProcessedObjectBound()` and `computeProcessedObjectBound()` virtual
+  methods. These can optionally be overridden by derived classes to compute faster approximate bounds where possible.
+
+Breaking Changes
+----------------
+
+- NameSwitch/Spreadsheet : Rows with an empty name are now treated as if they were disabled. Previously they would cause confusion by being matched against empty selectors. Use the default row for empty selectors instead, or alternatively use a catch-all `*` row.
+- Context :
+  - Removed `Ownership` enum. The copy constructor now always performs a full copy.
+  - Removed `changed()` method.
+  - Removed `_copy` argument from `get()` Python binding.
+- Slider/NumericSlider :
+  - Refactored Slider to provide all the functionality of NumericSlider, and removed NumericSlider.
+  - Renamed initial constructor argument from `value` to `values`.
+  - Removed `setPositions()/getPositions()` and `setPosition()/getPosition()` methods from `Slider`. Use `setValues()/getValues()` and `setValue()/getValue()` instead.
+  - Removed `positionChangedSignal()` from `Slider`. Use `valueChangedSignal()` instead.
+  - Removed `PositionChangedReason` from `Slider`. Use `ValueChangedReason` instead.
+  - Removed `setPositionIncrement()/getPositionIncrement()` from `Slider`. Use `setIncrement()/getIncrement()` instead.
+  - Replaced `_drawPosition()` method with `_drawValue()`.
+- StandardOptions : Removed `cameraBlur` plug. This never functioned as advertised, as the regular `transformBlur` and `deformationBlur` blur settings were applied to cameras instead. As before, a StandardAttributes node may be used to customise blur for individual cameras.
+- SceneAlgo :
+  - Changed signature of the following methods to use `GafferScene::FilterPlug` : `matchingPaths`, `filteredParallelTraverse`, `Detail::ThreadableFilteredFunctor`.
+  - Removed `filteredParallelTraverse()` overload which accepted a `Filter *`. Pass `filter->outPlug()` instead.
+- DeleteFaces / DeletePoints / DeleteCurves : The PrimitiveVariable name is now taken verbatim, rather than stripping whitespace.
+- Serialisation :
+  - Disabled copy construction.
+  - The following methods now take a `const object &` where they used to take `object &` :
+    - `modulePath()`
+    - `classPath()`
+  - The following methods now take a `Serialisation &` argument where they used to take `const Serialisation &` :
+    - `constructor()`
+    - `postConstructor()`
+    - `postHierarchy()`
+    - `postScript()`
+- ValuePlugBinding :
+  - `repr()` now takes a `Serialisation *` where it used to take a `const Serialisation *`.
+  - `valueRepr()` now has an optional `serialisation` argument.
+- Metadata : Renamed signal types :
+  - `NodeValueChangedSignal` -> `LegacyNodeValueChangedSignal`
+  - `PlugValueChangedSignal` -> `LegacyPlugValueChangedSignal`
+  - `NodeValueChangedSignal2` -> `NodeValueChangedSignal`
+  - `PlugValueChangedSignal2` -> `PlugValueChangedSignal`
+- MetadataBinding :
+  - Added `serialisation` required argument to `metadataSerialisation()`.
+  - Removed `metadataModuleDependencies()` method. Module dependencies are now declared automatically by `metadataSerialisation()`.
+- Editors : Removed the 'Follow Scene Selection' mode from the Node Editor Focus menu (#4074).
+- GafferSceneUI : Removed `SourceSet`.
+- ScriptNode : Added private member data.
+- Expression : Changed the Python expression cache policy to `Standard`. This executes expressions behind a lock, and can cause hangs if buggy upstream nodes perform TBB tasks without an appropriate `TaskIsolation` or `TaskCollaboration` policy. In this case, the `GAFFER_PYTHONEXPRESSION_CACHEPOLICY` environment variable may be set to `Legacy` or `TaskIsolation` while the bugs are fixed.
+- Node : Removed `plugFlagsChangedSignal()`. We aim to phase flags out completely in future, and none of the current flags are expected to be changed after construction.
+- ContextProcessor : Added `storage` argument to `processContext()` method.
+- FilteredChildIterator/FilteredRecursiveChildIterator : Annotated all namespace-level typedefs with `[[deprecated]]`. These were already documented as deprecated in Gaffer 0.59.0.0, but their use will now trigger compiler warnings. Please use the class-level typedefs instead, for example `Plug::Iterator` in place of `PlugIterator`.
+- RendererAlgo : Removed from the API. The render adaptor registry and `applyCameraGlobals()` are still available, but have been moved to SceneAlgo.
+- MonitorAlgo : Removed deprecated `annotate()` overloads. Source compatibility is retained.
+- Instancer : Attributes from the prototype root are now placed at the instance root, rather than on the instance group. This allows context variation to potentially vary these attributes. Usually attribute inheritance will mean that this behaves the same, but scenes which explicitly override attributes at specific locations in the hierarchy after an instancer could see modified behaviour.
+- PointsGridToPoints : Changed default value of `filter` input, so that a filter must now be connected to specify the objects to modify.
+- GafferVDB : Changed base class of the following nodes :
+  - LevelSetToMesh
+  - MeshToLevelSet
+  - LevelSetOffset
+  - PointsGridToPoints
+- LevelSetToMesh : Changed default value for `adjustBounds` plug.
+
+Build
+-----
+
+- Moved minimum required C++ standard to C++14.
+- Moved minimum required TBB version to 2018 Update 3.
+- Dependencies : Updated to GafferHQ/dependencies 3.0.0 :
+  - USD 21.05.
+  - OpenImageIO 2.2.15.1.
+  - OpenShadingLanguage 1.11.14.1.
+  - LibTIFF 4.1.0.
+  - LLVM 10.0.1.
+  - OpenVDB 7.2.2.
+  - Cortex 10.2.0.0.
+
+0.59.9.0 (relative to 0.59.8.0)
+========
+
+Features
+--------
+
+- TransformQuery : Added a new node to query the transform for a scene location.
+- BoundQuery : Added a new node to query the bound for a scene location.
+- ExistenceQuery : Added a new node to query whether a scene location exists.
+
+Improvements
+------------
+
+- OSLShader : Reduced loading times where many nodes reference the same shader.
+- Spreadsheet : Added `activeRowNames` plug to the Node Editor UI, in the Advanced tab.
+
+Fixes
+-----
+
+- ArnoldMeshLight : Fixed label for `cameraVisibility` plug.
+
+Documentation
+-------------
+
+- Fixed code samples in "Tutorials : Querying a Scene".
+
+0.59.8.0 (relative to 0.59.7.0)
+========
+
+Features
+--------
+
+- Viewer : Added multiple color inspectors. <kbd>Ctrl</kbd>+click on an image
+  to create a pixel inspector, or <kbd>Ctrl</kbd>+drag to create an area
+  inspector. The image footer now shows the results from all your inspectors,
+  and allows you to add or delete them.
+- FilterQuery : Added a new node for querying the results of a filter at a specific location.
+- GraphEditor : Added "Annotate..." item to the node context menu. This can be configured with
+  multiple annotation templates using the `MetadataAlgo` API.
+
+Improvements
+------------
+
+- Set : Added `setVariable` plug to allow the input filter to be varied depending on the set name.
+- TabbedContainer : Added menu button to allow selection of tabs that are not
+  visible due to a lack of horizontal space.
+
+Fixes
+-----
+
+- Arnold : Fixed rendering of encapsulated objects for which automatic instancing
+  is not possible. Examples include curves with non-zero `ai:curves:min_pixel_width`
+  and meshes with non-zero `ai:polymesh:subdiv_adaptive_error`.
+- PlugValueWidget : Fixed bug that tried to update the widget before all graph edits were complete.
+- GraphEditor : Fixed framing of nodes dropped into the editor. This was incorrect when the editor was
+  not at the default zoom.
+- OSL Constant : Fixed usage as a surface shader in Arnold.
+
+API
+---
+
+- Context :
+  - Added forwards compatibility for methods added to provide enhanced
+    performance in Gaffer 0.60. This allows the same code to be compiled for
+    both Gaffer 0.60 and Gaffer 0.59 (but with only the Gaffer 0.60 build
+    benefiting from improved performance).
+  - Added support for `IECore::InternedString` variables in `substitute()`.
+- MetadataAlgo : Added functions for managing annotations on nodes.
+- MonitorAlgo : Added `persistent` argument to `annotate()` functions.
+
+0.59.7.0 (relative to 0.59.6.0)
+========
+
+Improvements
+------------
+
+- Parent :
+  - Added `parentVariable` plug, to create a context variable that passes the
+    parent location to nodes upstream of the `children` plug. This allows the children
+    to be varied procedurally according to what they are parented to.
+  - Added `destination` plug, to allow children to be placed elsewhere in the scene
+    while still inheriting the transform of the "parent". This is particularly useful
+    when parenting lights to geometry.
+- Seeds : Added `destination` plug, to control where the points are placed in the scene
+  relative to the meshes they are generated from.
+- Duplicate :
+  - Added `filter` input, allowing multiple objects to be duplicated at once.
+  - Added `destination` plug, to control where the copies are placed relative to the
+    original.
+  - Improved performance for large numbers of copies.
+  - Deprecated the `target` plug. Please use filters instead.
+- Outputs : Reduced the time taken to show the NodeEditor by around 90%.
+- NodeEditor : The "Node Name" label is now draggable. For instance, it can be dragged to the PythonEditor to get a reference to the node or to the GraphEditor to find the node in the graph.
+- GraphEditor : Improved framing of nodes dragged and dropped onto the GraphEditor :
+  - Changed pointer to indicate that framing will take place.
+  - Nodes are framed directly under the pointer instead of at the centre of the widget.
+  - Fixed framing of nodes not currently in the GraphEditor.
+  - Removed framing of _plugs_ dragged to the GraphEditor. This was unintuitive and interacted poorly with the dragging of plugs to make
+    connections. The NodeEditor's "Node Name" label can be dragged instead to locate a node from the NodeEditor.
+- SceneInspector : Improved history view :
+  - Added the full path to nodes so that nodes nested in Boxes can be identified.
+  - Added edit button to open a NodeEditor for nodes in the history.
+  - Fixed gap in between sections.
+- FilterResults : Added `root` plug. This can be used to limit the results to `root` and its descendants.
+- CollectScenes : Added tab completion and a scene browser to the UI for the `sourceRoot` plug.
+- BackgroundTaskDialogue :
+  - Removed focus from "Cancel" button to make it harder to cancel accidentally.
+  - Added <kbd>Esc</kbd> cancellation shortcut.
+
+Fixes
+-----
+
+- Widget : Fixed drag handling bug that could cause `dragEnterSignal()` to be emitted again on a widget that had already accepted the drag.
+- FilterResults : Fixed bug handling matches at the root location.
+- NodeEditor : Fixed activator and summary updates which were skipped if the layout was not visible when the node was edited.
+- Dispatcher : Fixed dispatching when `dispatcher.batchSize` or `dispatcher.immediate` are driven by context variables.
+- SceneNode : Fixed bug hashing the transform for the root location.
+
+API
+---
+
+- SceneAlgo :
+  - Added overloads with `root` argument for `parallelTraverse()`, `filteredParallelTraverse()`, `matchingPaths()` and `matchingPathsHash()`.
+  - Deprecated `matchingPaths()` overloads taking `Filter *`. Pass a `Filter.out` plug instead.
+  - Added Python bindings for `matchingPathsHash()`.
+- ScenePlug :
+  - Added support for `..` in `stringToPath()`.
+  - Added `stringToPath()` and `pathToString()` overloads that return a result rather than passing it by reference.
+- GafferUI.FileMenu : Added `dialogueParentWindow` argument to `addScript()`.
+- Spreadsheet : Added support for per-plug `ui:spreadsheet:selectorValue` metadata. This defines the initial value for `selector` when the UI is used to create a spreadsheet for the plug.
+
 0.59.6.0 (relative to 0.59.5.0)
 ========
 
@@ -400,6 +696,24 @@ Build
   - USD 20.11
   - OpenSSL 1.1.1h
   - See https://github.com/GafferHQ/dependencies/releases/tag/2.1.1 for full details.
+
+0.58.6.7 (relative to 0.58.6.6)
+========
+
+Fixes
+-----
+
+- ArnoldMeshLight : Fixed label for `cameraVisibility` plug.
+
+0.58.6.6 (relative to 0.58.6.5)
+========
+
+Fixes
+-----
+
+- Arnold : Fixed rendering of encapsulated objects for which automatic instancing
+  is not possible. Examples include curves with non-zero `ai:curves:min_pixel_width`
+  and meshes with non-zero `ai:polymesh:subdiv_adaptive_error`.
 
 0.58.6.5 (relative to 0.58.6.4)
 ========

@@ -64,32 +64,39 @@ class MonitorAlgoTest( GafferTest.TestCase ) :
 		Gaffer.MonitorAlgo.annotate( s, m, Gaffer.MonitorAlgo.PerformanceMetric.ComputeCount )
 
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"]["n1"], "annotation:performanceMonitor:computeCount:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"]["n1"], "performanceMonitor:computeCount" ).text(),
 			"Compute count : 1"
 		)
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"]["n2"], "annotation:performanceMonitor:computeCount:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"]["n2"], "performanceMonitor:computeCount" ).text(),
 			"Compute count : 1"
 		)
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"], "annotation:performanceMonitor:computeCount:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"], "performanceMonitor:computeCount" ).text(),
 			"Compute count : 2"
 		)
 
 		Gaffer.MonitorAlgo.annotate( s, m, Gaffer.MonitorAlgo.PerformanceMetric.HashesPerCompute )
 
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"]["n1"], "annotation:performanceMonitor:hashesPerCompute:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"]["n1"], "performanceMonitor:hashesPerCompute" ).text(),
 			"Hashes per compute : 2"
 		)
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"]["n2"], "annotation:performanceMonitor:hashesPerCompute:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"]["n2"], "performanceMonitor:hashesPerCompute" ).text(),
 			"Hashes per compute : 1"
 		)
 		self.assertEqual(
-			Gaffer.Metadata.value( s["b"], "annotation:performanceMonitor:hashesPerCompute:text" ),
+			Gaffer.MetadataAlgo.getAnnotation( s["b"], "performanceMonitor:hashesPerCompute" ).text(),
 			"Hashes per compute : 1.5"
 		)
+
+		Gaffer.MonitorAlgo.removePerformanceAnnotations( s )
+		for node in Gaffer.Node.RecursiveRange( s ) :
+			self.assertEqual(
+				Gaffer.Metadata.registeredValues( node, instanceOnly = True ),
+				[]
+			)
 
 if __name__ == "__main__":
 	unittest.main()

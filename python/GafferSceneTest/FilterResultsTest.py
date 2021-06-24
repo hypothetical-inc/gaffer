@@ -194,9 +194,68 @@ class FilterResultsTest( GafferSceneTest.SceneTestCase ) :
 		Gaffer.ValuePlug.clearCache()
 		script["filterResults2"]["out"].getValue( h )
 
+	def testRoot( self ) :
+
+		# /group
+		#    /group
+		#        /plane
+		#    /plane
+
+		plane = GafferScene.Plane()
+
+		innerGroup = GafferScene.Group()
+		innerGroup["in"][0].setInput( plane["out"] )
+
+		outerGroup = GafferScene.Group()
+		outerGroup["in"][0].setInput( innerGroup["out"] )
+		outerGroup["in"][1].setInput( plane["out"] )
+
+		filter = GafferScene.PathFilter()
+		filter["paths"].setValue( IECore.StringVectorData( [ "/..." ] ) )
+
+		filterResults = GafferScene.FilterResults()
+		filterResults["scene"].setInput( outerGroup["out"] )
+		filterResults["filter"].setInput( filter["out"] )
+
+		self.assertEqual(
+			filterResults["out"].getValue().value,
+			IECore.PathMatcher( [
+				"/",
+				"/group",
+				"/group/group",
+				"/group/group/plane",
+				"/group/plane",
+			] )
+		)
+
+		hash = filterResults["out"].hash()
+
+		filterResults["root"].setValue( "/group/group" )
+		self.assertEqual(
+			filterResults["out"].getValue().value,
+			IECore.PathMatcher( [
+				"/group/group",
+				"/group/group/plane",
+			] )
+		)
+		self.assertNotEqual( filterResults["out"].hash(), hash )
+
+	def testRootMatchVsNoMatch( self ) :
+
+		plane = GafferScene.Plane()
+		pathFilter = GafferScene.PathFilter()
+
+		filterResults = GafferScene.FilterResults()
+		filterResults["scene"].setInput( plane["out"] )
+		filterResults["filter"].setInput( pathFilter["out"] )
+		self.assertEqual( filterResults["outStrings"].getValue(), IECore.StringVectorData() )
+
+		pathFilter["paths"].setValue( IECore.StringVectorData( [ "/" ] ) )
+		self.assertEqual( filterResults["outStrings"].getValue(), IECore.StringVectorData( [ "/" ] ) )
+
 	@unittest.skipIf( GafferTest.inCI(), "Performance not relevant on CI platform" )
 	@GafferTest.TestRunner.PerformanceTestMethod()
-	def testHashPerf( self ):
+	def testHashPerformance( self ):
 
 		sphere = GafferScene.Sphere()
 
@@ -217,6 +276,30 @@ class FilterResultsTest( GafferSceneTest.SceneTestCase ) :
 
 		with GafferTest.TestRunner.PerformanceScope():
 			filterResults["out"].hash()
+
+	@unittest.skipIf( GafferTest.inCI(), "Performance not relevant on CI platform" )
+	@GafferTest.TestRunner.PerformanceTestMethod()
+	def testComputePerformance( self ):
+
+		sphere = GafferScene.Sphere()
+
+		duplicate = GafferScene.Duplicate()
+		duplicate["in"].setInput( sphere["out"] )
+		duplicate["target"].setValue( '/sphere' )
+		duplicate["copies"].setValue( 1000000 )
+
+		pathFilter = GafferScene.PathFilter()
+		pathFilter["paths"].setValue( IECore.StringVectorData( [ '...' ] ) )
+
+		filterResults = GafferScene.FilterResults()
+		filterResults["scene"].setInput( duplicate["out"] )
+		filterResults["filter"].setInput( pathFilter["out"] )
+
+		# Evaluate the root childNames beforehand to focus our timing on the compute
+		duplicate["out"].childNames( "/" )
+
+		with GafferTest.TestRunner.PerformanceScope():
+			filterResults["out"].getValue()
 
 if __name__ == "__main__":
 	unittest.main()

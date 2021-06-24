@@ -74,7 +74,9 @@ class Timeline( GafferUI.Editor ) :
 				max = float( scriptNode["frameRange"]["end"].getValue() ),
 				parenting = { "expand" : True },
 			)
-			self.__slider.setPositionIncrement( 0 ) # disable so the slider doesn't mask our global frame increment shortcut
+			self.__slider.setIncrement( 0 ) # disable so the slider doesn't mask our global frame increment shortcut
+			self.__slider.setSnapIncrement( 1 )
+			self.__slider.setHoverPositionVisible( True )
 			self.__sliderValueChangedConnection = self.__slider.valueChangedSignal().connect( Gaffer.WeakMethod( self.__valueChanged ), scoped = False )
 
 			self.__startButton = GafferUI.Button( image = "timelineStart.png", hasFrame=False )
@@ -151,13 +153,7 @@ class Timeline( GafferUI.Editor ) :
 
 		assert( widget is self.__slider or widget is self.__frame )
 
-		if widget is self.__slider :
-			## \todo Have the rounding come from NumericSlider, and allow the shift
-			# modifier to choose fractional frame values.
-			frame = int( self.__slider.getValue() )
-		else :
-			frame = self.__frame.getValue()
-
+		frame = widget.getValue()
 		frame = float( max( frame, self.scriptNode()["frameRange"]["start"].getValue() ) )
 		frame = float( min( frame, self.scriptNode()["frameRange"]["end"].getValue() ) )
 
@@ -250,14 +246,40 @@ class Timeline( GafferUI.Editor ) :
 
 GafferUI.Editor.registerType( "Timeline", Timeline )
 
-class _TimelineSlider( GafferUI.NumericSlider ) :
+class _TimelineSlider( GafferUI.Slider ) :
 
-	def __init__( self, value=None, min=0, max=1, hardMin=None, hardMax=None, values=None, **kw ) :
+	def __init__( self, value, min=0, max=1, **kw ) :
 
-		GafferUI.NumericSlider.__init__( self, value, min, max, hardMin, hardMax, values, **kw )
+		GafferUI.Slider.__init__( self, value, min, max, **kw )
 
-	def _drawPosition( self, painter, position, highlighted, opacity=1 ) :
+	def _drawValue( self, painter, value, position, state ) :
 
 		size = self.size()
-		# \todo: make sure the TimelineSlider and the AnimationGadget always use the same color
-		painter.fillRect( int(position * size.x), 0, 2, size.y, QtGui.QColor( 240, 220, 40, 255 * opacity ) )
+
+		color = QtGui.QColor( 120, 120, 120 ) if state == state.DisabledState else QtGui.QColor( 240, 220, 40 )
+		painter.setPen( color )
+
+		# Draw vertical line at position ensuring we don't clip it
+		# at the edges of the widget.
+
+		lineWidth = 2
+		position = max( min( int( position ) - ( lineWidth / 2 ), size.x - lineWidth ), 0 )
+		painter.fillRect( position, 0, lineWidth, size.y, color )
+
+		# Draw frame number to the left of the playhead (unless we'd go off the
+		# edge). Most cursors are pointing to the left so this makes it easier
+		# to read the number when hovering.
+
+		font = painter.font()
+		font.setPixelSize( 10 )
+		painter.setFont( font )
+
+		frameText = GafferUI.NumericWidget.valueToString( value )
+		frameTextSize = QtGui.QFontMetrics( painter.font() ).size( QtCore.Qt.TextSingleLine, frameText )
+
+		textMargin = 6
+		textX = position - frameTextSize.width() - textMargin
+		if textX < textMargin :
+			textX = position + textMargin
+
+		painter.drawText( textX, frameTextSize.height(), frameText )

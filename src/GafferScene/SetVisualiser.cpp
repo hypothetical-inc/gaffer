@@ -62,7 +62,7 @@ namespace
 
 bool internedStringCompare( InternedString a, InternedString b )
 {
-    return a.string() < b.string();
+	return a.string() < b.string();
 }
 
 typedef std::pair<StringAlgo::MatchPattern, ConstColor3fDataPtr> Override;
@@ -71,7 +71,7 @@ std::vector<Override> unpackOverrides( const CompoundDataPlug *plug )
 	std::vector<Override> overrides;
 
 	std::string name;
-	for( NameValuePlugIterator it( plug ); !it.done(); ++it )
+	for( NameValuePlug::Iterator it( plug ); !it.done(); ++it )
 	{
 		// This will fail if the member has been disabled, or has no name
 		if( ConstDataPtr plugData =  plug->memberDataAndName( it->get(), name ) )

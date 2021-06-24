@@ -72,7 +72,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 		GafferSceneTest.SceneTestCase.tearDown( self )
 
-		GafferScene.RendererAlgo.deregisterAdaptor( "Test" )
+		GafferScene.SceneAlgo.deregisterRenderAdaptor( "Test" )
 
 	def testExecute( self ) :
 
@@ -822,7 +822,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 
 			return result
 
-		GafferScene.RendererAlgo.registerAdaptor( "Test", a )
+		GafferScene.SceneAlgo.registerRenderAdaptor( "Test", a )
 
 		sphere = GafferScene.Sphere()
 
@@ -1395,7 +1395,7 @@ class ArnoldRenderTest( GafferSceneTest.SceneTestCase ) :
 		# The `maxDifference` is huge to account for noise and watermarks, but is still low enough to check what
 		# we want, since if the Encapsulate was sampled at shutter open and not the frame, the difference would be
 		# 0.5.
-		self.assertImagesEqual( s["deformationOff"]["out"], s["deformationOn"]["out"], maxDifference = 0.25, ignoreMetadata = True )
+		self.assertImagesEqual( s["deformationOff"]["out"], s["deformationOn"]["out"], maxDifference = 0.27, ignoreMetadata = True )
 
 if __name__ == "__main__":
 	unittest.main()

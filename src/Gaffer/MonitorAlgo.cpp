@@ -37,7 +37,7 @@
 #include "Gaffer/MonitorAlgo.h"
 
 #include "Gaffer/ContextMonitor.h"
-#include "Gaffer/Metadata.h"
+#include "Gaffer/MetadataAlgo.h"
 #include "Gaffer/Node.h"
 #include "Gaffer/PerformanceMonitor.h"
 #include "Gaffer/Plug.h"
@@ -87,7 +87,7 @@ struct HashCountMetric
 	}
 
 	const std::string description = "number of hash processes";
-	const std::string annotation = "hashCount";
+	const std::string annotation = "performanceMonitor:hashCount";
 	const std::string annotationPrefix = "Hash count : ";
 
 };
@@ -103,7 +103,7 @@ struct ComputeCountMetric
 	}
 
 	const std::string description = "number of compute processes";
-	const std::string annotation = "computeCount";
+	const std::string annotation = "performanceMonitor:computeCount";
 	const std::string annotationPrefix = "Compute count : ";
 
 };
@@ -119,7 +119,7 @@ struct HashDurationMetric
 	}
 
 	const std::string description = "time spent in hash processes";
-	const std::string annotation = "hashDuration";
+	const std::string annotation = "performanceMonitor:hashDuration";
 	const std::string annotationPrefix = "Hash time : ";
 
 };
@@ -135,7 +135,7 @@ struct ComputeDurationMetric
 	}
 
 	const std::string description = "time spent in compute processes";
-	const std::string annotation = "computeDuration";
+	const std::string annotation = "performanceMonitor:computeDuration";
 	const std::string annotationPrefix = "Compute time : ";
 
 };
@@ -151,7 +151,7 @@ struct TotalDurationMetric
 	}
 
 	const std::string description = "sum of time spent in hash and compute processes";
-	const std::string annotation = "totalDuration";
+	const std::string annotation = "performanceMonitor:totalDuration";
 	const std::string annotationPrefix = "Time : ";
 
 };
@@ -167,7 +167,7 @@ struct PerHashDurationMetric
 	}
 
 	const std::string description = "time spent per hash process";
-	const std::string annotation = "perHashDuration";
+	const std::string annotation = "performanceMonitor:perHashDuration";
 	const std::string annotationPrefix = "Time per hash : ";
 
 };
@@ -183,7 +183,7 @@ struct PerComputeDurationMetric
 	}
 
 	const std::string description = "time spent per compute process";
-	const std::string annotation = "perComputeDuration";
+	const std::string annotation = "performanceMonitor:perComputeDuration";
 	const std::string annotationPrefix = "Time per compute : ";
 
 };
@@ -199,14 +199,14 @@ struct HashesPerComputeMetric
 	}
 
 	const std::string description = "number of hash processes per compute process";
-	const std::string annotation = "hashesPerCompute";
+	const std::string annotation = "performanceMonitor:hashesPerCompute";
 	const std::string annotationPrefix = "Hashes per compute : ";
 
 };
 
 // Utility for invoking a templated functor with a particular metric.
 template<typename F>
-typename F::ResultType dispatchMetric( const F &f, MonitorAlgo::PerformanceMetric performanceMetric )
+std::result_of_t<F(const HashCountMetric &)> dispatchMetric( const F &f, MonitorAlgo::PerformanceMetric performanceMetric )
 {
 	switch( performanceMetric )
 	{
@@ -230,6 +230,39 @@ typename F::ResultType dispatchMetric( const F &f, MonitorAlgo::PerformanceMetri
 			return f( InvalidMetric() );
 	}
 }
+
+const std::string g_contextAnnotationName = "contextMonitor";
+
+struct AnnotationRegistrations
+{
+	AnnotationRegistrations()
+	{
+		for( int m = Gaffer::MonitorAlgo::First; m <= Gaffer::MonitorAlgo::Last; ++m )
+		{
+			// We don't really need the template values, but by registering a
+			// template we get included nicely in the UI for filtering
+			// annotations in the GraphEditor.
+			dispatchMetric(
+				[] ( auto metric ) {
+					MetadataAlgo::addAnnotationTemplate(
+						metric.annotation,
+						MetadataAlgo::Annotation( "" ),
+						/* user = */ false
+					);
+				},
+				static_cast<Gaffer::MonitorAlgo::PerformanceMetric>( m )
+			);
+		}
+
+		MetadataAlgo::addAnnotationTemplate(
+			g_contextAnnotationName,
+			MetadataAlgo::Annotation( "" ),
+			/* user = */ false
+		);
+	}
+};
+
+const AnnotationRegistrations g_annotationRegistrations;
 
 } // namespace
 
@@ -376,18 +409,17 @@ double toDouble( const boost::chrono::duration<double> &v )
 }
 
 template<typename T>
-ConstColor3fDataPtr heat( const T &v, const T &m )
+Color3f heat( const T &v, const T &m )
 {
 	const double heatFactor = toDouble( v ) / toDouble( m );
-	const Color3f heat = lerp( Color3f( 0 ), Color3f( 0.5, 0, 0 ), heatFactor );
-	return new Color3fData( heat );
+	return lerp( Color3f( 0 ), Color3f( 0.5, 0, 0 ), heatFactor );
 }
 
 struct Annotate
 {
 
-	Annotate( Node &root, const PerformanceMonitor::StatisticsMap &statistics )
-		:	m_root( root ), m_statistics( statistics )
+	Annotate( Node &root, const PerformanceMonitor::StatisticsMap &statistics, bool persistent )
+		:	m_root( root ), m_statistics( statistics ), m_persistent( persistent )
 	{
 	}
 
@@ -396,20 +428,17 @@ struct Annotate
 	template<typename Metric>
 	ResultType operator() ( const Metric &metric ) const
 	{
-		walk<Metric>(
-			m_root, metric,
-			"annotation:performanceMonitor:" + metric.annotation + ":text",
-			"annotation:performanceMonitor:" + metric.annotation + ":color"
-		);
+		walk<Metric>( m_root, metric );
 	}
 
 	private :
 
 		Node &m_root;
 		const PerformanceMonitor::StatisticsMap &m_statistics;
+		const bool m_persistent;
 
 		template<typename Metric>
-		PerformanceMonitor::Statistics walk( Node &node, const Metric &metric, const InternedString &textKey, const InternedString &colorKey ) const
+		PerformanceMonitor::Statistics walk( Node &node, const Metric &metric ) const
 		{
 			using Value = typename Metric::ResultType;
 			using ChildStatistics = std::pair<Node &, PerformanceMonitor::Statistics>;
@@ -417,7 +446,7 @@ struct Annotate
 			// Accumulate the statistics for all plugs belonging to this node.
 
 			PerformanceMonitor::Statistics result;
-			for( RecursivePlugIterator plugIt( &node ); !plugIt.done(); ++plugIt )
+			for( Plug::RecursiveIterator plugIt( &node ); !plugIt.done(); ++plugIt )
 			{
 				auto it = m_statistics.find( plugIt->get() );
 				if( it != m_statistics.end() )
@@ -431,10 +460,10 @@ struct Annotate
 			std::vector<ChildStatistics> childStatistics;
 			Value maxChildValue( 0 );
 
-			for( NodeIterator childNodeIt( &node ); !childNodeIt.done(); ++childNodeIt )
+			for( Node::Iterator childNodeIt( &node ); !childNodeIt.done(); ++childNodeIt )
 			{
 				Node &childNode = **childNodeIt;
-				const auto cs = walk( childNode, metric, textKey, colorKey );
+				const auto cs = walk( childNode, metric );
 				childStatistics.push_back( ChildStatistics( childNode, cs ) );
 				maxChildValue = std::max( maxChildValue, metric( cs ) );
 			}
@@ -451,13 +480,15 @@ struct Annotate
 					continue;
 				}
 
-				Metadata::registerValue(
-					&cs.first, textKey,
-					new StringData(
-						metric.annotationPrefix + boost::lexical_cast<std::string>( value )
-					)
+				MetadataAlgo::addAnnotation(
+					&cs.first,
+					metric.annotation,
+					MetadataAlgo::Annotation(
+						metric.annotationPrefix + boost::lexical_cast<std::string>( value ),
+						heat( value, maxChildValue )
+					),
+					m_persistent
 				);
-				Metadata::registerValue( &cs.first, colorKey, heat( value, maxChildValue ) );
 
 				result += cs.second;
 			}
@@ -467,10 +498,7 @@ struct Annotate
 
 };
 
-InternedString g_contextAnnotationTextKey = "annotation:contextMonitor:text";
-InternedString g_contextAnnotationColorKey = "annotation:contextMonitor:color";
-
-ContextMonitor::Statistics annotateContextWalk( Node &node, const ContextMonitor::StatisticsMap &statistics )
+ContextMonitor::Statistics annotateContextWalk( Node &node, const ContextMonitor::StatisticsMap &statistics, bool persistent )
 {
 
 	using ChildStatistics = std::pair<Node &, ContextMonitor::Statistics>;
@@ -478,7 +506,7 @@ ContextMonitor::Statistics annotateContextWalk( Node &node, const ContextMonitor
 	// Accumulate the statistics for all plugs belonging to this node.
 
 	ContextMonitor::Statistics result;
-	for( RecursivePlugIterator plugIt( &node ); !plugIt.done(); ++plugIt )
+	for( Plug::RecursiveIterator plugIt( &node ); !plugIt.done(); ++plugIt )
 	{
 		auto it = statistics.find( plugIt->get() );
 		if( it != statistics.end() )
@@ -492,10 +520,10 @@ ContextMonitor::Statistics annotateContextWalk( Node &node, const ContextMonitor
 	std::vector<ChildStatistics> childStatistics;
 	size_t maxUniqueContexts( 0 );
 
-	for( NodeIterator childNodeIt( &node ); !childNodeIt.done(); ++childNodeIt )
+	for( Node::Iterator childNodeIt( &node ); !childNodeIt.done(); ++childNodeIt )
 	{
 		Node &childNode = **childNodeIt;
-		const auto cs = annotateContextWalk( childNode, statistics );
+		const auto cs = annotateContextWalk( childNode, statistics, persistent );
 		childStatistics.push_back( ChildStatistics( childNode, cs ) );
 		maxUniqueContexts = std::max( maxUniqueContexts, cs.numUniqueContexts() );
 	}
@@ -523,11 +551,12 @@ ContextMonitor::Statistics annotateContextWalk( Node &node, const ContextMonitor
 			}
 		}
 
-		Metadata::registerValue(
-			&cs.first, g_contextAnnotationTextKey,
-			new StringData( text )
+		MetadataAlgo::addAnnotation(
+			&cs.first,
+			g_contextAnnotationName,
+			MetadataAlgo::Annotation( text, heat( cs.second.numUniqueContexts(), maxUniqueContexts ) ),
+			persistent
 		);
-		Metadata::registerValue( &cs.first, g_contextAnnotationColorKey, heat( cs.second.numUniqueContexts(), maxUniqueContexts ) );
 
 		result += cs.second;
 	}
@@ -586,22 +615,49 @@ std::string formatStatistics( const PerformanceMonitor &monitor, PerformanceMetr
 	return dispatchMetric<FormatStatistics>( FormatStatistics( monitor.allStatistics(), maxLines ), metric );
 }
 
-void annotate( Node &root, const PerformanceMonitor &monitor )
+void annotate( Node &root, const PerformanceMonitor &monitor, bool persistent )
 {
 	for( int m = First; m <= Last; ++m )
 	{
-		annotate( root, monitor, static_cast<PerformanceMetric>( m ) );
+		annotate( root, monitor, static_cast<PerformanceMetric>( m ), persistent );
 	}
 }
 
-void annotate( Node &root, const PerformanceMonitor &monitor, PerformanceMetric metric )
+void annotate( Node &root, const PerformanceMonitor &monitor, PerformanceMetric metric, bool persistent )
 {
-	dispatchMetric<Annotate>( Annotate( root, monitor.allStatistics() ), metric );
+	dispatchMetric<Annotate>( Annotate( root, monitor.allStatistics(), persistent ), metric );
 }
 
-void annotate( Node &root, const ContextMonitor &monitor )
+void annotate( Node &root, const ContextMonitor &monitor, bool persistent )
 {
-	annotateContextWalk( root, monitor.allStatistics() );
+	annotateContextWalk( root, monitor.allStatistics(), persistent );
+}
+
+void removePerformanceAnnotations( Node &root )
+{
+	for( int m = Gaffer::MonitorAlgo::First; m <= Gaffer::MonitorAlgo::Last; ++m )
+	{
+		dispatchMetric(
+			[&root] ( auto metric ) {
+				MetadataAlgo::removeAnnotation( &root, metric.annotation );
+			},
+			static_cast<Gaffer::MonitorAlgo::PerformanceMetric>( m )
+		);
+	}
+
+	for( const auto &node : Node::Range( root ) )
+	{
+		removePerformanceAnnotations( *node );
+	}
+}
+
+void removeContextAnnotations( Node &root )
+{
+	MetadataAlgo::removeAnnotation( &root, g_contextAnnotationName );
+	for( const auto &node : Node::Range( root ) )
+	{
+		removeContextAnnotations( *node );
+	}
 }
 
 } // namespace MonitorAlgo

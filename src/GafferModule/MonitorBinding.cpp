@@ -122,22 +122,34 @@ list contextMonitorVariableNames( const ContextMonitor::Statistics &s )
 	return result;
 }
 
-void annotateWrapper1( Node &root, const PerformanceMonitor &monitor )
+void annotateWrapper1( Node &root, const PerformanceMonitor &monitor, bool persistent )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	MonitorAlgo::annotate( root, monitor );
+	MonitorAlgo::annotate( root, monitor, persistent );
 }
 
-void annotateWrapper2( Node &root, const PerformanceMonitor &monitor, MonitorAlgo::PerformanceMetric metric )
+void annotateWrapper2( Node &root, const PerformanceMonitor &monitor, MonitorAlgo::PerformanceMetric metric, bool persistent )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	MonitorAlgo::annotate( root, monitor, metric );
+	MonitorAlgo::annotate( root, monitor, metric, persistent );
 }
 
-void annotateWrapper3( Node &root, const ContextMonitor &monitor )
+void annotateWrapper3( Node &root, const ContextMonitor &monitor, bool persistent )
 {
 	IECorePython::ScopedGILRelease gilRelease;
-	MonitorAlgo::annotate( root, monitor );
+	MonitorAlgo::annotate( root, monitor, persistent );
+}
+
+void removePerformanceAnnotationsWrapper( Node &root )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	MonitorAlgo::removePerformanceAnnotations( root );
+}
+
+void removeContextAnnotationsWrapper( Node &root )
+{
+	IECorePython::ScopedGILRelease gilRelease;
+	MonitorAlgo::removeContextAnnotations( root );
 }
 
 } // namespace
@@ -184,20 +196,23 @@ void GafferModule::bindMonitor()
 		def(
 			"annotate",
 			&annotateWrapper1,
-			( arg( "node" ), arg( "monitor" ) )
+			( arg( "node" ), arg( "monitor" ), arg( "persistent" ) = true )
 		);
 
 		def(
 			"annotate",
 			&annotateWrapper2,
-			( arg( "node" ), arg( "monitor" ), arg( "metric" ) )
+			( arg( "node" ), arg( "monitor" ), arg( "metric" ), arg( "persistent" ) = true )
 		);
 
 		def(
 			"annotate",
 			&annotateWrapper3,
-			( arg( "node" ), arg( "monitor" ) )
+			( arg( "node" ), arg( "monitor" ), arg( "persistent" ) = true )
 		);
+
+		def( "removePerformanceAnnotations", &removePerformanceAnnotationsWrapper, arg( "root" ) );
+		def( "removeContextAnnotations", &removeContextAnnotationsWrapper, arg( "root" ) );
 	}
 
 	{

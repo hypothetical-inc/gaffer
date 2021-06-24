@@ -432,5 +432,88 @@ class SetTest( GafferSceneTest.SceneTestCase ) :
 				Gaffer.ValuePlug.clearCache()
 				self.assertEqual( sphereSet["out"].set( "set" ).value, expectedSet )
 
+	def testSetVariable( self ) :
+
+		sphere = GafferScene.Sphere()
+		cube = GafferScene.Cube()
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( sphere["out"] )
+		group["in"][1].setInput( cube["out"] )
+
+		pathFilter = GafferScene.PathFilter()
+
+		setNode = GafferScene.Set()
+		setNode["in"].setInput( group["out"] )
+		setNode["filter"].setInput( pathFilter["out"] )
+		setNode["name"].setValue( "round square" )
+		setNode["setVariable"].setValue( "set" )
+
+		spreadsheet = Gaffer.Spreadsheet()
+		spreadsheet["selector"].setValue( "${set}" )
+		spreadsheet["rows"].addColumn( pathFilter["paths"] )
+		spreadsheet["rows"].addRows( 2 )
+		spreadsheet["rows"][1]["name"].setValue( "round" )
+		spreadsheet["rows"][1]["cells"]["paths"]["value"].setValue( IECore.StringVectorData( [ "/group/sphere" ] ) )
+		spreadsheet["rows"][2]["name"].setValue( "square" )
+		spreadsheet["rows"][2]["cells"]["paths"]["value"].setValue( IECore.StringVectorData( [ "/group/cube" ] ) )
+
+		pathFilter["paths"].setInput( spreadsheet["out"]["paths"] )
+
+		self.assertEqual( { str( x ) for x in setNode["out"].setNames() }, { "round", "square" } )
+		self.assertEqual( setNode["out"].set( "round" ).value, IECore.PathMatcher( [ "/group/sphere" ] ) )
+		self.assertEqual( setNode["out"].set( "square" ).value, IECore.PathMatcher( [ "/group/cube" ] ) )
+
+	def testSetVariableDoesntLeakToScene( self ) :
+
+		sphere = GafferScene.Sphere()
+		sphere["sets"].setValue( "testSource" )
+
+		setFilter = GafferScene.SetFilter()
+		setFilter["set"].setValue( "${setVariable}Source" )
+
+		setNode = GafferScene.Set()
+		setNode["in"].setInput( sphere["out"] )
+		setNode["filter"].setInput( setFilter["out"] )
+		setNode["name"].setValue( "test" )
+		setNode["setVariable"].setValue( "setVariable" )
+
+		with Gaffer.ContextMonitor( sphere ) as monitor :
+			self.assertEqual(
+				setNode["out"].set( "test" ),
+				sphere["out"].set( "testSource" )
+			)
+
+		self.assertNotIn( "setVariable", monitor.combinedStatistics().variableNames() )
+
+	def testSetNameWildcards( self ) :
+
+		sphere = GafferScene.Sphere()
+		sphere["sets"].setValue( "test1 test2 test3" )
+
+		cube = GafferScene.Cube()
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( sphere["out"] )
+		group["in"][1].setInput( cube["out"] )
+
+		cubeFilter = GafferScene.PathFilter()
+		cubeFilter["paths"].setValue( IECore.StringVectorData( [ "/group/cube" ] ) )
+
+		setNode = GafferScene.Set()
+		setNode["in"].setInput( group["out"] )
+		setNode["filter"].setInput( cubeFilter["out"] )
+		setNode["mode"].setValue( setNode.Mode.Add )
+		setNode["name"].setValue( "test[12] test4")
+
+		self.assertEqual( { str( x ) for x in setNode["out"].setNames() }, { "test1", "test2", "test3", "test4" } )
+		self.assertEqual( setNode["out"].set( "test1" ).value, IECore.PathMatcher( [ "/group/sphere", "/group/cube" ] ) )
+		self.assertEqual( setNode["out"].set( "test2" ).value, IECore.PathMatcher( [ "/group/sphere", "/group/cube" ] ) )
+		self.assertEqual( setNode["out"].set( "test3" ), setNode["in"].set( "test3") )
+		self.assertEqual( setNode["out"].set( "test4" ).value, IECore.PathMatcher( [ "/group/cube" ] ) )
+
+		setNode["mode"].setValue( setNode.Mode.Create )
+		self.assertEqual( { str( x ) for x in setNode["out"].setNames() }, { "test1", "test2", "test3", "test4" } )
+
 if __name__ == "__main__":
 	unittest.main()

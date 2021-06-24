@@ -235,7 +235,46 @@
 				'viewPaused'
 			]
 
-		}
+		},
+
+		"tabIcons" : {
+
+			"ids" : [
+				"tabScrollMenu",
+				"deleteSmall",
+			],
+
+		},
+
+		"colorInspectorIcons" : {
+
+			"options" : {
+				"requiredWidth" : 16,
+				"requiredHeight" : 16,
+				"validatePixelAlignment" : True
+			},
+
+			"ids" : [
+				'sourceCursor',
+				'sourceArea',
+				'sourcePixel'
+			]
+
+		},
+
+		"graphEditor" : {
+
+			"options" : {
+				"requiredWidth" : 25,
+				"requiredHeight" : 25,
+				"validatePixelAlignment" : True
+			},
+
+			"ids" : [
+				"annotations",
+			],
+
+		},
 
 	},
 
@@ -249,7 +288,6 @@
 		'debugNotification',
 		'debugSmall',
 		'delete',
-		'deleteSmall',
 		'duplicate',
 		'editScopeNode',
 		'editScopeProcessorNode',
@@ -276,10 +314,8 @@
 		'navigationArrow',
 		'nodeSetDriverNodeSelection',
 		'nodeSetDriverNodeSet',
-		'nodeSetDriverSceneSelectionSource',
 		'nodeSetDrivertestMode',
 		'nodeSetNumericBookmarkSet',
-		'nodeSetSourceSet',
 		'nodeSetStandardSet',
 		'plugAdder',
 		'plugAdderHighlighted',

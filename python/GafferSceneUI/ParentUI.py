@@ -84,6 +84,35 @@ Gaffer.Metadata.registerNode(
 
 		],
 
+		"parentVariable" : [
+
+			"description",
+			"""
+			A context variable used to pass the location of the parent to the
+			upstream nodes connected into the `children` plug. This can be used
+			to procedurally vary the children at each different parent location.
+			""",
+
+		],
+
+		"destination" : [
+
+			"description",
+			"""
+			The location where the children will be placed in the output scene.
+			The default is to place the children under the parent, but they may
+			be relocated anywhere while still inheriting the parent's transform.
+			This is particularly useful when parenting lights to geometry but
+			wanting to group them and control their visibility separately.
+
+			When the destination is evaluated, the `${scene:path}` variable holds
+			the source location matched by the filter. This allows the children
+			to be placed relative to the "parent". For example, `${scene:path}/..`
+			will place the children alongside the "parent" rather than under it.
+			""",
+
+		],
+
 	}
 
 )

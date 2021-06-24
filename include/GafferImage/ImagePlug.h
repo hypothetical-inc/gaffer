@@ -143,8 +143,17 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 		{
 			ChannelDataScope( const Gaffer::Context *context );
 			ChannelDataScope( const Gaffer::ThreadState &threadState );
+
+			[[deprecated("Use faster pointer version")]]
 			void setTileOrigin( const Imath::V2i &tileOrigin );
+			[[deprecated("Use faster pointer version")]]
 			void setChannelName( const std::string &channelName );
+
+			// These fast calls take pointers, and it is the caller's
+			// responsibility to ensure that the memory pointed to
+			// stays valid for the lifetime of the ChannelDataScope
+			void setTileOrigin( const Imath::V2i *tileOrigin );
+			void setChannelName( const std::string *channelName );
 		};
 		//@}
 
@@ -229,7 +238,7 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 
 	private :
 
-		static int tileSizeLog2() { return 6; };
+		static int tileSizeLog2() { return 7; };
 
 		static void compoundObjectToCompoundData( const IECore::CompoundObject *object, IECore::CompoundData *data );
 
@@ -238,12 +247,18 @@ class GAFFERIMAGE_API ImagePlug : public Gaffer::ValuePlug
 
 IE_CORE_DECLAREPTR( ImagePlug );
 
+[[deprecated("Use `ImagePlug::Iterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, ImagePlug> > ImagePlugIterator;
+[[deprecated("Use `ImagePlug::InputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, ImagePlug> > InputImagePlugIterator;
+[[deprecated("Use `ImagePlug::OutputIterator` instead")]]
 typedef Gaffer::FilteredChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, ImagePlug> > OutputImagePlugIterator;
 
+[[deprecated("Use `ImagePlug::RecursiveIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Invalid, ImagePlug>, Gaffer::PlugPredicate<> > RecursiveImagePlugIterator;
+[[deprecated("Use `ImagePlug::RecursiveInputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::In, ImagePlug>, Gaffer::PlugPredicate<> > RecursiveInputImagePlugIterator;
+[[deprecated("Use `ImagePlug::RecursiveOutputIterator` instead")]]
 typedef Gaffer::FilteredRecursiveChildIterator<Gaffer::PlugPredicate<Gaffer::Plug::Out, ImagePlug>, Gaffer::PlugPredicate<> > RecursiveOutputImagePlugIterator;
 
 } // namespace GafferImage

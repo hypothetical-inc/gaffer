@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (c) 2019, Cinesite VFX Ltd. All rights reserved.
+//  Copyright (c) 2020, Image Engine Design Inc. All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
 //  modification, are permitted provided that the following conditions are
@@ -34,14 +34,16 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#ifndef GAFFERSCENEUIMODULE_SOURCESETBINDING_H
-#define GAFFERSCENEUIMODULE_SOURCESETBINDING_H
+#ifndef GAFFERTEST_RANDOMTEST_H
+#define GAFFERTEST_RANDOMTEST_H
 
-namespace GafferSceneUIModule
+#include "GafferTest/Export.h"
+
+namespace GafferTest
 {
 
-void bindSourceSet();
+GAFFERTEST_API void testRandomPerf();
 
-} // namespace GafferSceneUIModule
+} // namespace GafferTest
 
-#endif // GAFFERSCENEUIMODULE_SOURCESETBINDING_H
+#endif // GAFFERTEST_RANDOMTEST_H

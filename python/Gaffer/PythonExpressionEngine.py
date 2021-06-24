@@ -93,7 +93,11 @@ class PythonExpressionEngine( Gaffer.Expression.Engine ) :
 			plugPathSplit = plugPath.split( "." )
 			for p in plugPathSplit[:-1] :
 				parentDict = parentDict[p]
-			result.append( parentDict.get( plugPathSplit[-1], IECore.NullObject.defaultNullObject() ) )
+			r = parentDict.get( plugPathSplit[-1], IECore.NullObject.defaultNullObject() )
+			try:
+				result.append( r )
+			except:
+				raise TypeError( "Unsupported type for result \"%s\" for expression output \"%s\"" % ( str( r ), plugPath ) )
 
 		return result
 
@@ -434,4 +438,3 @@ class _ContextProxy( object ) :
 			return getattr( self.__context, name )
 		else :
 			raise AttributeError( name )
-

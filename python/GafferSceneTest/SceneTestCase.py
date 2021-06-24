@@ -157,14 +157,14 @@ class SceneTestCase( GafferImageTest.ImageTestCase ) :
 				self.assertTrue(
 					coordinateSystemSet.value.match( scenePath ) & IECore.PathMatcher.Result.ExactMatch,
 					scenePath + " in __coordinateSystems set"
-				 )
+				)
 
 			attributes = scenePlug.attributes( scenePath, _copy = False )
 			if any( [ n == "light" or n.endswith( ":light" ) for n in attributes.keys() ] ) :
 				self.assertTrue(
 					lightSet.value.match( scenePath ) & IECore.PathMatcher.Result.ExactMatch,
 					scenePath + " in __lights set"
-				 )
+				)
 
 			childNames = scenePlug.childNames( scenePath, _copy = False )
 			for childName in childNames :
@@ -229,16 +229,14 @@ class SceneTestCase( GafferImageTest.ImageTestCase ) :
 		if "sets" in checks :
 			self.assertEqual( scenePlug1.setNames(), scenePlug2.setNames() )
 			for setName in scenePlug1.setNames() :
-				if not pathsToPrune:
-					self.assertEqual( scenePlug1.set( setName ), scenePlug2.set( setName ) )
-				else:
-					if scenePlug1.set( setName ) != scenePlug2.set( setName ):
-						pruned1 = scenePlug1.set( setName )
-						pruned2 = scenePlug2.set( setName )
-						for p in pathsToPrune:
-							pruned1.value.prune( p )
-							pruned2.value.prune( p )
-						self.assertEqual( pruned1, pruned2 )
+				set1 = scenePlug1.set( setName ).value
+				set2 = scenePlug2.set( setName ).value
+				for p in pathsToPrune :
+					set1.prune( p )
+					set2.prune( p )
+				if scenePlug2PathPrefix :
+					set2 = set2.subTree( scenePlug2PathPrefix )
+				self.assertEqual( set1, set2 )
 
 	def assertPathHashesEqual( self, scenePlug1, scenePath1, scenePlug2, scenePath2, checks = allPathChecks ) :
 

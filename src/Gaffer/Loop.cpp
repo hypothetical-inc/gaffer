@@ -197,7 +197,7 @@ void Loop::hash( const ValuePlug *output, const Context *context, IECore::Murmur
 		Context::EditableScope tmpContext( context );
 		if( index >= 0 )
 		{
-			tmpContext.set<int>( indexVariable, index );
+			tmpContext.set( indexVariable, &index );
 		}
 		else
 		{
@@ -219,7 +219,7 @@ void Loop::compute( ValuePlug *output, const Context *context ) const
 		Context::EditableScope tmpContext( context );
 		if( index >= 0 )
 		{
-			tmpContext.set<int>( indexVariable, index );
+			tmpContext.set( indexVariable, &index );
 		}
 		else
 		{
@@ -287,7 +287,7 @@ bool Loop::setupPlugs()
 	// hash()/compute() because each iteration changes the context and we bottom
 	// out after the specified number of iterations.
 	previousPlug()->setFlags( Plug::AcceptsDependencyCycles, true );
-	for( Gaffer::RecursivePlugIterator it( previousPlug() ); !it.done(); ++it )
+	for( Gaffer::Plug::RecursiveIterator it( previousPlug() ); !it.done(); ++it )
 	{
 		(*it)->setFlags( Plug::AcceptsDependencyCycles, true );
 	}
@@ -299,7 +299,7 @@ void Loop::addAffectedPlug( const ValuePlug *output, DependencyNode::AffectedPlu
 {
 	if( output->children().size() )
 	{
-		for( RecursiveOutputPlugIterator it( output ); !it.done(); ++it )
+		for( Plug::RecursiveOutputIterator it( output ); !it.done(); ++it )
 		{
 			if( !(*it)->children().size() )
 			{

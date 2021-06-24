@@ -37,7 +37,8 @@
 #include "GafferScene/Render.h"
 
 #include "GafferScene/Private/IECoreScenePreview/Renderer.h"
-#include "GafferScene/RendererAlgo.h"
+#include "GafferScene/Private/RendererAlgo.h"
+#include "GafferScene/SceneAlgo.h"
 #include "GafferScene/SceneNode.h"
 #include "GafferScene/ScenePlug.h"
 #include "GafferScene/SceneProcessor.h"
@@ -69,9 +70,9 @@ struct RenderScope : public Context::EditableScope
 	RenderScope( const Context *context )
 		:	EditableScope( context ), m_sceneTranslationOnly( false )
 	{
-		if( auto d = context->get<BoolData>( g_sceneTranslationOnlyContextName, nullptr ) )
+		if( const bool *d = context->getIfExists<bool>( g_sceneTranslationOnlyContextName ) )
 		{
-			m_sceneTranslationOnly = d->readable();
+			m_sceneTranslationOnly = *d;
 			// Don't leak variable upstream.
 			remove( g_sceneTranslationOnlyContextName );
 		}
@@ -112,7 +113,7 @@ Render::Render( const IECore::InternedString &rendererType, const std::string &n
 	addChild( new ScenePlug( "out", Plug::Out, Plug::Default & ~Plug::Serialisable ) );
 	addChild( new ScenePlug( "__adaptedIn", Plug::In, Plug::Default & ~Plug::Serialisable ) );
 
-	SceneProcessorPtr adaptors = GafferScene::RendererAlgo::createAdaptors();
+	SceneProcessorPtr adaptors = GafferScene::SceneAlgo::createRenderAdaptors();
 	setChild( "__adaptors", adaptors );
 	adaptors->inPlug()->setInput( inPlug() );
 	adaptedInPlug()->setInput( adaptors->outPlug() );
@@ -231,6 +232,27 @@ IECore::MurmurHash Render::hash( const Gaffer::Context *context ) const
 
 void Render::execute() const
 {
+	executeInternal( /* flushCaches = */ true );
+}
+
+void Render::executeSequence( const std::vector<float> &frames ) const
+{
+	Context::EditableScope frameScope( Context::current() );
+
+	for( auto frame : frames )
+	{
+		frameScope.setFrame( frame );
+		// We don't flush Gaffer's caches when rendering batches of frames,
+		// because that would mean starting scene generation from scratch
+		// each time. We assume that if renders have been batched, they are
+		// lightweight in the first place (otherwise there is little benefit
+		// in sharing the startup cost between several of them).
+		executeInternal( /* flushCaches = */ frames.size() == 1 );
+	}
+}
+
+void Render::executeInternal( bool flushCaches ) const
+{
 	if( inPlug()->source()->direction() != Plug::Out )
 	{
 		return;
@@ -244,7 +266,7 @@ void Render::execute() const
 		return;
 	}
 
-	renderScope.set( g_rendererContextName, rendererType );
+	renderScope.set( g_rendererContextName, &rendererType );
 
 	const Mode mode = static_cast<Mode>( modePlug()->getValue() );
 	const std::string fileName = fileNamePlug()->getValue();
@@ -278,7 +300,7 @@ void Render::execute() const
 	ConstCompoundObjectPtr globals = adaptedInPlug()->globalsPlug()->getValue();
 	if( !renderScope.sceneTranslationOnly() )
 	{
-		GafferScene::RendererAlgo::createOutputDirectories( globals.get() );
+		GafferScene::Private::RendererAlgo::createOutputDirectories( globals.get() );
 	}
 
 	PerformanceMonitorPtr performanceMonitor;
@@ -291,20 +313,20 @@ void Render::execute() const
 	}
 	Monitor::Scope performanceMonitorScope( performanceMonitor );
 
-	RendererAlgo::outputOptions( globals.get(), renderer.get() );
-	RendererAlgo::outputOutputs( inPlug(), globals.get(), renderer.get() );
+	GafferScene::Private::RendererAlgo::outputOptions( globals.get(), renderer.get() );
+	GafferScene::Private::RendererAlgo::outputOutputs( inPlug(), globals.get(), renderer.get() );
 
 	{
 		// Using nested scope so that we free the memory used by `renderSets`
 		// and `lightLinks` before we call `render()`.
-		RendererAlgo::RenderSets renderSets( adaptedInPlug() );
-		RendererAlgo::LightLinks lightLinks;
+		GafferScene::Private::RendererAlgo::RenderSets renderSets( adaptedInPlug() );
+		GafferScene::Private::RendererAlgo::LightLinks lightLinks;
 
-		RendererAlgo::outputCameras( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
-		RendererAlgo::outputLights( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
-		RendererAlgo::outputLightFilters( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+		GafferScene::Private::RendererAlgo::outputCameras( adaptedInPlug(), globals.get(), renderSets, renderer.get() );
+		GafferScene::Private::RendererAlgo::outputLights( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+		GafferScene::Private::RendererAlgo::outputLightFilters( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
 		lightLinks.outputLightFilterLinks( adaptedInPlug() );
-		RendererAlgo::outputObjects( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
+		GafferScene::Private::RendererAlgo::outputObjects( adaptedInPlug(), globals.get(), renderSets, &lightLinks, renderer.get() );
 	}
 
 	if( renderScope.sceneTranslationOnly() )
@@ -312,17 +334,17 @@ void Render::execute() const
 		return;
 	}
 
-	// Now we have generated the scene, flush Cortex and Gaffer caches to
-	// provide more memory to the renderer.
-	/// \todo This is not ideal. If dispatch is batched then multiple
-	/// renders in the same process might actually benefit from sharing
-	/// the cache. And if executing directly within the gui app
-	/// flushing the caches is definitely not wanted. Since these
-	/// scenarios are currently uncommon, we prioritise the common
-	/// case of performing a single render from within `gaffer execute`,
-	/// but it would be good to do better.
-	ObjectPool::defaultObjectPool()->clear();
-	ValuePlug::clearCache();
+	if( flushCaches )
+	{
+		// Now we have generated the scene, flush Cortex and Gaffer caches to
+		// provide more memory to the renderer.
+		/// \todo If executing directly within the gui app flushing the caches
+		/// is definitely not wanted. Since this scenario is currently uncommon,
+		/// we prioritise the common case of performing a single render from within
+		/// `gaffer execute`, but it would be good to do better.
+		ObjectPool::defaultObjectPool()->clear();
+		ValuePlug::clearCache();
+	}
 
 	renderer->render();
 	renderer.reset();

@@ -622,7 +622,7 @@ void ScriptNode::deleteNodes( Node *parent, const Set *filter, bool reconnect )
 			DependencyNode *dependencyNode = IECore::runTimeCast<DependencyNode>( node );
 			if( reconnect && dependencyNode )
 			{
-				for( RecursiveOutputPlugIterator it( node ); !it.done(); ++it )
+				for( Plug::RecursiveOutputIterator it( node ); !it.done(); ++it )
 				{
 					Plug *inPlug = nullptr;
 					try
@@ -746,7 +746,7 @@ bool ScriptNode::importFile( const std::string &fileName, Node *parent, bool con
 	bool result = script->load( continueOnError );
 
 	StandardSetPtr nodeSet = new StandardSet();
-	nodeSet->add( NodeIterator( script.get() ), NodeIterator( script->children().end(), script->children().end() ) );
+	nodeSet->add( Node::Iterator( script.get() ), Node::Iterator( script->children().end(), script->children().end() ) );
 	const std::string nodeSerialisation = script->serialise( script.get(), nodeSet.get() );
 
 	result |= execute( nodeSerialisation, parent, continueOnError );
@@ -797,6 +797,29 @@ const Context *ScriptNode::context() const
 	return m_context.get();
 }
 
+void ScriptNode::updateContextVariables()
+{
+	// Get contents of `variablesPlug()` and remove any previously transferred
+	// variables that no longer exist.
+	IECore::CompoundDataMap values;
+	variablesPlug()->fillCompoundData( values );
+	for( auto name : m_currentVariables )
+	{
+		if( values.find( name ) == values.end() )
+		{
+			context()->remove( name );
+		}
+	}
+
+	// Transfer current variables and remember what we've done.
+	m_currentVariables.clear();
+	for( const auto &variable : values )
+	{
+		context()->set( variable.first, variable.second.get() );
+		m_currentVariables.insert( variable.first );
+	}
+}
+
 void ScriptNode::plugSet( Plug *plug )
 {
 	if( plug == frameStartPlug() )
@@ -819,12 +842,7 @@ void ScriptNode::plugSet( Plug *plug )
 	}
 	else if( plug == variablesPlug() )
 	{
-		IECore::CompoundDataMap values;
-		variablesPlug()->fillCompoundData( values );
-		for( IECore::CompoundDataMap::const_iterator it = values.begin(), eIt = values.end(); it != eIt; ++it )
-		{
-			context()->set( it->first, it->second.get() );
-		}
+		updateContextVariables();
 	}
 	else if( plug == fileNamePlug() )
 	{

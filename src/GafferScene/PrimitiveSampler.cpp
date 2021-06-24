@@ -38,8 +38,6 @@
 
 #include "GafferScene/SceneAlgo.h"
 
-#include "Gaffer/Private/IECorePreview/ParallelAlgo.h"
-
 #include "IECoreScene/MeshAlgo.h"
 #include "IECoreScene/MeshPrimitive.h"
 #include "IECoreScene/PrimitiveEvaluator.h"
@@ -311,7 +309,7 @@ IECore::ConstObjectPtr PrimitiveSampler::computeProcessedObject( const ScenePath
 	ConstPrimitivePtr preprocessedSourcePrimitive = sourcePrimitive;
 	if( auto mesh = runTimeCast<const MeshPrimitive>( preprocessedSourcePrimitive.get() ) )
 	{
-		preprocessedSourcePrimitive = MeshAlgo::triangulate( mesh );
+		preprocessedSourcePrimitive = MeshAlgo::triangulate( mesh, context->canceller() );
 	}
 	PrimitiveEvaluatorPtr evaluator = PrimitiveEvaluator::create( preprocessedSourcePrimitive );
 	if( !evaluator )
@@ -398,4 +396,3 @@ bool PrimitiveSampler::affectsSamplingFunction( const Gaffer::Plug *input ) cons
 void PrimitiveSampler::hashSamplingFunction( IECore::MurmurHash &h ) const
 {
 }
-

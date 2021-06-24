@@ -72,9 +72,28 @@ class GraphEditor( GafferUI.Editor ) :
 		self.__gadgetWidget.buttonPressSignal().connect( Gaffer.WeakMethod( self.__buttonPress ), scoped = False )
 		self.__gadgetWidget.keyPressSignal().connect( Gaffer.WeakMethod( self.__keyPress ), scoped = False )
 		self.__gadgetWidget.buttonDoubleClickSignal().connect( Gaffer.WeakMethod( self.__buttonDoubleClick ), scoped = False )
-		self.__gadgetWidget.dragEnterSignal().connect( Gaffer.WeakMethod( self.__dragEnter ), scoped = False )
-		self.__gadgetWidget.dropSignal().connect( Gaffer.WeakMethod( self.__drop ), scoped = False )
+		self.dragEnterSignal().connect( Gaffer.WeakMethod( self.__dragEnter ), scoped = False )
+		self.dragLeaveSignal().connect( Gaffer.WeakMethod( self.__dragLeave ), scoped = False )
+		self.dropSignal().connect( Gaffer.WeakMethod( self.__drop ), scoped = False )
 		self.__gadgetWidget.getViewportGadget().preRenderSignal().connect( Gaffer.WeakMethod( self.__preRender ), scoped = False )
+
+		with GafferUI.ListContainer( borderWidth = 8, spacing = 0 ) as overlay :
+			with GafferUI.ListContainer(
+				GafferUI.ListContainer.Orientation.Horizontal,
+				parenting = {
+					"verticalAlignment" : GafferUI.VerticalAlignment.Top,
+				}
+			) :
+				GafferUI.Spacer( imath.V2i( 1 ) )
+				GafferUI.MenuButton(
+					image = "annotations.png", hasFrame = False,
+					menu = GafferUI.Menu(
+						Gaffer.WeakMethod( self.__annotationsMenu ),
+						title = "Annotations"
+					)
+				)
+
+		self.__gadgetWidget.addOverlay( overlay )
 
 		self.__nodeMenu = None
 
@@ -381,7 +400,7 @@ class GraphEditor( GafferUI.Editor ) :
 
 		return False
 
-	def __frame( self, nodes, extend = False ) :
+	def __frame( self, nodes, extend = False, at = None ) :
 
 		graphGadget = self.graphGadget()
 
@@ -430,6 +449,19 @@ class GraphEditor( GafferUI.Editor ) :
 
 		self.__gadgetWidget.getViewportGadget().frame( bound )
 
+		if at is not None :
+			# Offset the bound and reframe so that the centre of the bound moves
+			# to `at`, which is specified in raster space. We have to do this
+			# _after_ the initial call to `frame()` because
+			# `rasterToGadgetSpace()` is affected by the zoom calculated by
+			# `frame()`. Because we are not changing the size of the bound, the
+			# second call to `frame()` will use the same zoom.
+			viewport = self.graphGadgetWidget().getViewportGadget()
+			offset = viewport.rasterToGadgetSpace( imath.V2f( self.bound().size() / 2 ), graphGadget ).p0 - viewport.rasterToGadgetSpace( at, graphGadget ).p0
+			bound.setMin( bound.min() + offset )
+			bound.setMax( bound.max() + offset )
+			self.__gadgetWidget.getViewportGadget().frame( bound )
+
 	def __buttonDoubleClick( self, widget, event ) :
 
 		nodeGadget = self.__nodeGadgetAt( event.line.p1 )
@@ -442,9 +474,16 @@ class GraphEditor( GafferUI.Editor ) :
 			return False
 
 		if self.__dropNodes( event.data ) :
+			self.__dragEnterPointer = GafferUI.Pointer.getCurrent()
+			GafferUI.Pointer.setCurrent( "target" )
 			return True
 
 		return False
+
+	def __dragLeave( self, widget, event ) :
+
+		GafferUI.Pointer.setCurrent( self.__dragEnterPointer )
+		return True
 
 	def __drop( self, widget, event ) :
 
@@ -453,7 +492,8 @@ class GraphEditor( GafferUI.Editor ) :
 
 		dropNodes = self.__dropNodes( event.data )
 		if dropNodes :
-			self.__frame( dropNodes )
+			self.graphGadget().setRoot( dropNodes[0].parent() )
+			self.__frame( dropNodes, at = imath.V2f( event.line.p0.x, event.line.p0.y ) )
 			return True
 
 		return False
@@ -462,10 +502,11 @@ class GraphEditor( GafferUI.Editor ) :
 
 		if isinstance( dragData, Gaffer.Node ) :
 			return [ dragData ]
-		elif isinstance( dragData, Gaffer.Plug ) :
-			return [ dragData.node() ]
 		elif isinstance( dragData, Gaffer.Set ) :
-			return [ x for x in dragData if isinstance( x, Gaffer.Node ) ]
+			nodes = [ x for x in dragData if isinstance( x, Gaffer.Node ) ]
+			if len( set( n.parent() for n in nodes ) ) == 1 :
+				# Can only frame nodes if they all share the same parent.
+				return nodes
 
 		return []
 
@@ -547,6 +588,86 @@ class GraphEditor( GafferUI.Editor ) :
 		# layout has gone off screen.
 
 		self.frame( nodes, extend = True )
+
+	def __annotationsMenu( self ) :
+
+		graphGadget = self.graphGadget()
+		annotationsGadget = graphGadget["__annotations"]
+
+		annotations = Gaffer.MetadataAlgo.annotationTemplates() + [ "user", annotationsGadget.untemplatedAnnotations ]
+		visiblePattern = annotationsGadget.getVisibleAnnotations()
+		visibleAnnotations = { a for a in annotations if IECore.StringAlgo.matchMultiple( a, visiblePattern ) }
+
+		result = IECore.MenuDefinition()
+
+		result.append(
+			"All",
+			{
+				"checkBox" : len( visibleAnnotations ) == len( annotations ),
+				"command" : functools.partial( Gaffer.WeakMethod( self.__setVisibleAnnotations ), annotations = { "*" } )
+			}
+		)
+
+		result.append(
+			"None",
+			{
+				"checkBox" : len( visibleAnnotations ) == 0,
+				"command" : functools.partial( Gaffer.WeakMethod( self.__setVisibleAnnotations ), annotations = set() )
+			}
+		)
+
+		result.append( "__annotationsDivider__", { "divider" : True } )
+
+		def appendMenuItem( annotation, label = None ) :
+
+			if label is None :
+				# Support snake_case and CamelCase for conversion of name to label,
+				# since not all extensions use the Gaffer convention.
+				labelParts = annotation.split( ":" )
+				label = "/".join(
+					( " ".join( x.title() for x in p.split( "_" ) ) )
+					if "_" in p
+					else IECore.CamelCase.toSpaced( p )
+					for p in labelParts
+				)
+
+			if annotation in visibleAnnotations :
+				toggled = visibleAnnotations - { annotation }
+			else :
+				toggled = visibleAnnotations | { annotation }
+
+			result.append(
+				"/" + label,
+				{
+					"checkBox" : annotation in visibleAnnotations,
+					"command" : functools.partial( Gaffer.WeakMethod( self.__setVisibleAnnotations ), annotations = toggled )
+				}
+			)
+
+		userAnnotations = set( Gaffer.MetadataAlgo.annotationTemplates( userOnly = True ) )
+		for annotation in sorted( userAnnotations ) :
+			appendMenuItem( annotation )
+
+		if len( userAnnotations ) :
+			result.append( "__userDivider__", { "divider" : True } )
+		appendMenuItem( "user" )
+
+		result.append( "__nonUserDivider__", { "divider" : True } )
+
+		for annotation in sorted( Gaffer.MetadataAlgo.annotationTemplates() ) :
+			if annotation not in userAnnotations :
+				appendMenuItem( annotation )
+
+		result.append( "__otherDivider__", { "divider" : True } )
+		appendMenuItem( annotationsGadget.untemplatedAnnotations, label = "Other" )
+
+		return result
+
+	def __setVisibleAnnotations( self, unused, annotations ) :
+
+		annotationsGadget = self.graphGadget()["__annotations"]
+		pattern = " ".join( a.replace( " ", r"\ " ) for a in annotations )
+		annotationsGadget.setVisibleAnnotations( pattern )
 
 	@classmethod
 	def __getNodeInputConnectionsVisible( cls, graphGadget, node ) :

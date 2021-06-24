@@ -42,6 +42,7 @@ import six
 import IECore
 
 import Gaffer
+import GafferTest
 import GafferImage
 import GafferScene
 import GafferSceneTest
@@ -74,6 +75,11 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 		self.assertEqual( matchingPaths.match( "/plane/instances/group/1/plane" ), IECore.PathMatcher.Result.ExactMatch )
 		self.assertEqual( matchingPaths.match( "/plane/instances/group/1121/plane" ), IECore.PathMatcher.Result.ExactMatch )
 		self.assertEqual( matchingPaths.match( "/plane/instances/group/1121/sphere" ), IECore.PathMatcher.Result.NoMatch )
+
+		# Test root argument
+		matchingPaths = IECore.PathMatcher()
+		GafferScene.SceneAlgo.matchingPaths( filter["out"], instancer["out"], "/plane/instances/group/1121", matchingPaths )
+		self.assertEqual( matchingPaths.paths(), [ "/plane/instances/group/1121/plane" ] )
 
 	def testExists( self ) :
 
@@ -1372,6 +1378,135 @@ class SceneAlgoTest( GafferSceneTest.SceneTestCase ) :
 			GafferScene.SceneAlgo.linkedLights( standardAttributes["out"], IECore.PathMatcher( [ "/group/sphere", "/group/cube" ] ) ),
 			IECore.PathMatcher( [  "/group/defaultLight", "/group/nonDefaultLight" ] )
 		)
+
+	def testMatchingPathsHash( self ) :
+
+		# /group
+		#    /sphere
+		#    /cube
+
+		sphere = GafferScene.Sphere()
+		cube = GafferScene.Cube()
+
+		group = GafferScene.Group()
+		group["in"][0].setInput( sphere["out"] )
+		group["in"][1].setInput( cube["out"] )
+
+		filter1 = GafferScene.PathFilter()
+		filter1["paths"].setValue( IECore.StringVectorData( [ "/*" ] ) )
+
+		filter2 = GafferScene.PathFilter()
+		filter2["paths"].setValue( IECore.StringVectorData( [ "/*/*" ] ) )
+
+		filter3 = GafferScene.PathFilter()
+		filter3["paths"].setValue( IECore.StringVectorData( [ "/gro??" ] ) )
+
+		self.assertEqual(
+			GafferScene.SceneAlgo.matchingPathsHash( filter1["out"], group["out"] ),
+			GafferScene.SceneAlgo.matchingPathsHash( filter3["out"], group["out"] )
+		)
+
+		self.assertNotEqual(
+			GafferScene.SceneAlgo.matchingPathsHash( filter1["out"], group["out"] ),
+			GafferScene.SceneAlgo.matchingPathsHash( filter2["out"], group["out"] )
+		)
+
+		self.assertNotEqual(
+			GafferScene.SceneAlgo.matchingPathsHash( filter2["out"], group["out"] ),
+			GafferScene.SceneAlgo.matchingPathsHash( filter3["out"], group["out"] )
+		)
+
+		rootFilter = GafferScene.PathFilter()
+		rootFilter["paths"].setValue( IECore.StringVectorData( [ "/" ] ) )
+		emptyFilter = GafferScene.PathFilter()
+
+		self.assertNotEqual(
+			GafferScene.SceneAlgo.matchingPathsHash( rootFilter["out"], group["out"] ),
+			GafferScene.SceneAlgo.matchingPathsHash( emptyFilter["out"], group["out"] )
+		)
+
+	@GafferTest.TestRunner.PerformanceTestMethod()
+	def testMatchingPathsHashPerformance( self ) :
+
+		# Trick to make an infinitely recursive scene. This high-depth but
+		# low-branching-factor scene is in deliberate contrast to the
+		# lots-of-children-at-one-location scene used in
+		# `FilterResultsTest.testHashPerformance()`. We need good parallel
+		# performance for both topologies.
+		scene = GafferScene.ScenePlug()
+		scene["childNames"].setValue( IECore.InternedStringVectorData( [ "one", "two" ] ) )
+		# We use a PathMatcher to limit the search recursion, matching
+		# every item 22 deep, but no other.
+		pathMatcher = IECore.PathMatcher( [ "/*" * 22 ] )
+
+		with GafferTest.TestRunner.PerformanceScope() :
+			GafferScene.SceneAlgo.matchingPathsHash( pathMatcher, scene )
+
+	@GafferTest.TestRunner.PerformanceTestMethod()
+	def testMatchingPathsPerformance( self ) :
+
+		# See comments in `testMatchingPathsHashPerformance()`.
+		scene = GafferScene.ScenePlug()
+		scene["childNames"].setValue( IECore.InternedStringVectorData( [ "one", "two" ] ) )
+		pathMatcher = IECore.PathMatcher( [ "/*" * 21 ] )
+
+		with GafferTest.TestRunner.PerformanceScope() :
+			result = IECore.PathMatcher()
+			GafferScene.SceneAlgo.matchingPaths( pathMatcher, scene, result )
+
+	def testRenderAdaptors( self ) :
+
+		sphere = GafferScene.Sphere()
+
+		defaultAdaptors = GafferScene.SceneAlgo.createRenderAdaptors()
+		defaultAdaptors["in"].setInput( sphere["out"] )
+
+		def a() :
+
+			r = GafferScene.StandardAttributes()
+			r["attributes"]["doubleSided"]["enabled"].setValue( True )
+			r["attributes"]["doubleSided"]["value"].setValue( False )
+
+			return r
+
+		GafferScene.SceneAlgo.registerRenderAdaptor( "Test", a )
+
+		testAdaptors = GafferScene.SceneAlgo.createRenderAdaptors()
+		testAdaptors["in"].setInput( sphere["out"] )
+
+		self.assertFalse( "doubleSided" in sphere["out"].attributes( "/sphere" ) )
+		self.assertTrue( "doubleSided" in testAdaptors["out"].attributes( "/sphere" ) )
+		self.assertEqual( testAdaptors["out"].attributes( "/sphere" )["doubleSided"].value, False )
+
+		GafferScene.SceneAlgo.deregisterRenderAdaptor( "Test" )
+
+		defaultAdaptors2 = GafferScene.SceneAlgo.createRenderAdaptors()
+		defaultAdaptors2["in"].setInput( sphere["out"] )
+
+		self.assertScenesEqual( defaultAdaptors["out"], defaultAdaptors2["out"] )
+		self.assertSceneHashesEqual( defaultAdaptors["out"], defaultAdaptors2["out"] )
+
+	def testNullAdaptor( self ) :
+
+		def a() :
+
+			return None
+
+		GafferScene.SceneAlgo.registerRenderAdaptor( "Test", a )
+
+		with IECore.CapturingMessageHandler() as mh :
+			GafferScene.SceneAlgo.createRenderAdaptors()
+
+		self.assertEqual( len( mh.messages ), 1 )
+		self.assertEqual( mh.messages[0].level, IECore.Msg.Level.Warning )
+		self.assertEqual( mh.messages[0].context, "SceneAlgo::createRenderAdaptors" )
+		self.assertEqual( mh.messages[0].message, "Adaptor \"Test\" returned null" )
+
+	def tearDown( self ) :
+
+		GafferSceneTest.SceneTestCase.tearDown( self )
+		GafferScene.SceneAlgo.deregisterRenderAdaptor( "Test" )
+
 
 if __name__ == "__main__":
 	unittest.main()
