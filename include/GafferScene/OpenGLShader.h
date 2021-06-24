@@ -37,6 +37,7 @@
 #ifndef GAFFERSCENE_OPENGLSHADER_H
 #define GAFFERSCENE_OPENGLSHADER_H
 
+#include "GafferScene/Export.h"
 #include "GafferScene/Shader.h"
 
 namespace GafferScene

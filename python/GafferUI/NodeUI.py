@@ -45,7 +45,7 @@ import GafferUI
 
 def __documentationURL( node ) :
 
-	fileName = "$GAFFER_ROOT/doc/gaffer/html/Reference/NodeReference/" + node.typeName().replace( "::", "/" ) + ".html"
+	fileName = os.path.join( os.environ["GAFFER_ROOT"], "doc", "gaffer", "html", "Reference", "NodeReference", node.typeName().replace( "::", os.sep ) + ".html" )
 	fileName = os.path.expandvars( fileName )
 	return "file://" + fileName if os.path.isfile( fileName ) else ""
 

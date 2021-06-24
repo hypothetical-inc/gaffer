@@ -210,6 +210,14 @@ std::tuple<int,int,int,int> GafferTest::countContextHash32Collisions( int contex
 	}
 
 	unsigned int rand_seed = seed;
+
+	// There is no `rand_r` function on Windows, but Windows `rand` is thread safe.
+	// N.B. `srand` applies per-thread, so if random numbers need to be unique across
+	// threads, something like `GetCurrentThreadId()` should be added to `rand_seed`
+	#ifdef _MSC_VER
+		srand( rand_seed );
+	#endif
+
 	int collisions[4] = {0,0,0,0};
 	for( int i = 0; i < contexts; i++ )
 	{
@@ -238,7 +246,11 @@ std::tuple<int,int,int,int> GafferTest::countContextHash32Collisions( int contex
 		{
 			for( int j = 0; j < 20; j++ )
 			{
-				c.set( numberNames[j], rand_r( &rand_seed ) );
+				#ifndef _MSC_VER
+					c.set( numberNames[j], rand_r( &rand_seed ) );
+				#else
+					c.set( numberNames[j], rand() );
+				#endif
 			}
 		}
 

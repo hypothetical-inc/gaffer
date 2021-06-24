@@ -44,6 +44,7 @@
 #include "Gaffer/Process.h"
 
 #include "IECore/MessageHandler.h"
+#include "IECore/MurmurHash.h"
 
 #include "boost/bind.hpp"
 #include "boost/format.hpp"

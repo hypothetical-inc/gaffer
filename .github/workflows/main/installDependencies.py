@@ -38,6 +38,7 @@ import os
 import sys
 import argparse
 import hashlib
+import zipfile
 
 if sys.version_info[0] < 3 :
 	from urllib import urlretrieve
@@ -46,7 +47,7 @@ else :
 
 # Determine default archive URL.
 
-platform = "osx" if sys.platform == "darwin" else "linux"
+platform = { "darwin" : "osx", "win32" : "windows" }.get( sys.platform, "linux" )
 defaultURL = "https://github.com/ImageEngine/cortex/releases/download/10.2.0.0-a2/cortex-10.2.0.0-a2-" + platform + "-python2.tar.gz"
 
 # Parse command line arguments.
@@ -81,7 +82,12 @@ sys.stderr.write( "Downloading dependencies \"%s\"\n" % args.archiveURL )
 archiveFileName, headers = urlretrieve( args.archiveURL )
 
 os.makedirs( args.dependenciesDir )
-os.system( "tar xf %s -C %s --strip-components=1" % ( archiveFileName, args.dependenciesDir ) )
+if platform != "windows":
+	os.system( "tar xf %s -C %s --strip-components=1" % ( archiveFileName, args.dependenciesDir ) )
+else:
+	with zipfile.ZipFile( archiveFileName ) as f :
+		f.extractall( path = args.dependenciesDir )
+
 
 # Tell the world
 

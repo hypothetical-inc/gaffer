@@ -252,7 +252,7 @@ plugsMetadata = {
 		sides of the rendered image.
 
 		Overscan can be useful when camera shake or blur will be added
-		as a post-process. This plug just enables overscan as a whole –
+		as a post-process. This plug just enables overscan as a whole \u2013
 		use the _Overscan Top_, _Overscan Bottom_, _Overscan Left_ and
 		_Overscan Right_ plugs to specify the amount of overscan on
 		each side of the image.

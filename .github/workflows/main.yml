@@ -5,10 +5,12 @@ on:
     branches:
       - master
       - '*_maintenance'
+      - 'msvc2017*'
   pull_request:
     branches:
       - master
       - '*_maintenance'
+      - 'msvc2017*'
   release:
       types: [published]
 
@@ -33,6 +35,7 @@ jobs:
           linux-python2-debug,
           linux-python3,
           macos-python2,
+          windows-python3,
         ]
 
         include:
@@ -78,6 +81,14 @@ jobs:
             dependenciesURL: https://github.com/GafferHQ/dependencies/releases/download/3.0.0/gafferDependencies-3.0.0-Python2-osx.tar.gz
             testRunner: bash -c
             sconsCacheMegabytes: 400
+
+          - name: windows-python3
+            os: windows-2019
+            buildType: RELEASE
+            variant: windows-python3
+            publish: false
+            containerImage:
+            dependenciesURL: https://github.com/hypothetical-inc/gafferDependencies/releases/download/3.0.0a/gafferDependencies-3.0.0a-Python3-windows.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -139,10 +150,17 @@ jobs:
       # below.
       run: |
         echo GAFFER_DEPENDENCIES_HASH=`python .github/workflows/main/installDependencies.py --archiveURL ${{ matrix.dependenciesURL }} --dependenciesDir ${{ env.GAFFER_BUILD_DIR }} --outputFormat "{archiveDigest}"` >> $GITHUB_ENV
-        ./config/installArnold.sh
-        ./config/installDelight.sh
+        .github/workflows/main/installArnold.py
         echo ARNOLD_ROOT=$GITHUB_WORKSPACE/arnoldRoot >> $GITHUB_ENV
+    
+    - name: Install 3Delight
+      # The `$GITHUB_ENV` shenanigans creates an environment variable
+      # containing the hash of the archive, for use in the cache key
+      # below.
+      run: |
+        ./config/installDelight.sh
         echo DELIGHT=$GITHUB_WORKSPACE/3delight >> $GITHUB_ENV
+      if: runner.os == 'macOS' || runner.os == 'Linux'
 
     - name: Cache
       uses: actions/cache@v1
@@ -165,6 +183,7 @@ jobs:
         echo "::add-matcher::./.github/workflows/main/problemMatchers/unittest.json"
         ${{ matrix.testRunner }} "${{ env.GAFFER_BUILD_DIR }}/bin/gaffer test"
         echo "::remove-matcher owner=unittest::"
+      if: runner.os == 'macOS' || runner.os == 'Linux'
 
     - name: Build Docs and Package
       # We currently experience sporadic hangs in the docs builds (mac), this

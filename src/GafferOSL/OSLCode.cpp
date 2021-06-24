@@ -51,6 +51,8 @@
 #include "boost/bind.hpp"
 #include "boost/filesystem.hpp"
 
+#include "boost/algorithm/string/replace.hpp"
+
 #include <fstream>
 
 using namespace std;
@@ -263,6 +265,7 @@ boost::filesystem::path compile( const std::string &shaderName, const std::strin
 	// Write the source code out.
 
 	const std::string tempOSLFileName = ( tempDirectory / ( shaderName + ".osl" ) ).string();
+
 	std::ofstream f( tempOSLFileName.c_str() );
 	if( !f.good() )
 	{
@@ -283,7 +286,11 @@ boost::filesystem::path compile( const std::string &shaderName, const std::strin
 	vector<string> options;
 	if( const char *includePaths = getenv( "OSL_SHADER_PATHS" ) )
 	{
-		StringAlgo::tokenize( includePaths, ':', options );
+		#ifdef _MSC_VER
+			StringAlgo::tokenize( includePaths, ';', options );
+		#else
+			StringAlgo::tokenize( includePaths, ':', options );
+		#endif
 		for( vector<string>::iterator it = options.begin(), eIt = options.end(); it != eIt; ++it )
 		{
 			it->insert( 0, "-I" );
@@ -326,7 +333,9 @@ class CompileProcess : public Gaffer::Process
 				string shaderName;
 				string shaderSource = generate( oslCode, shaderName );
 				boost::filesystem::path shaderFile = compile( shaderName, shaderSource );
-				oslCode->namePlug()->setValue( shaderFile.replace_extension().string() );
+				std::string shaderFileString = shaderFile.replace_extension().string();
+				boost::replace_all( shaderFileString, "\\", "/" );	// Convert \ from Windows paths so shader can be found
+				oslCode->namePlug()->setValue( shaderFileString );
 				oslCode->typePlug()->setValue( "osl:shader" );
 			}
 			catch( ... )

@@ -35,6 +35,9 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "GafferImage/Format.h"
+#include "GafferImage/FormatData.h"
+
+#include "Gaffer/Context.h"
 
 #include <map>
 
@@ -42,6 +45,8 @@ using namespace GafferImage;
 
 namespace
 {
+
+Gaffer::Context::TypeDescription<GafferImage::FormatData> g_formatDataTypeDescription;
 
 typedef std::map<std::string, Format> FormatMap;
 
